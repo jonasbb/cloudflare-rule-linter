@@ -1,0 +1,16 @@
+[build-system]
+build-backend = "maturin"
+requires = ["maturin>=1.10,<2.0"]
+
+[project]
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dynamic = ["version"]
+name = "cloudflare_rules"
+requires-python = ">=3.8"
+
+[project.scripts]
+cf_rules = "cloudflare_rules:cf_rules_cli"
