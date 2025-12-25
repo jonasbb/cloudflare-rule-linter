@@ -14,6 +14,12 @@ ipnet = {version = "2.11.0", features = ["serde"]}
 pyo3 = {version = "0.27.0", features = ["anyhow"]}
 serde = {version = "1.0.228", features = ["derive"]}
 serde_json = "1.0.145"
-wirefilter-engine = {git = "https://github.com/cloudflare/wirefilter/", version = "0.7.0", features = [
+# wirefilter-engine = {git = "https://github.com/cloudflare/wirefilter/", version = "0.7.0", features = [
+#     "regex",
+# ]}
+wirefilter-engine = {path="../../wirefilter/engine", version = "0.7.0", features = [
     "regex",
 ]}
+
+[dev-dependencies]
+expect-test = "1.5.1"

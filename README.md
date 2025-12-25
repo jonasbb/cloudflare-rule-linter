@@ -7,6 +7,10 @@
 * <https://github.com/cloudflare/wirefilter/>
     Cloudflare repository containing the Rust code for parsing Cloudflare Rules Language.
     This contains the base framework, but the exact details of available fields and functions is not included.
+* <https://github.com/gen0sec/wirefilter>
+    Fork of the Cloudflare wirefilter with more functions pre-defined.
 * <https://github.com/jmreicha/wirechecker>
     Simple WebUI that simulates the Cloudflare Rules Language, parses it and reports errors.
     This is based on the wirefilter crate.
+* <https://raw.githubusercontent.com/cloudflare/cloudflare-docs/HEAD/src/content/fields/index.yaml>
+    Wirefilter fields and types.

@@ -1,5 +1,5 @@
 from typing import Hashable
-from .cloudflare_rules import parse_expression
+from .cloudflare_rules import parse_expression, get_ast
 import json
 import dataclasses
 from typing import Any
@@ -17,12 +17,14 @@ def cf_rules_cli() -> None:
     # ast = json.loads(ast_json, object_hook=ast_rules_loader)
     # print(f"AST: {ast}")
 
-    ast_json = parse_expression(
-        """ http.method eq "GET" or (http.method eq "POST") or (req.srcip in {10.0.0.1 ::1 127.0.0.0/8 2002::2..2003::3}) or (port in {80..80 80}) or ((http.method matches r###"([G]ET|POST|"\\.)"### and http.method matches "GET\\.\\x1b")) """
-    )
+    # ast_json = parse_expression(
+    #     """ http.method eq "GET" or (http.method eq "POST") or (req.srcip in {10.0.0.1 ::1 127.0.0.0/8 2002::2..2003::3}) or (port in {80..80 80}) or ((http.method matches r###"([G]ET|POST|"\\.)"### and http.method matches "GET\\.\\x1b")) """
+    # )
     # print(f"AST JSON: {ast_json}")
     # ast = json.loads(ast_json, object_hook=ast_rules_loader)
     # print(f"AST: {ast}")
+
+    print(get_ast(""" http.host eq "example.com" and (http.host eq "example.org") """))
 
 
 def ast_rules_loader(d: dict[Hashable, Any]) -> Any:

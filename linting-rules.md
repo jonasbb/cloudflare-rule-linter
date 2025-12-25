@@ -46,6 +46,8 @@ Thus a rule like `http.request.method eq "get"` does not work.
 A full_uri always contains the protocol, i.e., `https://`.
 A path always starts with a `/`.
 
+Port numbers are restricted in the 0..2^16 range.
+
 ## Using functions if variables exist
 
 `substring(http.request.uri.path, -5)` or `ends_with(http.request.uri.path, ".html")` might be better served by using `http.request.uri.path.extension`.
@@ -61,4 +63,10 @@ Simplify `not A eq "foo"` to `A ne "foo"`.
 ## Syntax confusion for string comparisons
 
 A wildcard match with `.*` or a regex match with just `*`/`?` could mean that the wrong operator was used.
-This might be high in false positives or the rules must be very specific like `matches r"/*/foobar"`.
+This might be high in false positives, or the rules must be very specific, like `matches r"/*/foobar"`.
+
+## Limit the value of time comparisons
+
+The value `http.request.timestamp.sec` can be used to make time based rules, e.g., rules that activate/deactivate at a specific time.
+For them it makes little sense to pick a time too far in the future, e.g., 100 years.
+Similarly, using values that are too small, e.g., 9-digits instead of the guaranteed 10-digits, indicate a typo.

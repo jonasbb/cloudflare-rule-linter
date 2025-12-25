@@ -14,3 +14,8 @@ requires-python = ">=3.8"
 
 [project.scripts]
 cf_rules = "cloudflare_rules:cf_rules_cli"
+
+[tool.uv.workspace]
+members = [
+    "cloudflare-rules-py",
+]
