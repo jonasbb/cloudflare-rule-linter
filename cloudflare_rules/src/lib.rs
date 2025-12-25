@@ -45,7 +45,77 @@ impl Linter {
         res.push_str(&self.lint_illogical_conditions(ast));
         res.push_str(&self.lint_duplicate_list_entries(ast));
         res.push_str(&self.lint_match_reserved_ip_spaces(ast));
+        res.push_str(&self.lint_simplify_negated_comparisons(ast));
         res
+    }
+
+    fn lint_simplify_negated_comparisons(&self, ast: &wirefilter::FilterAst) -> String {
+        struct NegatedComparisonVisitor {
+            result: String,
+        }
+
+        let mut visitor = NegatedComparisonVisitor {
+            result: String::new(),
+        };
+
+        impl wirefilter::Visitor<'_> for NegatedComparisonVisitor {
+            fn visit_logical_expr(&mut self, node: &'_ wirefilter::LogicalExpr) {
+                if let wirefilter::LogicalExpr::Unary {
+                    op: UnaryOp::Not,
+                    arg,
+                } = node
+                    && let wirefilter::LogicalExpr::Comparison(comp @ ComparisonExpr { .. }) =
+                        &**arg
+                {
+                    // Only handle ordering comparisons (eq, ne, lt, le, gt, ge)
+                    if let wirefilter::ComparisonOpExpr::Ordering { op, rhs } = &comp.op {
+                        use wirefilter::OrderingOp;
+                        let suggestion_op = match op {
+                            OrderingOp::Equal => Some(OrderingOp::NotEqual),
+                            OrderingOp::NotEqual => Some(OrderingOp::Equal),
+                            OrderingOp::LessThan => Some(OrderingOp::GreaterThanEqual),
+                            OrderingOp::LessThanEqual => Some(OrderingOp::GreaterThan),
+                            OrderingOp::GreaterThan => Some(OrderingOp::LessThanEqual),
+                            OrderingOp::GreaterThanEqual => Some(OrderingOp::LessThan),
+                        };
+
+                        if let Some(sugg) = suggestion_op {
+                            let inner = AstPrintVisitor::comparison_expr_to_string(comp);
+                            // Reconstruct a ComparisonExpr string with the suggested op
+                            // We reuse the AST printer on the original and then replace the operator
+                            let sugg_str = match sugg {
+                                OrderingOp::Equal => " eq ",
+                                OrderingOp::NotEqual => " ne ",
+                                OrderingOp::GreaterThanEqual => " ge ",
+                                OrderingOp::LessThanEqual => " le ",
+                                OrderingOp::GreaterThan => " gt ",
+                                OrderingOp::LessThan => " lt ",
+                            };
+
+                            // Split on known operator tokens to replace
+                            // TODO: add replacements for c style operators
+                            let suggested_expr = inner
+                                .replace(" eq ", sugg_str)
+                                .replace(" ne ", sugg_str)
+                                .replace(" gt ", sugg_str)
+                                .replace(" lt ", sugg_str)
+                                .replace(" ge ", sugg_str)
+                                .replace(" le ", sugg_str);
+
+                            self.result += &format!(
+                                "Found negated comparison: not {inner}\nConsider simplifying to: \
+                                 {suggested_expr}\n",
+                            );
+                        }
+                    }
+                }
+
+                self.visit_expr(node);
+            }
+        }
+
+        ast.walk(&mut visitor);
+        visitor.result
     }
 
     fn lint_match_reserved_ip_spaces(&self, ast: &wirefilter::FilterAst) -> String {
@@ -943,6 +1013,61 @@ mod linter_tests {
         );
 
         assert_no_lint_message(r#"ip.src eq 8.8.8.8"#);
+    }
+
+    #[test]
+    fn test_simplify_negated_eq() {
+        expect_lint_message(
+            r#"not http.host eq "example.com""#,
+            expect![[r#"
+                Found negated comparison: not http.host eq "example.com"
+                Consider simplifying to: http.host ne "example.com"
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_simplify_negated_lt() {
+        expect_lint_message(
+            r#"not http.response.code lt 400"#,
+            expect![[r#"
+                Found negated comparison: not http.response.code lt 400
+                Consider simplifying to: http.response.code ge 400
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_simplify_negated_le() {
+        expect_lint_message(
+            r#"not http.response.code le 200"#,
+            expect![[r#"
+                Found negated comparison: not http.response.code le 200
+                Consider simplifying to: http.response.code gt 200
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_simplify_negated_gt() {
+        expect_lint_message(
+            r#"not tcp.port gt 1024"#,
+            expect![[r#"
+                Found negated comparison: not tcp.port gt 1024
+                Consider simplifying to: tcp.port le 1024
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_simplify_negated_ge() {
+        expect_lint_message(
+            r#"not tcp.port ge 80"#,
+            expect![[r#"
+                Found negated comparison: not tcp.port ge 80
+                Consider simplifying to: tcp.port lt 80
+            "#]],
+        );
     }
 
     #[test]
