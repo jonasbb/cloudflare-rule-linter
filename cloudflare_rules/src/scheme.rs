@@ -13,8 +13,83 @@ fn placeholder_fn<'a>(_args: FunctionArgs<'_, 'a>) -> Option<LhsValue<'a>> {
     unimplemented!()
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct NumList {}
+
+impl wirefilter::ListDefinition for NumList {
+    fn matcher_from_json_value(
+        &self,
+        _: Type,
+        _: serde_json::Value,
+    ) -> Result<Box<dyn wirefilter::ListMatcher>, serde_json::Error> {
+        Ok(Box::new(NumList {}))
+    }
+
+    fn new_matcher(&self) -> Box<dyn wirefilter::ListMatcher> {
+        Box::new(NumList {})
+    }
+}
+
+impl wirefilter::ListMatcher for NumList {
+    fn match_value(&self, list_name: &str, val: &LhsValue<'_>) -> bool {
+        match val {
+            LhsValue::Int(num) => match list_name {
+                "even" => num % 2 == 0,
+                "odd" => num % 2 != 0,
+                _ => unreachable!("Number list with unknown name: {}", list_name),
+            },
+            _ => unreachable!(), // TODO: is this unreachable?
+        }
+    }
+
+    fn to_json_value(&self) -> serde_json::Value {
+        serde_json::Value::Null
+    }
+
+    fn clear(&mut self) {}
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct IpList {}
+
+impl wirefilter::ListDefinition for IpList {
+    fn matcher_from_json_value(
+        &self,
+        _: Type,
+        _: serde_json::Value,
+    ) -> Result<Box<dyn wirefilter::ListMatcher>, serde_json::Error> {
+        Ok(Box::new(IpList {}))
+    }
+
+    fn new_matcher(&self) -> Box<dyn wirefilter::ListMatcher> {
+        Box::new(IpList {})
+    }
+}
+
+impl wirefilter::ListMatcher for IpList {
+    fn match_value(&self, list_name: &str, val: &LhsValue<'_>) -> bool {
+        match val {
+            LhsValue::Ip(_) => match list_name {
+                "always" => true,
+                "never" => false,
+                _ => unreachable!("Number list with unknown name: {}", list_name),
+            },
+            _ => unreachable!(), // TODO: is this unreachable?
+        }
+    }
+
+    fn to_json_value(&self) -> serde_json::Value {
+        serde_json::Value::Null
+    }
+
+    fn clear(&mut self) {}
+}
+
 pub fn build_scheme() -> Scheme {
     let mut builder = wirefilter::SchemeBuilder::new();
+
+    builder.add_list(Type::Int, NumList {}).unwrap();
+    builder.add_list(Type::Ip, IpList {}).unwrap();
 
     // Add the lower transformation function to the scheme
     builder
