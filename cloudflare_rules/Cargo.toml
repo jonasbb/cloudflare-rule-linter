@@ -5,7 +5,7 @@ version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["lib", "cdylib"]
 name = "cloudflare_rules"
 
 [dependencies]
@@ -14,12 +14,14 @@ ipnet = {version = "2.11.0", features = ["serde"]}
 pyo3 = {version = "0.27.0", features = ["anyhow"]}
 serde = {version = "1.0.228", features = ["derive"]}
 serde_json = "1.0.145"
+strum = {version = "0.27.2", features = ["derive"]}
 # wirefilter-engine = {git = "https://github.com/cloudflare/wirefilter/", version = "0.7.0", features = [
 #     "regex",
 # ]}
-wirefilter-engine = {path="../../wirefilter/engine", version = "0.7.0", features = [
+wirefilter-engine = {path = "../../wirefilter/engine", version = "0.7.0", features = [
     "regex",
 ]}
 
 [dev-dependencies]
 expect-test = "1.5.1"
+pretty_assertions = "1.4.1"
