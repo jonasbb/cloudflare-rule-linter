@@ -200,7 +200,7 @@ pub fn build_scheme() -> Scheme {
     builder.add_field("cf.client.bot", Type::Bool).unwrap();
     builder.add_field("cf.edge.client_tcp", Type::Bool).unwrap();
     builder.add_field("cf.edge.server_ip", Type::Ip).unwrap();
-    builder.add_field("cf.edge.server_port", Type::Ip).unwrap();
+    builder.add_field("cf.edge.server_port", Type::Int).unwrap();
     builder
         .add_field("cf.hostname.metadata", Type::Bytes)
         .unwrap();
@@ -666,11 +666,23 @@ pub fn build_scheme() -> Scheme {
     // Ip Fields
     builder.add_field("ip.src", Type::Ip).unwrap();
     builder.add_field("ip.src.asnum", Type::Int).unwrap();
+    // Old name for ip.src.asnum
+    builder.add_field("ip.geoip.asnum", Type::Int).unwrap();
     builder.add_field("ip.src.city", Type::Bytes).unwrap();
     builder.add_field("ip.src.continent", Type::Bytes).unwrap();
+    // Old name for ip.src.continent
+    builder
+        .add_field("ip.geoip.continent", Type::Bytes)
+        .unwrap();
     builder.add_field("ip.src.country", Type::Bytes).unwrap();
+    // Old name for ip.src.country
+    builder.add_field("ip.geoip.country", Type::Bytes).unwrap();
     builder
         .add_field("ip.src.is_in_european_union", Type::Bool)
+        .unwrap();
+    // Old name for ip.src.is_in_european_union
+    builder
+        .add_field("ip.geoip.is_in_european_union", Type::Bool)
         .unwrap();
     builder.add_field("ip.src.lat", Type::Bytes).unwrap();
     builder.add_field("ip.src.lon", Type::Bytes).unwrap();
@@ -685,8 +697,16 @@ pub fn build_scheme() -> Scheme {
     builder
         .add_field("ip.src.subdivision_1_iso_code", Type::Bytes)
         .unwrap();
+    // Old name for ip.src.subdivision_1_iso_code
+    builder
+        .add_field("ip.geoip.subdivision_1_iso_code", Type::Bytes)
+        .unwrap();
     builder
         .add_field("ip.src.subdivision_2_iso_code", Type::Bytes)
+        .unwrap();
+    // Old name for ip.src.subdivision_2_iso_code
+    builder
+        .add_field("ip.geoip.subdivision_2_iso_code", Type::Bytes)
         .unwrap();
     builder
         .add_field("ip.src.timezone.name", Type::Bytes)

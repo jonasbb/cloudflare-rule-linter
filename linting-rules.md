@@ -82,3 +82,7 @@ It is simpler and less ambiguous to not use this mode and require all regex uses
 This is implemented in the `lex_regex_from_literal` function.
 
 <https://developers.cloudflare.com/ruleset-engine/rules-language/values/#quoted-string-syntax>
+
+## Check deprecated fields
+
+Some fields get renamed and old names should not be used.
