@@ -42,7 +42,7 @@ impl AstPrintVisitor {
         bytes.iter().for_each(|b| match b {
             b'\\' => escaped.push_str("\\\\"),
             b'"' => escaped.push_str("\\\""),
-            b if b.is_ascii_graphic() => escaped.push(*b as char),
+            b if *b == 0x20 || b.is_ascii_graphic() => escaped.push(*b as char),
             b => escaped.push_str(&format!("\\x{:02x}", b)),
         });
         escaped
@@ -95,9 +95,21 @@ impl AstPrintVisitor {
     }
 
     fn visit_regex(&mut self, regex: &wirefilter::Regex) {
+        // Count consecutive # in string
+        let regex_literal = regex.as_str();
+        let hash_count: u32 = regex_literal
+            .chars()
+            .fold(1, |acc, c| if c == '#' { acc + 1 } else { 1 });
+        self.0.push('r');
+        for _ in 0..=hash_count {
+            self.0.push('#');
+        }
         self.0.push('"');
         self.0.push_str(regex.as_str());
         self.0.push('"');
+        for _ in 0..=hash_count {
+            self.0.push('#');
+        }
     }
 
     fn visit_bytes(&mut self, bytes: &wirefilter::Bytes) {
@@ -132,19 +144,27 @@ impl AstPrintVisitor {
         }
         self.0.push('}');
     }
+
+    fn visit_rhs_value(&mut self, rhs: &wirefilter::RhsValue) {
+        match rhs {
+            wirefilter::RhsValue::Bool(_uninhabited_bool) => unreachable!(),
+            wirefilter::RhsValue::Int(int) => self.visit_int(int),
+            wirefilter::RhsValue::Ip(ip_addr) => self.visit_ip_addr(ip_addr),
+            wirefilter::RhsValue::Bytes(bytes) => self.visit_bytes(bytes),
+            wirefilter::RhsValue::Array(_uninhabited_array) => unreachable!(),
+            wirefilter::RhsValue::Map(_uninhabited_map) => unreachable!(),
+        }
+    }
 }
 
 impl<'a> Visitor<'a> for AstPrintVisitor {
     fn visit_expr(&mut self, node: &'a impl wirefilter::Expr) {
-        println!("Visit expr {node:?}");
         node.walk(self)
     }
 
     fn visit_logical_expr(&mut self, node: &'a wirefilter::LogicalExpr) {
-        println!("Visit logical expr {node:?}");
         match node {
             wirefilter::LogicalExpr::Combining { op, items } => {
-                println!("Visit combining op {op:?} with items {items:?}");
                 let op_str = match op {
                     wirefilter::LogicalOp::Or => " or ",
                     wirefilter::LogicalOp::Xor => " xor ",
@@ -158,17 +178,14 @@ impl<'a> Visitor<'a> for AstPrintVisitor {
                 }
             }
             wirefilter::LogicalExpr::Comparison(comparison_expr) => {
-                println!("Visit comparison expr {comparison_expr:?}");
                 self.visit_comparison_expr(comparison_expr)
             }
             wirefilter::LogicalExpr::Parenthesized(parenthesized_expr) => {
-                println!("Visit parenthesized expr {parenthesized_expr:?}");
                 self.0.push('(');
                 self.visit_logical_expr(&parenthesized_expr.expr);
                 self.0.push(')');
             }
             wirefilter::LogicalExpr::Unary { op, arg } => {
-                println!("Visit unary expr {op:?} with arg {arg:?}");
                 match op {
                     wirefilter::UnaryOp::Not => self.0.push_str("not "),
                 }
@@ -178,15 +195,13 @@ impl<'a> Visitor<'a> for AstPrintVisitor {
     }
 
     fn visit_comparison_expr(&mut self, node: &'a wirefilter::ComparisonExpr) {
-        println!("Visit comparison expr {node:?}");
-        node.lhs.walk(self);
+        self.visit_index_expr(&node.lhs);
         match &node.op {
             wirefilter::ComparisonOpExpr::IsTrue => {
                 // No additional action needed
                 // The lhs is already a boolean value
             }
             wirefilter::ComparisonOpExpr::Ordering { op, rhs } => {
-                println!("Visit ordering op {op:?} with rhs {rhs:?}");
                 match op {
                     wirefilter::OrderingOp::Equal => self.0.push_str(" eq "),
                     wirefilter::OrderingOp::NotEqual => self.0.push_str(" ne "),
@@ -195,42 +210,29 @@ impl<'a> Visitor<'a> for AstPrintVisitor {
                     wirefilter::OrderingOp::GreaterThan => self.0.push_str(" gt "),
                     wirefilter::OrderingOp::LessThan => self.0.push_str(" lt "),
                 }
-                match rhs {
-                    wirefilter::RhsValue::Bool(_uninhabited_bool) => unreachable!(),
-                    wirefilter::RhsValue::Int(int) => self.visit_int(int),
-                    wirefilter::RhsValue::Ip(ip_addr) => self.visit_ip_addr(ip_addr),
-                    wirefilter::RhsValue::Bytes(bytes) => self.visit_bytes(bytes),
-                    wirefilter::RhsValue::Array(_uninhabited_array) => unreachable!(),
-                    wirefilter::RhsValue::Map(_uninhabited_map) => unreachable!(),
-                }
+                self.visit_rhs_value(rhs);
             }
             wirefilter::ComparisonOpExpr::Int { op, rhs } => {
-                println!("Visit int op {op:?} with rhs {rhs:?}");
                 match op {
                     wirefilter::IntOp::BitwiseAnd => self.0.push_str(" & "),
                 }
                 self.0.push_str(&rhs.to_string());
             }
             wirefilter::ComparisonOpExpr::Contains(bytes) => {
-                println!("Visit contains with bytes {bytes:?}");
                 self.0.push_str(" contains ");
                 self.visit_bytes(bytes);
             }
             wirefilter::ComparisonOpExpr::Matches(regex) => {
-                println!("Visit matches with regex {regex:?}");
                 self.0.push_str(" matches ");
                 self.visit_regex(regex);
             }
             wirefilter::ComparisonOpExpr::Wildcard(wildcard) => {
-                println!("Visit wildcard with pattern {wildcard:?}");
                 self.0.push_str(&format!(" wildcard {:?}", wildcard));
             }
             wirefilter::ComparisonOpExpr::StrictWildcard(wildcard) => {
-                println!("Visit strict wildcard with pattern {wildcard:?}");
                 self.0.push_str(&format!(" strict wildcard {:?}", wildcard));
             }
             wirefilter::ComparisonOpExpr::OneOf(rhs_values) => {
-                println!("Visit one of with rhs values {rhs_values:?}");
                 self.0.push_str(" in ");
                 match rhs_values {
                     wirefilter::RhsValues::Bool(_uninhabited_bool) => unreachable!(),
@@ -241,39 +243,93 @@ impl<'a> Visitor<'a> for AstPrintVisitor {
                     wirefilter::RhsValues::Map(_uninhabited_map) => unreachable!(),
                 }
             }
-            wirefilter::ComparisonOpExpr::ContainsOneOf(items) => todo!(),
-            wirefilter::ComparisonOpExpr::InList { list, name } => todo!(),
+            wirefilter::ComparisonOpExpr::ContainsOneOf(_items) => {
+                unreachable!("Syntax feature not supported")
+            }
+            wirefilter::ComparisonOpExpr::InList { name, .. } => {
+                self.0.push_str(" in ");
+                self.0.push('$');
+                self.0.push_str(name.as_str());
+            }
         }
     }
 
     fn visit_value_expr(&mut self, node: &'a impl wirefilter::ValueExpr) {
-        println!("Visit value expr {node:?}");
         node.walk(self)
     }
 
     fn visit_index_expr(&mut self, node: &'a wirefilter::IndexExpr) {
-        println!("Visit index expr {node:?}");
-        self.visit_value_expr(node)
+        self.visit_value_expr(node);
+        for index in &node.indexes {
+            match index {
+                wirefilter::FieldIndex::ArrayIndex(i) => {
+                    self.0.push('[');
+                    self.0.push_str(&i.to_string());
+                    self.0.push(']');
+                }
+                wirefilter::FieldIndex::MapKey(s) => {
+                    self.0.push_str("[\"");
+                    self.0.push_str(s);
+                    self.0.push_str("\"]");
+                }
+                wirefilter::FieldIndex::MapEach => {
+                    self.0.push_str("[*]");
+                }
+            }
+        }
     }
 
     fn visit_function_call_expr(&mut self, node: &'a wirefilter::FunctionCallExpr) {
-        println!("Visit function call expr {node:?}");
-        self.visit_value_expr(node)
+        struct FunctionCallVisitor<'a> {
+            inner: &'a mut AstPrintVisitor,
+            buffer: String,
+        }
+
+        impl<'a> Visitor<'a> for FunctionCallVisitor<'a> {
+            fn visit_function(&mut self, func: &'a wirefilter::Function) {
+                self.inner.0.push_str(func.name());
+                self.inner.0.push('(');
+                self.inner.0.push_str(&self.buffer);
+                self.inner.0.push(')');
+            }
+
+            fn visit_function_call_arg_expr(&mut self, node: &'a wirefilter::FunctionCallArgExpr) {
+                if !self.buffer.is_empty() {
+                    self.buffer.push_str(", ");
+                }
+                // TODO: can this be done without allocating a new AstPrintVisitor?
+                let mut arg_visitor = AstPrintVisitor::new();
+                match node {
+                    wirefilter::FunctionCallArgExpr::IndexExpr(index_expr) => {
+                        arg_visitor.visit_index_expr(index_expr)
+                    }
+                    wirefilter::FunctionCallArgExpr::Literal(lit) => {
+                        arg_visitor.visit_rhs_value(lit)
+                    }
+                    wirefilter::FunctionCallArgExpr::Logical(logical_expr) => {
+                        arg_visitor.visit_logical_expr(logical_expr)
+                    }
+                }
+                self.buffer.push_str(&arg_visitor.into_string());
+            }
+        }
+
+        node.walk(&mut FunctionCallVisitor {
+            inner: self,
+            buffer: String::new(),
+        });
     }
 
-    fn visit_function_call_arg_expr(&mut self, node: &'a wirefilter::FunctionCallArgExpr) {
-        println!("Visit function call arg expr {node:?}");
-        self.visit_value_expr(node)
+    fn visit_function_call_arg_expr(&mut self, _node: &'a wirefilter::FunctionCallArgExpr) {
+        unreachable!("Function visited outside of FunctionCallExpr");
     }
 
     fn visit_field(&mut self, field: &'a wirefilter::Field) {
-        println!("Visit field {field:?}");
         self.0.push_str(field.name());
     }
 
-    fn visit_function(&mut self, func: &'a wirefilter::Function) {
-        println!("Visit function {func:?}");
-        self.0.push_str("Function ");
+    fn visit_function(&mut self, _func: &'a wirefilter::Function) {
+        unreachable!("Function visited outside of FunctionCallExpr");
     }
 }
 
@@ -306,5 +362,77 @@ mod test {
     #[test]
     fn test_roundtrip_parse_print_parentheses() {
         ensure_roundtrip_parse_print(r#"http.host ne "example.com" or http.host ne "example.org""#);
+    }
+
+    #[test]
+    fn test_roundtrip_function() {
+        ensure_roundtrip_parse_print(r#"lower(http.host) eq """#);
+    }
+
+    #[test]
+    fn test_roundtrip_function_multiple_args() {
+        ensure_roundtrip_parse_print(r#"cidr(ip.src, 24, 24) eq 113.10.0.0"#);
+    }
+
+    #[test]
+    fn test_roundtrip_indexing() {
+        ensure_roundtrip_parse_print(r#"http.request.headers["content-type"][0] eq """#);
+    }
+
+    #[test]
+    fn test_roundtrip_function_and_indexing() {
+        ensure_roundtrip_parse_print(
+            r#"any(http.request.headers["content-type"][*] eq "application/json")"#,
+        );
+    }
+
+    #[test]
+    fn test_roundtrip_list() {
+        ensure_roundtrip_parse_print(r#"ip.src in $always"#);
+    }
+}
+
+#[cfg(test)]
+mod test_fuzz_results {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[track_caller]
+    pub fn ensure_roundtrip_print_parse(expression: &str) {
+        let schema = crate::scheme::build_scheme();
+        let ast_original = schema
+            .parse(expression)
+            .expect("Failed to parse expression");
+        let mut visitor = AstPrintVisitor::new();
+        ast_original.walk(&mut visitor);
+        dbg!(&ast_original.expression());
+        let printed_expression = visitor.into_string();
+        dbg!(&printed_expression);
+
+        let ast_reparsed = schema
+            .parse(&printed_expression)
+            .expect("Failed to parse re-printed expression");
+        assert_eq!(ast_original.expression(), ast_reparsed.expression());
+    }
+
+    #[test]
+    fn test_fuzz_00001() {
+        // Test the printing of regex with escaped quotes
+        ensure_roundtrip_print_parse(r#"http.request.uri.path  matches"_  \" ""#);
+    }
+
+    #[test]
+    fn test_fuzz_00002() {
+        // Test the printing of regex with escaped quotes
+        ensure_roundtrip_print_parse(
+            r#"http.request.uri matches"
+c.""#,
+        );
+    }
+
+    #[test]
+    fn test_fuzz_00003() {
+        // Test the printing of regex with "# sequences in the string
+        ensure_roundtrip_print_parse(r##"http.request.uri.path     matches" [     "#!!] ""##);
     }
 }
