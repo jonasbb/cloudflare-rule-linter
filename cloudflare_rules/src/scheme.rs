@@ -1,7 +1,3 @@
-// Much of this code is adapted from Wirechecker:
-// https://github.com/jonasbb/wirechecker/blob/bcf322546890a09803370a9f6ec47d7618acc7a1/src/lib.rs
-// Licenced as AGPL-3.0
-
 // Transform functions implementations
 
 use wirefilter::{
@@ -88,120 +84,52 @@ impl wirefilter::ListMatcher for IpList {
 pub fn build_scheme() -> Scheme {
     let mut builder = wirefilter::SchemeBuilder::new();
 
+    // Add custom lists
     builder.add_list(Type::Int, NumList {}).unwrap();
     builder.add_list(Type::Ip, IpList {}).unwrap();
 
-    // Add the lower transformation function to the scheme
+    // Add standard functions
     builder
-        .add_function(
-            "lower",
-            SimpleFunctionDefinition {
-                params: vec![SimpleFunctionParam {
-                    arg_kind: FunctionArgKind::Field,
-                    val_type: Type::Bytes,
-                }],
-                opt_params: vec![],
-                return_type: Type::Bytes,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
+        .add_function("all", wirefilter::AllFunction {})
         .unwrap();
-
-    // Add the upper transformation function
     builder
-        .add_function(
-            "upper",
-            SimpleFunctionDefinition {
-                params: vec![SimpleFunctionParam {
-                    arg_kind: FunctionArgKind::Field,
-                    val_type: Type::Bytes,
-                }],
-                opt_params: vec![],
-                return_type: Type::Bytes,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
+        .add_function("any", wirefilter::AnyFunction {})
         .unwrap();
-
-    // Add concat function
+    builder
+        .add_function("cidr", wirefilter::CIDRFunction {})
+        .unwrap();
     builder
         .add_function("concat", wirefilter::ConcatFunction {})
         .unwrap();
-
-    // Add decode_base64 function
     builder
-        .add_function(
-            "decode_base64",
-            SimpleFunctionDefinition {
-                params: vec![SimpleFunctionParam {
-                    arg_kind: FunctionArgKind::Field,
-                    val_type: Type::Bytes,
-                }],
-                opt_params: vec![],
-                return_type: Type::Bytes,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
+        .add_function("decode_base64", wirefilter::DecodeBase64Function {})
         .unwrap();
-
-    // Add starts_with function
     builder
-        .add_function(
-            "starts_with",
-            SimpleFunctionDefinition {
-                params: vec![
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Field,
-                        val_type: Type::Bytes,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Bytes,
-                    },
-                ],
-                opt_params: vec![],
-                return_type: Type::Bool,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
+        .add_function("ends_with", wirefilter::EndsWithFunction {})
         .unwrap();
-
-    // Add ends_with function
     builder
-        .add_function(
-            "ends_with",
-            SimpleFunctionDefinition {
-                params: vec![
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Field,
-                        val_type: Type::Bytes,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Bytes,
-                    },
-                ],
-                opt_params: vec![],
-                return_type: Type::Bool,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
+        .add_function("len", wirefilter::LenFunction {})
         .unwrap();
-
-    // Add len function
     builder
-        .add_function(
-            "len",
-            SimpleFunctionDefinition {
-                params: vec![SimpleFunctionParam {
-                    arg_kind: FunctionArgKind::Field,
-                    val_type: Type::Bytes,
-                }],
-                opt_params: vec![],
-                return_type: Type::Int,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
+        .add_function("lower", wirefilter::LowerFunction {})
+        .unwrap();
+    builder
+        .add_function("remove_bytes", wirefilter::RemoveBytesFunction {})
+        .unwrap();
+    builder
+        .add_function("starts_with", wirefilter::StartsWithFunction {})
+        .unwrap();
+    builder
+        .add_function("substring", wirefilter::SubstringFunction {})
+        .unwrap();
+    builder
+        .add_function("to_string", wirefilter::ToStringFunction {})
+        .unwrap();
+    builder
+        .add_function("upper", wirefilter::UpperFunction {})
+        .unwrap();
+    builder
+        .add_function("url_decode", wirefilter::UrlDecodeFunction {})
         .unwrap();
 
     // Add regex_replace function
@@ -228,118 +156,6 @@ pub fn build_scheme() -> Scheme {
                 implementation: SimpleFunctionImpl::new(placeholder_fn),
             },
         )
-        .unwrap();
-
-    // Add substring function
-    builder
-        .add_function(
-            "substring",
-            SimpleFunctionDefinition {
-                params: vec![
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Field,
-                        val_type: Type::Bytes,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Int,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Int,
-                    },
-                ],
-                opt_params: vec![],
-                return_type: Type::Bytes,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
-        .unwrap();
-
-    // Add to_string function
-    builder
-        .add_function(
-            "to_string",
-            SimpleFunctionDefinition {
-                params: vec![SimpleFunctionParam {
-                    arg_kind: FunctionArgKind::Field,
-                    val_type: Type::Int,
-                }],
-                opt_params: vec![],
-                return_type: Type::Bytes,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
-        .unwrap();
-
-    // Add remove_bytes function
-    builder
-        .add_function(
-            "remove_bytes",
-            SimpleFunctionDefinition {
-                params: vec![
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Field,
-                        val_type: Type::Bytes,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Bytes,
-                    },
-                ],
-                opt_params: vec![],
-                return_type: Type::Bytes,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
-        .unwrap();
-
-    // Add url_decode function
-    builder
-        .add_function(
-            "url_decode",
-            SimpleFunctionDefinition {
-                params: vec![SimpleFunctionParam {
-                    arg_kind: FunctionArgKind::Field,
-                    val_type: Type::Bytes,
-                }],
-                opt_params: vec![],
-                return_type: Type::Bytes,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
-        .unwrap();
-
-    // Add cidr function
-    builder
-        .add_function(
-            "cidr",
-            SimpleFunctionDefinition {
-                params: vec![
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Field,
-                        val_type: Type::Ip,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Bytes,
-                    },
-                ],
-                opt_params: vec![],
-                return_type: Type::Bool,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
-        .unwrap();
-
-    // Add any function
-    builder
-        .add_function("any", wirefilter::AnyFunction {})
-        .unwrap();
-
-    // Add all function
-    builder
-        .add_function("all", wirefilter::AllFunction {})
         .unwrap();
 
     // Standard field definitions
@@ -376,7 +192,7 @@ pub fn build_scheme() -> Scheme {
         .add_field("cf.bot_management.score", Type::Int)
         .unwrap();
     builder
-        .add_field("cf.bot_management.static_resource", Type::Int)
+        .add_field("cf.bot_management.static_resource", Type::Bool)
         .unwrap();
     builder
         .add_field("cf.bot_management.verified_bot", Type::Bool)
