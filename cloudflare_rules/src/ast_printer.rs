@@ -97,10 +97,12 @@ impl AstPrintVisitor {
     fn visit_regex(&mut self, regex: &wirefilter::Regex) {
         // Count consecutive # in string
         let regex_literal = regex.as_str();
-        let hash_count: u32 = regex_literal
+        // Count the current run of #s and the longest run of #s
+        let (_, hash_count): (u32, u32) = regex_literal
             .chars()
-            .fold(1, |acc, c| if c == '#' { acc + 1 } else { 1 });
+            .fold((0,0), |(curr, max), c|  if c == '#' { (curr + 1, max.max(curr+1)) } else { (0, max) });
         self.0.push('r');
+        // Print 1 more than hash_count
         for _ in 0..=hash_count {
             self.0.push('#');
         }

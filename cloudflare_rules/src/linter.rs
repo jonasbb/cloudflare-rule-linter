@@ -7,12 +7,14 @@ mod duplicate_list_entries;
 mod illogical_condition;
 mod negated_comparison;
 mod reserved_ip_space;
+mod regex_raw_strings;
 
 pub static LINT_REGISTRY: &[&'static (dyn Lint + Send + Sync + 'static)] = &[
     &reserved_ip_space::ReservedIpSpace,
     &negated_comparison::NegatedComparison,
     &illogical_condition::IllogicalCondition,
     &duplicate_list_entries::DuplicateListEntries,
+    &regex_raw_strings::RegexRawStrings,
 ];
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, strum::VariantArray)]

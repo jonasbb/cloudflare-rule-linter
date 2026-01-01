@@ -70,3 +70,15 @@ This might be high in false positives, or the rules must be very specific, like 
 The value `http.request.timestamp.sec` can be used to make time based rules, e.g., rules that activate/deactivate at a specific time.
 For them it makes little sense to pick a time too far in the future, e.g., 100 years.
 Similarly, using values that are too small, e.g., 9-digits instead of the guaranteed 10-digits, indicate a typo.
+
+## Regex matches only with raw strings
+
+The language has a special escaping mode for regex matches.
+This only triggers using the `matches` keyword, but not for regex functions.
+The escaping is different from normal string escapes.
+
+It is simpler and less ambiguous to not use this mode and require all regex uses to use raw strings.
+
+This is implemented in the `lex_regex_from_literal` function.
+
+<https://developers.cloudflare.com/ruleset-engine/rules-language/values/#quoted-string-syntax>
