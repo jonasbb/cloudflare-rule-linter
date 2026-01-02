@@ -158,4 +158,15 @@ mod test {
                 Consider simplifying from `not ip.src.asnum ge 80` to `ip.src.asnum lt 80`"#]],
         );
     }
+
+    #[test]
+    fn test_simplify_negated_eq_parns() {
+        expect_lint_message(
+            &LINTER,
+            r#"not ( http.host eq "example.com" )"#,
+            expect![[r#"
+                Found negated comparison (negated_comparison)
+                Consider simplifying from `not http.host eq "example.com"` to `http.host ne "example.com"`"#]],
+        );
+    }
 }

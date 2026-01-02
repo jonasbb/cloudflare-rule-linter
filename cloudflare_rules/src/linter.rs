@@ -151,7 +151,12 @@ impl Linter {
                         // Replace the parenthesized expression with its inner expression
                         *node = parenthesized_expr.expr.clone();
                     }
-                    _ => {}
+                    wirefilter::LogicalExpr::Unary { arg,.. } => {
+                        self.visit_logical_expr(arg);
+                    }
+                    wirefilter::LogicalExpr::Comparison(comparison_expr) => {
+                        self.visit_comparison_expr(comparison_expr);
+                    },
                 }
             }
         }
@@ -257,6 +262,55 @@ pub(super) mod test {
                 ],
             }
         "#]],
+        );
+    }
+
+
+
+    #[test]
+    fn test_simplify_not_parens() {
+        assert_simplify_ast(
+            &LINTER,
+            "not (ssl)",
+            expect![[r#"
+                Unary {
+                    op: Not,
+                    arg: Comparison(
+                        ComparisonExpr {
+                            lhs: IndexExpr {
+                                identifier: Field(
+                                    ssl,
+                                ),
+                                indexes: [],
+                            },
+                            op: IsTrue,
+                        },
+                    ),
+                }
+            "#]],
+        );
+        assert_simplify_ast(
+            &LINTER,
+            "not ( ( ( not ( ( ssl ) ) ) ) )",
+            expect![[r#"
+                Unary {
+                    op: Not,
+                    arg: Unary {
+                        op: Not,
+                        arg: Comparison(
+                            ComparisonExpr {
+                                lhs: IndexExpr {
+                                    identifier: Field(
+                                        ssl,
+                                    ),
+                                    indexes: [],
+                                },
+                                op: IsTrue,
+                            },
+                        ),
+                    },
+                }
+            "#]],
         );
     }
 
