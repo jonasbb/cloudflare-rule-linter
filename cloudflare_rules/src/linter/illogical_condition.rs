@@ -14,7 +14,7 @@ impl Lint for IllogicalCondition {
         Category::Style
     }
 
-    fn lint(&self, ast: &FilterAst) -> String {
+    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> String {
         // Check for illogical conditions
         // A eq 1 and A eq 2 => always false
         // A ne 1 or A ne 2 => always true

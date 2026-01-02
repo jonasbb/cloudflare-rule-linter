@@ -98,9 +98,13 @@ impl AstPrintVisitor {
         // Count consecutive # in string
         let regex_literal = regex.as_str();
         // Count the current run of #s and the longest run of #s
-        let (_, hash_count): (u32, u32) = regex_literal
-            .chars()
-            .fold((0,0), |(curr, max), c|  if c == '#' { (curr + 1, max.max(curr+1)) } else { (0, max) });
+        let (_, hash_count): (u32, u32) = regex_literal.chars().fold((0, 0), |(curr, max), c| {
+            if c == '#' {
+                (curr + 1, max.max(curr + 1))
+            } else {
+                (0, max)
+            }
+        });
         self.0.push('r');
         // Print 1 more than hash_count
         for _ in 0..=hash_count {

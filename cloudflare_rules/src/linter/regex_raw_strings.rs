@@ -13,7 +13,7 @@ impl Lint for RegexRawStrings {
         Category::Style
     }
 
-    fn lint(&self, ast: &FilterAst) -> String {
+    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> String {
         // Ensure regex matches use raw string literals (r"...") instead of normal quoted strings
         struct RegexRawStringsVisitor {
             result: String,

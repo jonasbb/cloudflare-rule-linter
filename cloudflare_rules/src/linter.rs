@@ -3,12 +3,13 @@ use serde::{Deserialize, Serialize};
 use std::iter;
 use wirefilter::FilterAst;
 
+mod deprecated_field;
 mod duplicate_list_entries;
 mod illogical_condition;
 mod negated_comparison;
-mod reserved_ip_space;
 mod regex_raw_strings;
-mod deprecated_field;
+mod reserved_ip_space;
+mod timestamp_bounds;
 
 pub static LINT_REGISTRY: &[&'static (dyn Lint + Send + Sync + 'static)] = &[
     &reserved_ip_space::ReservedIpSpace,
@@ -17,6 +18,7 @@ pub static LINT_REGISTRY: &[&'static (dyn Lint + Send + Sync + 'static)] = &[
     &duplicate_list_entries::DuplicateListEntries,
     &regex_raw_strings::RegexRawStrings,
     &deprecated_field::DeprecatedField,
+    &timestamp_bounds::TimestampComparisons,
 ];
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, strum::VariantArray)]
@@ -30,7 +32,7 @@ pub trait Lint {
     fn name(&self) -> &'static str;
     fn category(&self) -> Category;
 
-    fn lint(&self, ast: &FilterAst) -> String;
+    fn lint(&self, config: &LinterConfig, ast: &FilterAst) -> String;
 }
 
 pub struct Linter {
@@ -81,7 +83,7 @@ impl Linter {
         self.simplify_ast(ast);
         for (rl, lint) in iter::zip(runlint, LINT_REGISTRY) {
             if rl {
-                res += &lint.lint(ast);
+                res += &lint.lint(&self.config, ast);
             }
         }
         res

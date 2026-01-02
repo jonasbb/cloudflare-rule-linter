@@ -13,7 +13,7 @@ impl Lint for DuplicateListEntries {
         Category::Correctness
     }
 
-    fn lint(&self, ast: &FilterAst) -> String {
+    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> String {
         // Check for duplicate entries in list comparisons
         // A in {1 2 2} => duplicate entry 2
 

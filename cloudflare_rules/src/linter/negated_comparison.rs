@@ -13,7 +13,7 @@ impl Lint for NegatedComparison {
         Category::Style
     }
 
-    fn lint(&self, ast: &FilterAst) -> String {
+    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> String {
         struct NegatedComparisonVisitor {
             result: String,
         }

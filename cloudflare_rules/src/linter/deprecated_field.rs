@@ -35,7 +35,7 @@ impl Lint for DeprecatedField {
         Category::Deprecated
     }
 
-    fn lint(&self, ast: &FilterAst) -> String {
+    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> String {
         struct DeprecatedFieldVisitor {
             result: String,
         }

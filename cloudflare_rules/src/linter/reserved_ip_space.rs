@@ -147,7 +147,7 @@ impl Lint for ReservedIpSpace {
         Category::Correctness
     }
 
-    fn lint(&self, ast: &FilterAst) -> String {
+    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> String {
         struct ReservedIpSpaceVisitor {
             result: String,
         }
