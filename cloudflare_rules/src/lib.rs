@@ -1,4 +1,5 @@
 use anyhow::{Result, anyhow};
+#[cfg(feature = "python")]
 use pyo3::prelude::*;
 pub use scheme::build_scheme;
 use std::sync::LazyLock;
@@ -12,6 +13,7 @@ mod scheme;
 pub static RULE_SCHEME: LazyLock<Scheme> = LazyLock::new(scheme::build_scheme);
 
 /// A Python module implemented in Rust.
+#[cfg(feature = "python")]
 #[pymodule]
 mod cloudflare_rules {
     use pyo3::prelude::*;
@@ -29,7 +31,7 @@ mod cloudflare_rules {
     }
 }
 
-fn parse_expression(expr: &str) -> Result<String> {
+pub fn parse_expression(expr: &str) -> Result<String> {
     let linter = linter::Linter::new();
     let mut ast = RULE_SCHEME.parse(expr).map_err(|err| anyhow!("{err}"))?;
     let result = linter.lint(&mut ast);

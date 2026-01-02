@@ -19,3 +19,6 @@ cf_rules = "cloudflare_rules:cf_rules_cli"
 members = [
     "cloudflare-rules-py",
 ]
+
+[tool.maturin]
+cargo-extra-args = "--features python"
