@@ -25,6 +25,9 @@ wirefilter-engine = {path = "../../wirefilter/engine", version = "0.7.0", featur
     "regex",
 ]}
 
+[target.wasm32-unknown-unknown.dependencies]
+web-time = "1.1.0"
+
 [dev-dependencies]
 expect-test = "1.5.1"
 pretty_assertions = "1.4.1"
