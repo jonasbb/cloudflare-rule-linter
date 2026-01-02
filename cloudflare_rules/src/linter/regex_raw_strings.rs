@@ -13,13 +13,13 @@ impl Lint for RegexRawStrings {
         Category::Style
     }
 
-    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> String {
+    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
         // Ensure regex matches use raw string literals (r"...") instead of normal quoted strings
         struct RegexRawStringsVisitor {
-            result: String,
+            result: Vec<LintReport>,
         }
         let mut visitor = RegexRawStringsVisitor {
-            result: String::new(),
+            result: Vec::new(),
         };
 
         impl Visitor<'_> for RegexRawStringsVisitor {
@@ -28,11 +28,17 @@ impl Lint for RegexRawStrings {
                     && regex.format() == RegexFormat::Literal
                 {
                     let node_str = AstPrintVisitor::comparison_expr_to_string(node);
-                    self.result += &format!(
-                        "Found regex match with non-raw string: {node_str}\nRegex matches must \
-                         use raw string literals (e.g., r\"...\" or r#\"...\"#) when using the \
-                         `matches` operator.\n"
-                    );
+                    self.result.push(LintReport {
+                        id: "regex_raw_strings".into(),
+                        url: None,
+                        title: "Found regex match with non-raw string".into(),
+                        message: format!(
+                            "Regex matches must use raw string literals (e.g., r\"...\" or \
+                             r#\"...\"#) when using the `matches` operator.",
+                        ),
+                        span_start: None,
+                        span_end: None,
+                    });
                 }
 
                 self.visit_value_expr(&node.lhs);
@@ -62,9 +68,8 @@ mod test {
             &LINTER,
             r#"http.host matches ".*example.*""#,
             expect![[r##"
-                Found regex match with non-raw string: http.host matches r#".*example.*"#
-                Regex matches must use raw string literals (e.g., r"..." or r#"..."#) when using the `matches` operator.
-            "##]],
+                Found regex match with non-raw string (regex_raw_strings)
+                Regex matches must use raw string literals (e.g., r"..." or r#"..."#) when using the `matches` operator."##]],
         );
     }
 

@@ -147,14 +147,12 @@ impl Lint for ReservedIpSpace {
         Category::Correctness
     }
 
-    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> String {
+    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
         struct ReservedIpSpaceVisitor {
-            result: String,
+            result: Vec<LintReport>,
         }
 
-        let mut visitor = ReservedIpSpaceVisitor {
-            result: String::new(),
-        };
+        let mut visitor = ReservedIpSpaceVisitor { result: Vec::new() };
 
         impl Visitor<'_> for ReservedIpSpaceVisitor {
             fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
@@ -171,10 +169,17 @@ impl Lint for ReservedIpSpace {
                                     let ip_str = AstPrintVisitor::format_ip_range(
                                         &IpRange::Explicit(ExplicitIpRange::V4(range.clone())),
                                     );
-                                    self.result += &format!(
-                                        "Found usage of reserved IP range: {node_str}\nThe value \
-                                         `{ip_str}` is within reserved address space.\n",
-                                    );
+                                    self.result.push(LintReport {
+                                        id: "reserved_ip_space".into(),
+                                        url: None,
+                                        title: "Found usage of reserved IP range".into(),
+                                        message: format!(
+                                            "The value `{ip_str}` is within reserved address \
+                                             space.",
+                                        ),
+                                        span_start: None,
+                                        span_end: None,
+                                    });
                                     break;
                                 }
                             }
@@ -186,10 +191,17 @@ impl Lint for ReservedIpSpace {
                                     let ip_str = AstPrintVisitor::format_ip_range(
                                         &IpRange::Explicit(ExplicitIpRange::V6(range.clone())),
                                     );
-                                    self.result += &format!(
-                                        "Found usage of reserved IP range: {node_str}\nThe value \
-                                         `{ip_str}` is within reserved address space.\n",
-                                    );
+                                    self.result.push(LintReport {
+                                        id: "reserved_ip_space".into(),
+                                        url: None,
+                                        title: "Found usage of reserved IP range".into(),
+                                        message: format!(
+                                            "The value `{ip_str}` is within reserved address \
+                                             space.",
+                                        ),
+                                        span_start: None,
+                                        span_end: None,
+                                    });
                                     break;
                                 }
                             }
@@ -205,11 +217,17 @@ impl Lint for ReservedIpSpace {
                                             let node_str =
                                                 AstPrintVisitor::comparison_expr_to_string(node);
                                             let ip_str = AstPrintVisitor::format_ip_range(ip);
-                                            self.result += &format!(
-                                                "Found usage of reserved IP range: \
-                                                 {node_str}\nThe value `{ip_str}` is within \
-                                                 reserved address space.\n",
-                                            );
+                                            self.result.push(LintReport {
+                                                id: "reserved_ip_space".into(),
+                                                url: None,
+                                                title: "Found usage of reserved IP range".into(),
+                                                message: format!(
+                                                    "The value `{ip_str}` is within reserved \
+                                                     address space.",
+                                                ),
+                                                span_start: None,
+                                                span_end: None,
+                                            });
                                             break;
                                         }
                                     }
@@ -220,11 +238,17 @@ impl Lint for ReservedIpSpace {
                                             let node_str =
                                                 AstPrintVisitor::comparison_expr_to_string(node);
                                             let ip_str = AstPrintVisitor::format_ip_range(ip);
-                                            self.result += &format!(
-                                                "Found usage of reserved IP range: \
-                                                 {node_str}\nThe value `{ip_str}` is within \
-                                                 reserved address space.\n",
-                                            );
+                                            self.result.push(LintReport {
+                                                id: "reserved_ip_space".into(),
+                                                url: None,
+                                                title: "Found usage of reserved IP range".into(),
+                                                message: format!(
+                                                    "The value `{ip_str}` is within reserved \
+                                                     address space.",
+                                                ),
+                                                span_start: None,
+                                                span_end: None,
+                                            });
                                             break;
                                         }
                                     }
@@ -262,25 +286,22 @@ mod test {
             &LINTER,
             r#"ip.src eq 127.0.0.1"#,
             expect![[r#"
-                Found usage of reserved IP range: ip.src eq 127.0.0.1
-                The value `127.0.0.1` is within reserved address space.
-            "#]],
+                Found usage of reserved IP range (reserved_ip_space)
+                The value `127.0.0.1` is within reserved address space."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"ip.src in {10.0.0.0/8 8.8.8.8}"#,
             expect![[r#"
-                Found usage of reserved IP range: ip.src in {10.0.0.0/8 8.8.8.8}
-                The value `10.0.0.0/8` is within reserved address space.
-            "#]],
+                Found usage of reserved IP range (reserved_ip_space)
+                The value `10.0.0.0/8` is within reserved address space."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"ip.src in { fe80:0:0:1234::/96 }"#,
             expect![[r#"
-                Found usage of reserved IP range: ip.src in {fe80:0:0:1234::/96}
-                The value `fe80:0:0:1234::/96` is within reserved address space.
-            "#]],
+                Found usage of reserved IP range (reserved_ip_space)
+                The value `fe80:0:0:1234::/96` is within reserved address space."#]],
         );
 
         assert_no_lint_message(&LINTER, r#"ip.src eq 8.8.8.8"#);

@@ -19,9 +19,9 @@ impl Lint for TimestampComparisons {
         Category::Correctness
     }
 
-    fn lint(&self, config: &LinterConfig, ast: &FilterAst) -> String {
+    fn lint(&self, config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
         struct TimestampVisitor {
-            result: String,
+            result: Vec<LintReport>,
             min_time: i64,
             max_time: i64,
         }
@@ -40,18 +40,35 @@ impl Lint for TimestampComparisons {
                                 ..
                             } => {
                                 if *val < self.min_time {
-                                    self.result += &format!(
-                                        "Found comparison against http.request.timestamp.sec with \
-                                         value {val} which is below min_timestamp ({}).\n",
-                                        self.min_time
-                                    );
+                                    self.result.push(LintReport {
+                                        id: "timestamp_comparisons".into(),
+                                        url: None,
+                                        title: "Comparison with very time constant below \
+                                                `min_timestamp`"
+                                            .into(),
+                                        message: format!(
+                                            "Found comparison against http.request.timestamp.sec \
+                                             with value {val} which is below min_timestamp ({}).",
+                                            self.min_time
+                                        ),
+                                        span_start: None,
+                                        span_end: None,
+                                    });
                                 }
                                 if *val > self.max_time {
                                     // TODO: Adding max time here breaks the simple expect tests, as the value is dynamic
-                                    self.result += &format!(
-                                        "Found comparison against http.request.timestamp.sec with \
-                                         value {val} which is too far in the future.\n",
-                                    );
+                                    self.result.push(LintReport {
+                                        id: "timestamp_comparisons".into(),
+                                        url: None,
+                                        title: "Comparison with future time after `future_delta`"
+                                            .into(),
+                                        message: format!(
+                                            "Found comparison against http.request.timestamp.sec \
+                                             with value {val} which is too far in the future.",
+                                        ),
+                                        span_start: None,
+                                        span_end: None,
+                                    });
                                 }
                             }
                             ComparisonOpExpr::OneOf(RhsValues::Int(vs)) => {
@@ -62,18 +79,38 @@ impl Lint for TimestampComparisons {
                                     let high = *range.end();
 
                                     if low < self.min_time {
-                                        self.result += &format!(
-                                            "Found comparison against http.request.timestamp.sec \
-                                             with value {low} which is below min_timestamp ({}).\n",
-                                            self.min_time
-                                        );
+                                        self.result.push(LintReport {
+                                            id: "timestamp_comparisons".into(),
+                                            url: None,
+                                            title: "Comparison with very time constant below \
+                                                    `min_timestamp`"
+                                                .into(),
+                                            message: format!(
+                                                "Found comparison against \
+                                                 http.request.timestamp.sec with value {low} \
+                                                 which is below min_timestamp ({}).",
+                                                self.min_time
+                                            ),
+                                            span_start: None,
+                                            span_end: None,
+                                        });
                                     }
                                     if high > self.max_time {
                                         // TODO: Adding max time here breaks the simple expect tests, as the value is dynamic
-                                        self.result += &format!(
-                                            "Found comparison against http.request.timestamp.sec \
-                                             with value {high} which is too far in the future.\n"
-                                        );
+                                        self.result.push(LintReport {
+                                            id: "timestamp_comparisons".into(),
+                                            url: None,
+                                            title: "Comparison with future time after \
+                                                    `future_delta`"
+                                                .into(),
+                                            message: format!(
+                                                "Found comparison against \
+                                                 http.request.timestamp.sec with value {high} \
+                                                 which is too far in the future.",
+                                            ),
+                                            span_start: None,
+                                            span_end: None,
+                                        });
                                     }
                                 }
                             }
@@ -91,7 +128,7 @@ impl Lint for TimestampComparisons {
             .unwrap()
             .as_secs() as i64;
         let mut visitor = TimestampVisitor {
-            result: String::new(),
+            result: Vec::new(),
             min_time: config.settings.timestamp_bounds_min_timestamp,
             max_time: now_timestamp + config.settings.timestamp_bounds_future_delta,
         };
@@ -120,8 +157,8 @@ mod test {
             &LINTER,
             "http.request.timestamp.sec eq 1104534000",
             expect![[r#"
-                Found comparison against http.request.timestamp.sec with value 1104534000 which is below min_timestamp (1262300400).
-            "#]],
+                Comparison with very time constant below `min_timestamp` (timestamp_comparisons)
+                Found comparison against http.request.timestamp.sec with value 1104534000 which is below min_timestamp (1262300400)."#]],
         );
     }
 
@@ -137,8 +174,8 @@ mod test {
             &LINTER,
             "http.request.timestamp.sec eq 32503676400",
             expect![[r#"
-                Found comparison against http.request.timestamp.sec with value 32503676400 which is too far in the future.
-            "#]],
+                Comparison with future time after `future_delta` (timestamp_comparisons)
+                Found comparison against http.request.timestamp.sec with value 32503676400 which is too far in the future."#]],
         );
     }
 
@@ -159,8 +196,8 @@ mod test {
             &LINTER,
             "http.request.timestamp.sec in {1104500000..1577833299}",
             expect![[r#"
-                Found comparison against http.request.timestamp.sec with value 1104500000 which is below min_timestamp (1262300400).
-            "#]],
+                Comparison with very time constant below `min_timestamp` (timestamp_comparisons)
+                Found comparison against http.request.timestamp.sec with value 1104500000 which is below min_timestamp (1262300400)."#]],
         );
     }
 }

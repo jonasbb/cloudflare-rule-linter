@@ -13,14 +13,12 @@ impl Lint for NegatedComparison {
         Category::Style
     }
 
-    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> String {
+    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
         struct NegatedComparisonVisitor {
-            result: String,
+            result: Vec<LintReport>,
         }
 
-        let mut visitor = NegatedComparisonVisitor {
-            result: String::new(),
-        };
+        let mut visitor = NegatedComparisonVisitor { result: Vec::new() };
 
         impl Visitor<'_> for NegatedComparisonVisitor {
             fn visit_logical_expr(&mut self, node: &'_ LogicalExpr) {
@@ -71,10 +69,16 @@ impl Lint for NegatedComparison {
                                 .replace(" le ", sugg_str)
                                 .replace(" <= ", sugg_str);
 
-                            self.result += &format!(
-                                "Found negated comparison: not {inner}\nConsider simplifying to: \
-                                 {suggested_expr}\n",
-                            );
+                            self.result.push(LintReport {
+                                id: "negated_comparison".into(),
+                                url: None,
+                                title: "Found negated comparison".into(),
+                                message: format!(
+                                    "Consider simplifying from `not {inner}` to `{suggested_expr}`",
+                                ),
+                                span_start: None,
+                                span_end: None,
+                            });
                         }
                     }
                 }
@@ -106,9 +110,8 @@ mod test {
             &LINTER,
             r#"not http.host eq "example.com""#,
             expect![[r#"
-                Found negated comparison: not http.host eq "example.com"
-                Consider simplifying to: http.host ne "example.com"
-            "#]],
+                Found negated comparison (negated_comparison)
+                Consider simplifying from `not http.host eq "example.com"` to `http.host ne "example.com"`"#]],
         );
     }
 
@@ -118,9 +121,8 @@ mod test {
             &LINTER,
             r#"not http.response.code lt 400"#,
             expect![[r#"
-                Found negated comparison: not http.response.code lt 400
-                Consider simplifying to: http.response.code ge 400
-            "#]],
+                Found negated comparison (negated_comparison)
+                Consider simplifying from `not http.response.code lt 400` to `http.response.code ge 400`"#]],
         );
     }
 
@@ -130,9 +132,8 @@ mod test {
             &LINTER,
             r#"not http.response.code le 200"#,
             expect![[r#"
-                Found negated comparison: not http.response.code le 200
-                Consider simplifying to: http.response.code gt 200
-            "#]],
+                Found negated comparison (negated_comparison)
+                Consider simplifying from `not http.response.code le 200` to `http.response.code gt 200`"#]],
         );
     }
 
@@ -142,9 +143,8 @@ mod test {
             &LINTER,
             r#"not ip.src.asnum gt 1024"#,
             expect![[r#"
-                Found negated comparison: not ip.src.asnum gt 1024
-                Consider simplifying to: ip.src.asnum le 1024
-            "#]],
+                Found negated comparison (negated_comparison)
+                Consider simplifying from `not ip.src.asnum gt 1024` to `ip.src.asnum le 1024`"#]],
         );
     }
 
@@ -154,9 +154,8 @@ mod test {
             &LINTER,
             r#"not ip.src.asnum ge 80"#,
             expect![[r#"
-                Found negated comparison: not ip.src.asnum ge 80
-                Consider simplifying to: ip.src.asnum lt 80
-            "#]],
+                Found negated comparison (negated_comparison)
+                Consider simplifying from `not ip.src.asnum ge 80` to `ip.src.asnum lt 80`"#]],
         );
     }
 }

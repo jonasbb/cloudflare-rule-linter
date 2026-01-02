@@ -14,7 +14,7 @@ impl Lint for IllogicalCondition {
         Category::Style
     }
 
-    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> String {
+    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
         // Check for illogical conditions
         // A eq 1 and A eq 2 => always false
         // A ne 1 or A ne 2 => always true
@@ -31,11 +31,9 @@ impl Lint for IllogicalCondition {
         // If regex or wildcard matches do not use any placeholders, they could be considered as equal matches
 
         struct IllogicalConditionsVisitor {
-            result: String,
+            result: Vec<LintReport>,
         }
-        let mut visitor = IllogicalConditionsVisitor {
-            result: String::new(),
-        };
+        let mut visitor = IllogicalConditionsVisitor { result: Vec::new() };
 
         impl Visitor<'_> for IllogicalConditionsVisitor {
             fn visit_logical_expr(&mut self, node: &'_ LogicalExpr) {
@@ -65,12 +63,17 @@ impl Lint for IllogicalCondition {
                                         let node_str =
                                             AstPrintVisitor::logical_expr_to_string(node);
                                         let lhs_str = AstPrintVisitor::value_expr_to_string(lhs);
-
-                                        self.result += &format!(
-                                            "Found illogical condition: {node_str}\nThe value \
-                                             `{lhs_str}` is compared for equality multiple times \
-                                             in an AND expression.\n"
-                                        );
+                                        self.result.push(LintReport {
+                                            id: "illogical_condition".into(),
+                                            url: None,
+                                            title: "Found illogical condition with AND".into(),
+                                            message: format!(
+                                                "The value `{lhs_str}` is compared for equality \
+                                                 multiple times in an AND expression.",
+                                            ),
+                                            span_start: None,
+                                            span_end: None,
+                                        });
                                     } else {
                                         found_lhs.push(lhs);
                                     }
@@ -100,12 +103,17 @@ impl Lint for IllogicalCondition {
                                                 AstPrintVisitor::logical_expr_to_string(node);
                                             let lhs_str =
                                                 AstPrintVisitor::value_expr_to_string(lhs);
-
-                                            self.result += &format!(
-                                                "Found illogical condition: {node_str}\nThe value \
-                                                 `{lhs_str}` is compared for not-equality \
-                                                 multiple times in an OR expression.\n"
-                                            );
+                                            self.result.push(LintReport {
+                                                id: "illogical_condition".into(),
+                                                url: None,
+                                                title: "Found illogical condition with OR".into(),
+                                                message: format!(
+                                                    "The value `{lhs_str}` is compared for \
+                                                     inequality multiple times in an OR expression.",
+                                                ),
+                                                span_start: None,
+                                                span_end: None,
+                                            });
                                         } else {
                                             found_lhs.push(lhs);
                                         }
@@ -131,13 +139,19 @@ impl Lint for IllogicalCondition {
                                                     AstPrintVisitor::logical_expr_to_string(node);
                                                 let lhs_str =
                                                     AstPrintVisitor::value_expr_to_string(lhs);
-
-                                                self.result += &format!(
-                                                    "Found illogical condition: {node_str}\nThe \
-                                                     value `{lhs_str}` is compared for \
-                                                     not-equality multiple times in an OR \
-                                                     expression.\n"
-                                                );
+                                                self.result.push(LintReport {
+                                                    id: "illogical_condition".into(),
+                                                    url: None,
+                                                    title: "Found illogical condition with OR"
+                                                        .into(),
+                                                    message: format!(
+                                                        "The value `{lhs_str}` is compared for \
+                                                         inequality multiple times in an OR \
+                                                         expression.",
+                                                    ),
+                                                    span_start: None,
+                                                    span_end: None,
+                                                });
                                             } else {
                                                 found_lhs.push(lhs);
                                             }
@@ -178,25 +192,22 @@ mod test {
             &LINTER,
             r#"http.host eq "example.com" and http.host eq "example.org""#,
             expect![[r#"
-                Found illogical condition: http.host eq "example.com" and http.host eq "example.org"
-                The value `http.host` is compared for equality multiple times in an AND expression.
-            "#]],
+                Found illogical condition with AND (illogical_condition)
+                The value `http.host` is compared for equality multiple times in an AND expression."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host eq "example.com" and http.host in { "example.org" }"#,
             expect![[r#"
-                Found illogical condition: http.host eq "example.com" and http.host in {"example.org"}
-                The value `http.host` is compared for equality multiple times in an AND expression.
-            "#]],
+                Found illogical condition with AND (illogical_condition)
+                The value `http.host` is compared for equality multiple times in an AND expression."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host in { "example.com" } and http.host eq "example.org""#,
             expect![[r#"
-                Found illogical condition: http.host in {"example.com"} and http.host eq "example.org"
-                The value `http.host` is compared for equality multiple times in an AND expression.
-            "#]],
+                Found illogical condition with AND (illogical_condition)
+                The value `http.host` is compared for equality multiple times in an AND expression."#]],
         );
     }
 
@@ -206,33 +217,29 @@ mod test {
             &LINTER,
             r#"http.host eq "example.com" and (http.host eq "example.org")"#,
             expect![[r#"
-                Found illogical condition: http.host eq "example.com" and http.host eq "example.org"
-                The value `http.host` is compared for equality multiple times in an AND expression.
-            "#]],
+                Found illogical condition with AND (illogical_condition)
+                The value `http.host` is compared for equality multiple times in an AND expression."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"(http.host eq "example.com") and http.host in { "example.org" }"#,
             expect![[r#"
-                Found illogical condition: http.host eq "example.com" and http.host in {"example.org"}
-                The value `http.host` is compared for equality multiple times in an AND expression.
-            "#]],
+                Found illogical condition with AND (illogical_condition)
+                The value `http.host` is compared for equality multiple times in an AND expression."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"(http.host in { "example.com" }) and (http.host eq "example.org")"#,
             expect![[r#"
-                Found illogical condition: http.host in {"example.com"} and http.host eq "example.org"
-                The value `http.host` is compared for equality multiple times in an AND expression.
-            "#]],
+                Found illogical condition with AND (illogical_condition)
+                The value `http.host` is compared for equality multiple times in an AND expression."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host eq "example.com" and (ip.src eq 1.2.3.4 and http.host eq "example.org")"#,
             expect![[r#"
-                Found illogical condition: http.host eq "example.com" and ip.src eq 1.2.3.4 and http.host eq "example.org"
-                The value `http.host` is compared for equality multiple times in an AND expression.
-            "#]],
+                Found illogical condition with AND (illogical_condition)
+                The value `http.host` is compared for equality multiple times in an AND expression."#]],
         );
     }
 
@@ -242,41 +249,36 @@ mod test {
             &LINTER,
             r#"http.host != "example.com" or http.host != "example.org""#,
             expect![[r#"
-                Found illogical condition: http.host ne "example.com" or http.host ne "example.org"
-                The value `http.host` is compared for not-equality multiple times in an OR expression.
-            "#]],
+                Found illogical condition with OR (illogical_condition)
+                The value `http.host` is compared for inequality multiple times in an OR expression."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"not http.host eq "example.com" or http.host != "example.org""#,
             expect![[r#"
-                Found illogical condition: not http.host eq "example.com" or http.host ne "example.org"
-                The value `http.host` is compared for not-equality multiple times in an OR expression.
-            "#]],
+                Found illogical condition with OR (illogical_condition)
+                The value `http.host` is compared for inequality multiple times in an OR expression."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host != "example.com" or not http.host eq "example.org""#,
             expect![[r#"
-                Found illogical condition: http.host ne "example.com" or not http.host eq "example.org"
-                The value `http.host` is compared for not-equality multiple times in an OR expression.
-            "#]],
+                Found illogical condition with OR (illogical_condition)
+                The value `http.host` is compared for inequality multiple times in an OR expression."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host != "example.com" or not http.host in { "example.org" }"#,
             expect![[r#"
-                Found illogical condition: http.host ne "example.com" or not http.host in {"example.org"}
-                The value `http.host` is compared for not-equality multiple times in an OR expression.
-            "#]],
+                Found illogical condition with OR (illogical_condition)
+                The value `http.host` is compared for inequality multiple times in an OR expression."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"not http.host in { "example.com" } or http.host ne "example.org""#,
             expect![[r#"
-                Found illogical condition: not http.host in {"example.com"} or http.host ne "example.org"
-                The value `http.host` is compared for not-equality multiple times in an OR expression.
-            "#]],
+                Found illogical condition with OR (illogical_condition)
+                The value `http.host` is compared for inequality multiple times in an OR expression."#]],
         );
     }
 }

@@ -13,16 +13,14 @@ impl Lint for DuplicateListEntries {
         Category::Correctness
     }
 
-    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> String {
+    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
         // Check for duplicate entries in list comparisons
         // A in {1 2 2} => duplicate entry 2
 
         struct DuplicateListEntriesVisitor {
-            result: String,
+            result: Vec<LintReport>,
         }
-        let mut visitor = DuplicateListEntriesVisitor {
-            result: String::new(),
-        };
+        let mut visitor = DuplicateListEntriesVisitor { result: Vec::new() };
 
         impl Visitor<'_> for DuplicateListEntriesVisitor {
             fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
@@ -39,16 +37,20 @@ impl Lint for DuplicateListEntries {
                                     {
                                         let node_str =
                                             AstPrintVisitor::comparison_expr_to_string(node);
-
-                                        self.result += &format!(
-                                            "Found duplicate entry in list comparison: \
-                                             {node_str}\nThe values `{}..{}` and `{}..{}` \
-                                             overlap.\n",
-                                            range_i.start(),
-                                            range_i.end(),
-                                            range_j.start(),
-                                            range_j.end(),
-                                        );
+                                        self.result.push(LintReport {
+                                            id: "duplicate_list_entries".into(),
+                                            url: None,
+                                            title: "Found duplicate entry in list".into(),
+                                            message: format!(
+                                                "The values `{}..{}` and `{}..{}` overlap.",
+                                                range_i.start(),
+                                                range_i.end(),
+                                                range_j.start(),
+                                                range_j.end(),
+                                            ),
+                                            span_start: None,
+                                            span_end: None,
+                                        });
                                     }
                                 }
                             }
@@ -77,12 +79,17 @@ impl Lint for DuplicateListEntries {
                                             AstPrintVisitor::comparison_expr_to_string(node);
                                         let range_i_str = AstPrintVisitor::format_ip_range(range_i);
                                         let range_j_str = AstPrintVisitor::format_ip_range(range_j);
-
-                                        self.result += &format!(
-                                            "Found duplicate entry in list comparison: \
-                                             {node_str}\nThe values `{range_i_str}` and \
-                                             `{range_j_str}` overlap.\n",
-                                        );
+                                        self.result.push(LintReport {
+                                            id: "duplicate_list_entries".into(),
+                                            url: None,
+                                            title: "Found duplicate entry in list".into(),
+                                            message: format!(
+                                                "The values `{range_i_str}` and `{range_j_str}` \
+                                                 overlap."
+                                            ),
+                                            span_start: None,
+                                            span_end: None,
+                                        });
                                     }
                                 }
                             }
@@ -96,12 +103,17 @@ impl Lint for DuplicateListEntries {
                                         let node_str =
                                             AstPrintVisitor::comparison_expr_to_string(node);
                                         let item_str = AstPrintVisitor::escape_bytes(item_i);
-
-                                        self.result += &format!(
-                                            "Found duplicate entry in list comparison: \
-                                             {node_str}\nThe value `{item_str}` appears multiple \
-                                             times in the list.\n"
-                                        );
+                                        self.result.push(LintReport {
+                                            id: "duplicate_list_entries".into(),
+                                            url: None,
+                                            title: "Found duplicate entry in list".into(),
+                                            message: format!(
+                                                "The value `{item_str}` appears multiple times in \
+                                                 the list."
+                                            ),
+                                            span_start: None,
+                                            span_end: None,
+                                        });
                                     }
                                 }
                             }
@@ -140,25 +152,22 @@ mod test {
             &LINTER,
             r#"ip.src in {1.2.3.4 1.2.3.4}"#,
             expect![[r#"
-                Found duplicate entry in list comparison: ip.src in {1.2.3.4 1.2.3.4}
-                The values `1.2.3.4` and `1.2.3.4` overlap.
-            "#]],
+                Found duplicate entry in list (duplicate_list_entries)
+                The values `1.2.3.4` and `1.2.3.4` overlap."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"ip.src in {1.2.3.4 1.0.0.0/8}"#,
             expect![[r#"
-                Found duplicate entry in list comparison: ip.src in {1.2.3.4 1.0.0.0/8}
-                The values `1.2.3.4` and `1.0.0.0/8` overlap.
-            "#]],
+                Found duplicate entry in list (duplicate_list_entries)
+                The values `1.2.3.4` and `1.0.0.0/8` overlap."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"ip.src in {2000::/32 2000::/48}"#,
             expect![[r#"
-                Found duplicate entry in list comparison: ip.src in {2000::/32 2000::/48}
-                The values `2000::/32` and `2000::/48` overlap.
-            "#]],
+                Found duplicate entry in list (duplicate_list_entries)
+                The values `2000::/32` and `2000::/48` overlap."#]],
         );
 
         // Different IP versions do not overlap
@@ -171,9 +180,8 @@ mod test {
             &LINTER,
             r#"http.host in {"example.com" "example.com"}"#,
             expect![[r#"
-                Found duplicate entry in list comparison: http.host in {"example.com" "example.com"}
-                The value `example.com` appears multiple times in the list.
-            "#]],
+                Found duplicate entry in list (duplicate_list_entries)
+                The value `example.com` appears multiple times in the list."#]],
         );
     }
 
@@ -183,17 +191,15 @@ mod test {
             &LINTER,
             r#"http.response.code in {400 300..499}"#,
             expect![[r#"
-                Found duplicate entry in list comparison: http.response.code in {400 300..499}
-                The values `400..400` and `300..499` overlap.
-            "#]],
+                Found duplicate entry in list (duplicate_list_entries)
+                The values `400..400` and `300..499` overlap."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.response.code in {200..499 300..307}"#,
             expect![[r#"
-            Found duplicate entry in list comparison: http.response.code in {200..499 300..307}
-            The values `200..499` and `300..307` overlap.
-        "#]],
+                Found duplicate entry in list (duplicate_list_entries)
+                The values `200..499` and `300..307` overlap."#]],
         );
 
         assert_no_lint_message(

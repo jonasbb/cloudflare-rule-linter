@@ -35,13 +35,13 @@ impl Lint for DeprecatedField {
         Category::Deprecated
     }
 
-    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> String {
+    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
         struct DeprecatedFieldVisitor {
-            result: String,
+            result: Vec<LintReport>,
         }
 
         let mut visitor = DeprecatedFieldVisitor {
-            result: String::new(),
+            result: Vec::new(),
         };
 
         impl Visitor<'_> for DeprecatedFieldVisitor {
@@ -50,11 +50,16 @@ impl Lint for DeprecatedField {
                 if let Some(new_name) = DEPRECATIONS.get(name) {
                     // Use the field name in the message. We don't always have the surrounding
                     // comparison expression here, so keep the message focused on the field.
-                    self.result += &format!(
-                        "Found usage of deprecated field: {name}\nThe value `{name}` should be \
-                         replaced with `{}`.\n",
-                        new_name
-                    );
+                    self.result.push(LintReport {
+                        id: "deprecated_field".into(),
+                        url: None,
+                        title: format!("Found deprecated field {name}"),
+                        message: format!(
+                            "The value `{name}` should be replaced with `{new_name}`.",
+                        ),
+                        span_start: None,
+                        span_end: None,
+                    });
                 }
             }
         }
@@ -82,18 +87,16 @@ mod test {
             &LINTER,
             r#"ip.geoip.asnum eq 1"#,
             expect![[r#"
-                Found usage of deprecated field: ip.geoip.asnum
-                The value `ip.geoip.asnum` should be replaced with `ip.src.asnum`.
-            "#]],
+                Found deprecated field ip.geoip.asnum (deprecated_field)
+                The value `ip.geoip.asnum` should be replaced with `ip.src.asnum`."#]],
         );
 
         expect_lint_message(
             &LINTER,
             r#"ip.geoip.country eq "US""#,
             expect![[r#"
-                Found usage of deprecated field: ip.geoip.country
-                The value `ip.geoip.country` should be replaced with `ip.src.country`.
-            "#]],
+                Found deprecated field ip.geoip.country (deprecated_field)
+                The value `ip.geoip.country` should be replaced with `ip.src.country`."#]],
         );
     }
 

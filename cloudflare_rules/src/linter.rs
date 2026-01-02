@@ -32,7 +32,24 @@ pub trait Lint {
     fn name(&self) -> &'static str;
     fn category(&self) -> Category;
 
-    fn lint(&self, config: &LinterConfig, ast: &FilterAst) -> String;
+    fn lint(&self, config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport>;
+}
+
+#[cfg_attr(feature = "python", ::pyo3::pyclass)]
+#[derive(Debug, Clone)]
+pub struct LintReport {
+    pub id: String,
+    pub url: Option<String>,
+    pub title: String,
+    pub message: String,
+    pub span_start: Option<usize>,
+    pub span_end: Option<usize>,
+}
+
+impl std::fmt::Display for LintReport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} ({})\n{}", self.title, self.id, self.message)
+    }
 }
 
 pub struct Linter {
@@ -46,7 +63,9 @@ impl Linter {
         }
     }
 
-    pub fn lint(&self, ast: &mut FilterAst) -> String {
+    pub fn lint(&self, ast: &mut FilterAst) -> Vec<LintReport> {
+        let mut results = Vec::new();
+
         // Check for all lints that should run
         let mut runlint = vec![true; LINT_REGISTRY.len()];
         for (rl, lint) in iter::zip(&mut runlint, LINT_REGISTRY) {
@@ -78,15 +97,14 @@ impl Linter {
             }
         }
 
-        let mut res = String::new();
         // Run all enabled lints
         self.simplify_ast(ast);
         for (rl, lint) in iter::zip(runlint, LINT_REGISTRY) {
             if rl {
-                res += &lint.lint(&self.config, ast);
+                results.extend(lint.lint(&self.config, ast));
             }
         }
-        res
+        results
     }
 
     fn simplify_ast(&self, ast: &mut FilterAst) {
@@ -155,12 +173,19 @@ pub(super) mod test {
         let mut ast = RULE_SCHEME
             .parse(expr)
             .expect("All wirefilter rules in the test must be valid expressions.");
-        let msg = linter.lint(&mut ast);
+        let reports = linter.lint(&mut ast);
         assert!(
-            !msg.is_empty(),
+            !reports.is_empty(),
             "Expected a lint message but received nothing."
         );
-        expected.assert_eq(&msg);
+        let mut combined_report = String::new();
+        for m in reports {
+            if !combined_report.is_empty() {
+                combined_report.push_str("\n\n");
+            }
+            combined_report.push_str(&m.to_string());
+        }
+        expected.assert_eq(&combined_report);
     }
 
     #[track_caller]
@@ -168,11 +193,18 @@ pub(super) mod test {
         let mut ast = RULE_SCHEME
             .parse(expr)
             .expect("All wirefilter rules in the test must be valid expressions.");
-        let msg = linter.lint(&mut ast);
+        let reports = linter.lint(&mut ast);
+        let mut combined_report = String::new();
+        for m in &reports {
+            if !combined_report.is_empty() {
+                combined_report.push_str("\n\n");
+            }
+            combined_report.push_str(&m.to_string());
+        }
         assert!(
-            msg.is_empty(),
+            reports.is_empty(),
             "Expected no lint message but received:\n{}",
-            msg
+            combined_report
         );
     }
 
