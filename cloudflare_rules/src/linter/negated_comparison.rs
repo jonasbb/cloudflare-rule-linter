@@ -1,6 +1,6 @@
 use super::*;
 use crate::ast_printer::AstPrintVisitor;
-use wirefilter::{ComparisonExpr, ComparisonOpExpr, LogicalExpr, OrderingOp, UnaryOp, Visitor};
+use wirefilter::{ComparisonOpExpr, LogicalExpr, OrderingOp, UnaryOp, Visitor};
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub(crate) struct NegatedComparison;
 
@@ -25,8 +25,9 @@ impl Lint for NegatedComparison {
                 if let LogicalExpr::Unary {
                     op: UnaryOp::Not,
                     arg,
+                    reverse_span,
                 } = node
-                    && let LogicalExpr::Comparison(comp @ ComparisonExpr { .. }) = &**arg
+                    && let LogicalExpr::Comparison(comp) = &**arg
                 {
                     // Only handle ordering comparisons (eq, ne, lt, le, gt, ge)
                     if let ComparisonOpExpr::Ordering { op, .. } = &comp.op {
@@ -76,8 +77,7 @@ impl Lint for NegatedComparison {
                                 message: format!(
                                     "Consider simplifying from `not {inner}` to `{suggested_expr}`",
                                 ),
-                                span_start: None,
-                                span_end: None,
+                                span: Span::ReverseByte(reverse_span.clone()),
                             });
                         }
                     }

@@ -1,5 +1,4 @@
 use super::*;
-use crate::ast_printer::AstPrintVisitor;
 use wirefilter::{ComparisonExpr, ComparisonOpExpr, RegexFormat, Visitor};
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -18,26 +17,21 @@ impl Lint for RegexRawStrings {
         struct RegexRawStringsVisitor {
             result: Vec<LintReport>,
         }
-        let mut visitor = RegexRawStringsVisitor {
-            result: Vec::new(),
-        };
+        let mut visitor = RegexRawStringsVisitor { result: Vec::new() };
 
         impl Visitor<'_> for RegexRawStringsVisitor {
             fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
                 if let ComparisonOpExpr::Matches(regex) = &node.op
                     && regex.format() == RegexFormat::Literal
                 {
-                    let node_str = AstPrintVisitor::comparison_expr_to_string(node);
                     self.result.push(LintReport {
                         id: "regex_raw_strings".into(),
                         url: None,
                         title: "Found regex match with non-raw string".into(),
-                        message: format!(
-                            "Regex matches must use raw string literals (e.g., r\"...\" or \
-                             r#\"...\"#) when using the `matches` operator.",
-                        ),
-                        span_start: None,
-                        span_end: None,
+                        message: "Regex matches must use raw string literals (e.g., r\"...\" or \
+                                  r#\"...\"#) when using the `matches` operator."
+                            .to_string(),
+                        span: Span::ReverseByte(node.reverse_span.clone()),
                     });
                 }
 

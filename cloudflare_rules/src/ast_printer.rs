@@ -170,7 +170,7 @@ impl<'a> Visitor<'a> for AstPrintVisitor {
 
     fn visit_logical_expr(&mut self, node: &'a wirefilter::LogicalExpr) {
         match node {
-            wirefilter::LogicalExpr::Combining { op, items } => {
+            wirefilter::LogicalExpr::Combining { op, items, .. } => {
                 let op_str = match op {
                     wirefilter::LogicalOp::Or => " or ",
                     wirefilter::LogicalOp::Xor => " xor ",
@@ -191,7 +191,7 @@ impl<'a> Visitor<'a> for AstPrintVisitor {
                 self.visit_logical_expr(&parenthesized_expr.expr);
                 self.0.push(')');
             }
-            wirefilter::LogicalExpr::Unary { op, arg } => {
+            wirefilter::LogicalExpr::Unary { op, arg, .. } => {
                 match op {
                     wirefilter::UnaryOp::Not => self.0.push_str("not "),
                 }

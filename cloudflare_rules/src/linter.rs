@@ -1,6 +1,7 @@
 use crate::config::LinterConfig;
 use serde::{Deserialize, Serialize};
 use std::iter;
+use std::ops::Range;
 use wirefilter::FilterAst;
 
 mod deprecated_field;
@@ -42,8 +43,14 @@ pub struct LintReport {
     pub url: Option<String>,
     pub title: String,
     pub message: String,
-    pub span_start: Option<usize>,
-    pub span_end: Option<usize>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum Span {
+    Missing,
+    Byte(Range<usize>),
+    ReverseByte(Range<usize>),
 }
 
 impl std::fmt::Display for LintReport {
@@ -118,7 +125,7 @@ impl Linter {
         impl wirefilter::VisitorMut<'_> for SimplifyVisitor {
             fn visit_logical_expr(&mut self, node: &'_ mut wirefilter::LogicalExpr) {
                 match node {
-                    wirefilter::LogicalExpr::Combining { op, items } => {
+                    wirefilter::LogicalExpr::Combining { op, items, .. } => {
                         items.iter_mut().for_each(|item| {
                             // Recursively visit each item
                             self.visit_logical_expr(item);
@@ -129,6 +136,7 @@ impl Linter {
                             if let wirefilter::LogicalExpr::Combining {
                                 op: inner_op,
                                 items: inner_items,
+                                reverse_span,
                             } = item
                             {
                                 if inner_op == *op {
@@ -138,6 +146,7 @@ impl Linter {
                                     new_items.push(wirefilter::LogicalExpr::Combining {
                                         op: inner_op,
                                         items: inner_items,
+                                        reverse_span,
                                     });
                                 }
                             } else {
@@ -151,12 +160,12 @@ impl Linter {
                         // Replace the parenthesized expression with its inner expression
                         *node = parenthesized_expr.expr.clone();
                     }
-                    wirefilter::LogicalExpr::Unary { arg,.. } => {
+                    wirefilter::LogicalExpr::Unary { arg, .. } => {
                         self.visit_logical_expr(arg);
                     }
                     wirefilter::LogicalExpr::Comparison(comparison_expr) => {
                         self.visit_comparison_expr(comparison_expr);
-                    },
+                    }
                 }
             }
         }
@@ -264,8 +273,6 @@ pub(super) mod test {
         "#]],
         );
     }
-
-
 
     #[test]
     fn test_simplify_not_parens() {

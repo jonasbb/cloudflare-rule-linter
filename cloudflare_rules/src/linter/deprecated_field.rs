@@ -38,10 +38,12 @@ impl Lint for DeprecatedField {
     fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
         struct DeprecatedFieldVisitor {
             result: Vec<LintReport>,
+            last_span: Range<usize>,
         }
 
         let mut visitor = DeprecatedFieldVisitor {
             result: Vec::new(),
+            last_span: 0..0,
         };
 
         impl Visitor<'_> for DeprecatedFieldVisitor {
@@ -57,10 +59,14 @@ impl Lint for DeprecatedField {
                         message: format!(
                             "The value `{name}` should be replaced with `{new_name}`.",
                         ),
-                        span_start: None,
-                        span_end: None,
+                        span: Span::ReverseByte(self.last_span.clone()),
                     });
                 }
+            }
+
+            fn visit_logical_expr(&mut self, node: &'_ wirefilter::LogicalExpr) {
+                self.last_span = node.get_reverse_span();
+                self.visit_expr(node)
             }
         }
 

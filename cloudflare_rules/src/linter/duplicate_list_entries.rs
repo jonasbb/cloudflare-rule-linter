@@ -35,8 +35,6 @@ impl Lint for DuplicateListEntries {
                                     if range_i.start() <= range_j.end()
                                         && range_j.start() <= range_i.end()
                                     {
-                                        let node_str =
-                                            AstPrintVisitor::comparison_expr_to_string(node);
                                         self.result.push(LintReport {
                                             id: "duplicate_list_entries".into(),
                                             url: None,
@@ -48,8 +46,7 @@ impl Lint for DuplicateListEntries {
                                                 range_j.start(),
                                                 range_j.end(),
                                             ),
-                                            span_start: None,
-                                            span_end: None,
+                                            span: Span::ReverseByte(node.reverse_span.clone()),
                                         });
                                     }
                                 }
@@ -75,8 +72,6 @@ impl Lint for DuplicateListEntries {
                                     };
 
                                     if overlaps {
-                                        let node_str =
-                                            AstPrintVisitor::comparison_expr_to_string(node);
                                         let range_i_str = AstPrintVisitor::format_ip_range(range_i);
                                         let range_j_str = AstPrintVisitor::format_ip_range(range_j);
                                         self.result.push(LintReport {
@@ -87,8 +82,7 @@ impl Lint for DuplicateListEntries {
                                                 "The values `{range_i_str}` and `{range_j_str}` \
                                                  overlap."
                                             ),
-                                            span_start: None,
-                                            span_end: None,
+                                            span: Span::ReverseByte(node.reverse_span.clone()),
                                         });
                                     }
                                 }
@@ -100,8 +94,6 @@ impl Lint for DuplicateListEntries {
                                 for item_j in &items[idx + 1..] {
                                     let item_j = &item_j.data;
                                     if item_i == item_j {
-                                        let node_str =
-                                            AstPrintVisitor::comparison_expr_to_string(node);
                                         let item_str = AstPrintVisitor::escape_bytes(item_i);
                                         self.result.push(LintReport {
                                             id: "duplicate_list_entries".into(),
@@ -111,8 +103,7 @@ impl Lint for DuplicateListEntries {
                                                 "The value `{item_str}` appears multiple times in \
                                                  the list."
                                             ),
-                                            span_start: None,
-                                            span_end: None,
+                                            span: Span::ReverseByte(node.reverse_span.clone()),
                                         });
                                     }
                                 }

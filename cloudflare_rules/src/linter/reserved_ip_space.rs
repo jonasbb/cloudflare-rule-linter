@@ -165,7 +165,6 @@ impl Lint for ReservedIpSpace {
                         ExplicitIpRange::V4(range) => {
                             for (start, end) in RESERVED_IPV4_RANGES {
                                 if range.start() <= end && start <= range.end() {
-                                    let node_str = AstPrintVisitor::comparison_expr_to_string(node);
                                     let ip_str = AstPrintVisitor::format_ip_range(
                                         &IpRange::Explicit(ExplicitIpRange::V4(range.clone())),
                                     );
@@ -177,8 +176,7 @@ impl Lint for ReservedIpSpace {
                                             "The value `{ip_str}` is within reserved address \
                                              space.",
                                         ),
-                                        span_start: None,
-                                        span_end: None,
+                                        span: Span::ReverseByte(node.reverse_span.clone()),
                                     });
                                     break;
                                 }
@@ -187,7 +185,6 @@ impl Lint for ReservedIpSpace {
                         ExplicitIpRange::V6(range) => {
                             for (start, end) in RESERVED_IPV6_RANGES {
                                 if range.start() <= end && start <= range.end() {
-                                    let node_str = AstPrintVisitor::comparison_expr_to_string(node);
                                     let ip_str = AstPrintVisitor::format_ip_range(
                                         &IpRange::Explicit(ExplicitIpRange::V6(range.clone())),
                                     );
@@ -199,8 +196,7 @@ impl Lint for ReservedIpSpace {
                                             "The value `{ip_str}` is within reserved address \
                                              space.",
                                         ),
-                                        span_start: None,
-                                        span_end: None,
+                                        span: Span::ReverseByte(node.reverse_span.clone()),
                                     });
                                     break;
                                 }
@@ -214,8 +210,6 @@ impl Lint for ReservedIpSpace {
                                 ExplicitIpRange::V4(range) => {
                                     for (start, end) in RESERVED_IPV4_RANGES {
                                         if range.start() <= end && start <= range.end() {
-                                            let node_str =
-                                                AstPrintVisitor::comparison_expr_to_string(node);
                                             let ip_str = AstPrintVisitor::format_ip_range(ip);
                                             self.result.push(LintReport {
                                                 id: "reserved_ip_space".into(),
@@ -225,8 +219,7 @@ impl Lint for ReservedIpSpace {
                                                     "The value `{ip_str}` is within reserved \
                                                      address space.",
                                                 ),
-                                                span_start: None,
-                                                span_end: None,
+                                                span: Span::ReverseByte(node.reverse_span.clone()),
                                             });
                                             break;
                                         }
@@ -235,8 +228,6 @@ impl Lint for ReservedIpSpace {
                                 ExplicitIpRange::V6(range) => {
                                     for (start, end) in RESERVED_IPV6_RANGES {
                                         if range.start() <= end && start <= range.end() {
-                                            let node_str =
-                                                AstPrintVisitor::comparison_expr_to_string(node);
                                             let ip_str = AstPrintVisitor::format_ip_range(ip);
                                             self.result.push(LintReport {
                                                 id: "reserved_ip_space".into(),
@@ -246,8 +237,7 @@ impl Lint for ReservedIpSpace {
                                                     "The value `{ip_str}` is within reserved \
                                                      address space.",
                                                 ),
-                                                span_start: None,
-                                                span_end: None,
+                                                span: Span::ReverseByte(node.reverse_span.clone()),
                                             });
                                             break;
                                         }

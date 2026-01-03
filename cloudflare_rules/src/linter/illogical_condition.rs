@@ -38,7 +38,12 @@ impl Lint for IllogicalCondition {
         impl Visitor<'_> for IllogicalConditionsVisitor {
             fn visit_logical_expr(&mut self, node: &'_ LogicalExpr) {
                 // Check for illogical conditions here
-                if let LogicalExpr::Combining { op, items } = node {
+                if let LogicalExpr::Combining {
+                    op,
+                    items,
+                    reverse_span,
+                } = node
+                {
                     match op {
                         LogicalOp::And => {
                             // Collect found index expressions to check for duplicates
@@ -55,13 +60,12 @@ impl Lint for IllogicalCondition {
                                             ..
                                         }
                                         | ComparisonOpExpr::OneOf(..),
+                                    ..
                                 }) = e
                                 {
                                     if found_lhs.contains(&lhs) {
                                         // Found duplicate equality comparison on same field
                                         // This is always false
-                                        let node_str =
-                                            AstPrintVisitor::logical_expr_to_string(node);
                                         let lhs_str = AstPrintVisitor::value_expr_to_string(lhs);
                                         self.result.push(LintReport {
                                             id: "illogical_condition".into(),
@@ -71,8 +75,7 @@ impl Lint for IllogicalCondition {
                                                 "The value `{lhs_str}` is compared for equality \
                                                  multiple times in an AND expression.",
                                             ),
-                                            span_start: None,
-                                            span_end: None,
+                                            span: Span::ReverseByte(reverse_span.clone()),
                                         });
                                     } else {
                                         found_lhs.push(lhs);
@@ -95,12 +98,11 @@ impl Lint for IllogicalCondition {
                                                 op: OrderingOp::NotEqual,
                                                 ..
                                             },
+                                        ..
                                     }) => {
                                         if found_lhs.contains(&lhs) {
                                             // Found duplicate equality comparison on same field
                                             // This is always false
-                                            let node_str =
-                                                AstPrintVisitor::logical_expr_to_string(node);
                                             let lhs_str =
                                                 AstPrintVisitor::value_expr_to_string(lhs);
                                             self.result.push(LintReport {
@@ -109,10 +111,10 @@ impl Lint for IllogicalCondition {
                                                 title: "Found illogical condition with OR".into(),
                                                 message: format!(
                                                     "The value `{lhs_str}` is compared for \
-                                                     inequality multiple times in an OR expression.",
+                                                     inequality multiple times in an OR \
+                                                     expression.",
                                                 ),
-                                                span_start: None,
-                                                span_end: None,
+                                                span: Span::ReverseByte(reverse_span.clone()),
                                             });
                                         } else {
                                             found_lhs.push(lhs);
@@ -121,6 +123,7 @@ impl Lint for IllogicalCondition {
                                     LogicalExpr::Unary {
                                         op: UnaryOp::Not,
                                         arg,
+                                        ..
                                     } => {
                                         if let LogicalExpr::Comparison(ComparisonExpr {
                                             lhs,
@@ -130,13 +133,12 @@ impl Lint for IllogicalCondition {
                                                     ..
                                                 }
                                                 | ComparisonOpExpr::OneOf(..),
+                                            ..
                                         }) = &**arg
                                         {
                                             if found_lhs.contains(&lhs) {
                                                 // Found duplicate equality comparison on same field
                                                 // This is always false
-                                                let node_str =
-                                                    AstPrintVisitor::logical_expr_to_string(node);
                                                 let lhs_str =
                                                     AstPrintVisitor::value_expr_to_string(lhs);
                                                 self.result.push(LintReport {
@@ -149,8 +151,7 @@ impl Lint for IllogicalCondition {
                                                          inequality multiple times in an OR \
                                                          expression.",
                                                     ),
-                                                    span_start: None,
-                                                    span_end: None,
+                                                    span: Span::ReverseByte(reverse_span.clone()),
                                                 });
                                             } else {
                                                 found_lhs.push(lhs);

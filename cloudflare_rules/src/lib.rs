@@ -1,10 +1,9 @@
-use self::linter::LintReport;
-use anyhow::{Result, anyhow};
+pub use self::linter::{LintReport, Span};
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 pub use scheme::build_scheme;
 use std::sync::LazyLock;
-use wirefilter::{ParseError, Scheme};
+use wirefilter::Scheme;
 
 pub mod ast_printer;
 mod config;
@@ -22,46 +21,38 @@ mod cloudflare_rules {
     /// Formats the sum of two numbers as string.
     #[pyfunction]
     fn parse_expression(expr: &str) -> PyResult<Vec<LintReport>> {
-        Ok(super::parse_expression(expr)?)
-    }
-
-    /// Formats the sum of two numbers as string.
-    #[pyfunction]
-    fn get_ast(expr: &str) -> PyResult<String> {
-        Ok(super::get_ast(expr)?)
+        Ok(super::parse_expression(expr))
     }
 }
 
-pub fn parse_expression(expr: &str) -> Result<Vec<LintReport>> {
+pub fn parse_expression(expr: &str) -> Vec<LintReport> {
     let linter = linter::Linter::new();
-    let mut ast = match RULE_SCHEME.parse(expr) {
+    // The byte offsets will be unusable if there are multiple lines.
+    // To avoid this situation, replace all newlines with spaces
+    let expr = expr.replace("\n", " ");
+    // The string will be trimmed from whitespace.
+    // This messes with the reverse span information, as they are relative to the trimmed string.
+    // For restoring them, keep track of the trailing spaces
+    let trailing_whitespace = expr.chars().rev().take_while(|c| c.is_whitespace()).count();
+    let mut ast = match RULE_SCHEME.parse(&expr) {
         Ok(ast) => ast,
         Err(err) => {
-            return Ok(vec![LintReport {
+            return vec![LintReport {
                 id: "parse_error".into(),
                 url: None,
                 title: "Failed to parse rule expression.".into(),
                 message: err.kind.to_string(),
-                span_start: Some(err.span_start),
-                span_end: Some(err.span_start + err.span_len),
-            }]);
+                span: Span::Byte(err.span_start..(err.span_start + err.span_len)),
+            }];
         }
     };
-    let result = linter.lint(&mut ast);
-    Ok(result)
-
-    // println!("Parsed filter representation: {ast:#?}",);
-    // let mut visitor = ast_printer::AstPrintVisitor::new();
-    // ast.walk(&mut visitor);
-    // println!(
-    //     "Assembled expression:\n{}\nOriginal expression:\n{}",
-    //     visitor.into_string(), e
-    // );
-
-    // Ok(serde_json::to_string(&ast)?)
-}
-
-fn get_ast(expr: &str) -> Result<String> {
-    let ast = RULE_SCHEME.parse(expr).map_err(|err| anyhow!("{err}"))?;
-    Ok(format!("{ast:#?}"))
+    let mut result = linter.lint(&mut ast);
+    // Fixup the reverse byte spans
+    for lint in &mut result {
+        if let Span::ReverseByte(range) = &mut lint.span {
+            range.start += trailing_whitespace;
+            range.end += trailing_whitespace;
+        }
+    }
+    result
 }
