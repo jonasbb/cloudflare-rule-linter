@@ -17,10 +17,7 @@ pyo3 = {version = "0.27.0", features = ["anyhow"], optional = true}
 serde = {version = "1.0.228", features = ["derive"]}
 serde_json = "1.0.145"
 strum = {version = "0.27.2", features = ["derive"]}
-# wirefilter-engine = {git = "https://github.com/cloudflare/wirefilter/", version = "0.7.0", features = [
-#     "regex",
-# ]}
-wirefilter-engine = {path = "../../wirefilter/engine", version = "0.7.0", features = [
+wirefilter-engine = {git = "https://github.com/jonasbb/wirefilter/", rev = "2276cc87ffb5dd4f66a78401a80d56774acca6be", features = [
     "regex",
 ]}
 
@@ -30,3 +27,6 @@ web-time = "1.1.0"
 [dev-dependencies]
 expect-test = "1.5.1"
 pretty_assertions = "1.4.1"
+
+[lints]
+workspace = true

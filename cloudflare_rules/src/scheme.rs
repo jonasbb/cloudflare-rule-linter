@@ -81,7 +81,10 @@ impl wirefilter::ListMatcher for IpList {
     fn clear(&mut self) {}
 }
 
-pub fn build_scheme() -> Scheme {
+/// Generate the default scheme matching the one Cloudflare uses
+///
+/// This includes fields, functions, and lists.
+pub(crate) fn build_scheme() -> Scheme {
     let mut builder = wirefilter::SchemeBuilder::new();
 
     // Add custom lists

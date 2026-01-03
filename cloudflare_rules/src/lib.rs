@@ -1,15 +1,20 @@
+//! Linter for [`wirefilter`] expressions
+
 pub use self::linter::{LintReport, Span};
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
-pub use scheme::build_scheme;
 use std::sync::LazyLock;
 use wirefilter::Scheme;
+pub use crate::ast_printer::AstPrintVisitor;
 
-pub mod ast_printer;
+mod ast_printer;
 mod config;
 mod linter;
 mod scheme;
 
+/// Default scheme matching the one Cloudflare uses
+///
+/// This includes fields, functions, and lists.
 pub static RULE_SCHEME: LazyLock<Scheme> = LazyLock::new(scheme::build_scheme);
 
 /// A Python module implemented in Rust.
@@ -21,11 +26,12 @@ mod cloudflare_rules {
     /// Formats the sum of two numbers as string.
     #[pyfunction]
     fn parse_expression(expr: &str) -> PyResult<Vec<LintReport>> {
-        Ok(super::parse_expression(expr))
+        Ok(super::parse_and_lint_expression(expr))
     }
 }
 
-pub fn parse_expression(expr: &str) -> Vec<LintReport> {
+/// Take a [`wirefilter`] expression and a string and run the linter on it.
+pub fn parse_and_lint_expression(expr: &str) -> Vec<LintReport> {
     let linter = linter::Linter::new();
     // The byte offsets will be unusable if there are multiple lines.
     // To avoid this situation, replace all newlines with spaces

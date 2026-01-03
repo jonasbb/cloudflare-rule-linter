@@ -2,42 +2,50 @@ use std::net::IpAddr;
 use std::ops::RangeInclusive;
 use wirefilter::{ValueExpr, Visitor};
 
+/// Printer for the rule expression AST
+///
+/// This turns various [`wirefilter`] expressions into [`String`]s
 pub struct AstPrintVisitor(String);
 
 impl AstPrintVisitor {
+    /// Create a new [`AstPrintVisitor`]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         AstPrintVisitor(String::new())
     }
 
+    /// Print a [`wirefilter::FilterAst`]
     pub fn ast_to_string(ast: &wirefilter::FilterAst) -> String {
         let mut visitor = AstPrintVisitor::new();
         ast.walk(&mut visitor);
         visitor.into_string()
     }
 
-    pub fn logical_expr_to_string(expr: &wirefilter::LogicalExpr) -> String {
+    #[allow(dead_code)]
+    pub(crate) fn logical_expr_to_string(expr: &wirefilter::LogicalExpr) -> String {
         let mut visitor = AstPrintVisitor::new();
         visitor.visit_logical_expr(expr);
         visitor.into_string()
     }
 
-    pub fn comparison_expr_to_string(expr: &wirefilter::ComparisonExpr) -> String {
+    pub(crate) fn comparison_expr_to_string(expr: &wirefilter::ComparisonExpr) -> String {
         let mut visitor = AstPrintVisitor::new();
         visitor.visit_comparison_expr(expr);
         visitor.into_string()
     }
 
-    pub fn value_expr_to_string(expr: &impl ValueExpr) -> String {
+    pub(crate) fn value_expr_to_string(expr: &impl ValueExpr) -> String {
         let mut visitor = AstPrintVisitor::new();
         expr.walk(&mut visitor);
         visitor.into_string()
     }
 
+    /// Get the final string
     pub fn into_string(self) -> String {
         self.0
     }
 
-    pub fn escape_bytes(bytes: &[u8]) -> String {
+    pub(crate) fn escape_bytes(bytes: &[u8]) -> String {
         let mut escaped = String::with_capacity(bytes.len());
         bytes.iter().for_each(|b| match b {
             b'\\' => escaped.push_str("\\\\"),
@@ -48,7 +56,7 @@ impl AstPrintVisitor {
         escaped
     }
 
-    pub fn format_ip_range(ip: &wirefilter::IpRange) -> String {
+    pub(crate) fn format_ip_range(ip: &wirefilter::IpRange) -> String {
         match ip {
             wirefilter::IpRange::Explicit(explicit_ip_range) => match explicit_ip_range {
                 wirefilter::ExplicitIpRange::V4(range_inclusive) => {
@@ -165,7 +173,7 @@ impl AstPrintVisitor {
 
 impl<'a> Visitor<'a> for AstPrintVisitor {
     fn visit_expr(&mut self, node: &'a impl wirefilter::Expr) {
-        node.walk(self)
+        node.walk(self);
     }
 
     fn visit_logical_expr(&mut self, node: &'a wirefilter::LogicalExpr) {
@@ -184,7 +192,7 @@ impl<'a> Visitor<'a> for AstPrintVisitor {
                 }
             }
             wirefilter::LogicalExpr::Comparison(comparison_expr) => {
-                self.visit_comparison_expr(comparison_expr)
+                self.visit_comparison_expr(comparison_expr);
             }
             wirefilter::LogicalExpr::Parenthesized(parenthesized_expr) => {
                 self.0.push('(');
@@ -261,7 +269,7 @@ impl<'a> Visitor<'a> for AstPrintVisitor {
     }
 
     fn visit_value_expr(&mut self, node: &'a impl wirefilter::ValueExpr) {
-        node.walk(self)
+        node.walk(self);
     }
 
     fn visit_index_expr(&mut self, node: &'a wirefilter::IndexExpr) {
@@ -307,13 +315,13 @@ impl<'a> Visitor<'a> for AstPrintVisitor {
                 let mut arg_visitor = AstPrintVisitor::new();
                 match node {
                     wirefilter::FunctionCallArgExpr::IndexExpr(index_expr) => {
-                        arg_visitor.visit_index_expr(index_expr)
+                        arg_visitor.visit_index_expr(index_expr);
                     }
                     wirefilter::FunctionCallArgExpr::Literal(lit) => {
-                        arg_visitor.visit_rhs_value(lit)
+                        arg_visitor.visit_rhs_value(lit);
                     }
                     wirefilter::FunctionCallArgExpr::Logical(logical_expr) => {
-                        arg_visitor.visit_logical_expr(logical_expr)
+                        arg_visitor.visit_logical_expr(logical_expr);
                     }
                 }
                 self.buffer.push_str(&arg_visitor.into_string());

@@ -66,7 +66,7 @@ impl Lint for DeprecatedField {
 
             fn visit_logical_expr(&mut self, node: &'_ wirefilter::LogicalExpr) {
                 self.last_span = node.get_reverse_span();
-                self.visit_expr(node)
+                self.visit_expr(node);
             }
         }
 

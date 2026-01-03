@@ -3,7 +3,7 @@ use super::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(target_arch = "wasm32")]
 use web_time::{SystemTime, UNIX_EPOCH};
-use wirefilter::{ComparisonOpExpr, IdentifierExpr, LogicalExpr, RhsValue, RhsValues, Visitor};
+use wirefilter::{ComparisonOpExpr, IdentifierExpr, RhsValue, RhsValues, Visitor};
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub(crate) struct TimestampComparisons;

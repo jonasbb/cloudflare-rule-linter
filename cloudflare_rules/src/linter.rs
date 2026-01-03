@@ -36,20 +36,30 @@ pub trait Lint {
     fn lint(&self, config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport>;
 }
 
+/// List report for some finding with the rule expression
 #[cfg_attr(feature = "python", ::pyo3::pyclass)]
 #[derive(Debug, Clone)]
 pub struct LintReport {
+    /// Identifiable ID of the lint rule
     pub id: String,
+    /// URL that explains the ID in more detail
     pub url: Option<String>,
+    /// Message title
     pub title: String,
+    /// More detailed message describing the issue and potential fixes
     pub message: String,
+    /// Location of the problematic rule
     pub span: Span,
 }
 
+/// Span indicating a location inside a rule expression string
 #[derive(Debug, Clone)]
 pub enum Span {
+    /// No span information available
     Missing,
+    /// Count bytes from the start of the rule expression
     Byte(Range<usize>),
+    /// Count bytes from the end of the rule expression
     ReverseByte(Range<usize>),
 }
 
