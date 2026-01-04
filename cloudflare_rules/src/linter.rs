@@ -11,6 +11,7 @@ mod negated_comparison;
 mod regex_raw_strings;
 mod reserved_ip_space;
 mod timestamp_bounds;
+mod value_domain;
 
 pub static LINT_REGISTRY: &[&'static (dyn Lint + Send + Sync + 'static)] = &[
     &reserved_ip_space::ReservedIpSpace,
@@ -20,6 +21,7 @@ pub static LINT_REGISTRY: &[&'static (dyn Lint + Send + Sync + 'static)] = &[
     &regex_raw_strings::RegexRawStrings,
     &deprecated_field::DeprecatedField,
     &timestamp_bounds::TimestampComparisons,
+    &value_domain::ValueDomain,
 ];
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, strum::VariantArray, strum::EnumString)]
