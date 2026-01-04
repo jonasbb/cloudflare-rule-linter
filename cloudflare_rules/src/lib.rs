@@ -1,11 +1,12 @@
 //! Linter for [`wirefilter`] expressions
 
 pub use self::linter::{LintReport, Span};
+pub use crate::ast_printer::AstPrintVisitor;
+pub use crate::config::{LintConfig, LintSettings, LinterConfig};
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 use std::sync::LazyLock;
 use wirefilter::Scheme;
-pub use crate::ast_printer::AstPrintVisitor;
 
 mod ast_printer;
 mod config;
@@ -32,7 +33,13 @@ mod cloudflare_rules {
 
 /// Take a [`wirefilter`] expression and a string and run the linter on it.
 pub fn parse_and_lint_expression(expr: &str) -> Vec<LintReport> {
-    let linter = linter::Linter::new();
+    let config = LinterConfig::default();
+    parse_and_lint_expression_with_config(config, expr)
+}
+
+/// Take a [`wirefilter`] expression and a string and run the linter on it.
+pub fn parse_and_lint_expression_with_config(config: LinterConfig, expr: &str) -> Vec<LintReport> {
+    let linter = linter::Linter::with_config(config);
     // The byte offsets will be unusable if there are multiple lines.
     // To avoid this situation, replace all newlines with spaces
     let expr = expr.replace("\n", " ");

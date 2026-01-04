@@ -22,7 +22,8 @@ pub static LINT_REGISTRY: &[&'static (dyn Lint + Send + Sync + 'static)] = &[
     &timestamp_bounds::TimestampComparisons,
 ];
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, strum::VariantArray)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, strum::VariantArray, strum::EnumString)]
+#[strum(serialize_all = "lowercase")]
 pub enum Category {
     Correctness,
     Deprecated,
@@ -78,6 +79,10 @@ impl Linter {
         Self {
             config: LinterConfig::default(),
         }
+    }
+
+    pub fn with_config(config: LinterConfig) -> Self {
+        Self { config }
     }
 
     pub fn lint(&self, ast: &mut FilterAst) -> Vec<LintReport> {
