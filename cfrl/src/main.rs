@@ -249,9 +249,11 @@ fn main() -> Result<()> {
         };
         visitor.visit_body(&body);
 
-        let renderer = annotate_snippets::Renderer::styled()
-            .decor_style(annotate_snippets::renderer::DecorStyle::Unicode);
-        println!("{}", renderer.render(&visitor.groups));
+        if !visitor.groups.is_empty() {
+            let renderer = annotate_snippets::Renderer::styled()
+                .decor_style(annotate_snippets::renderer::DecorStyle::Unicode);
+            println!("{}", renderer.render(&visitor.groups));
+        }
     }
 
     Ok(())
