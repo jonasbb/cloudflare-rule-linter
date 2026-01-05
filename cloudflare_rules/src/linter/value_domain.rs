@@ -12,11 +12,16 @@ enum Domain {
 }
 
 static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|| {
-    fn is_all_uppercase(s: &str) -> bool {
+    fn ascii_uppercase(s: &str) -> bool {
         !s.is_empty() && s.chars().all(|c| c.is_ascii_uppercase())
     }
-    fn is_all_lowercase(s: &str) -> bool {
-        !s.is_empty() && s.chars().all(|c| c.is_ascii_lowercase())
+    fn no_uppercase_alpha(s: &str) -> bool {
+        !s.is_empty()
+            && s.chars()
+                .all(|c| !c.is_uppercase() && !c.is_ascii_punctuation())
+    }
+    fn is_mime_type(s: &str) -> bool {
+        !s.is_empty() && s.is_ascii() && s.contains('/') && s.chars().all(|c| !c.is_uppercase())
     }
 
     BTreeMap::from([
@@ -27,14 +32,15 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
         (
             "http.request.method",
             Domain::Validate(
-                is_all_uppercase,
+                ascii_uppercase,
                 "consist only of uppercase characters (e.g., \"GET\")",
             ),
         ),
         (
+            // The lowercased file extension in the URI path without the dot (.) character
             "http.request.uri.path.extension",
             Domain::Validate(
-                is_all_lowercase,
+                no_uppercase_alpha,
                 "consist only of lowercase characters (e.g., \"html\")",
             ),
         ),
@@ -48,6 +54,43 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
         ("http.request.timestamp.msec", Domain::IntRange(0, 999)),
         ("cf.edge.server_port", Domain::IntRange(1, 65535)),
         ("cf.bot_management.score", Domain::IntRange(1, 99)),
+        (
+            "cf.response.error_type",
+            Domain::List(vec![
+                "1xxx",
+                "5xx",
+                "always_online",
+                "country_challenge",
+                "ip_ban",
+                "iuam",
+                "legacy_challenge",
+                "managed_challenge",
+                "ratelimit",
+                "waf",
+            ]),
+        ),
+        (
+            "cf.waf.score.class",
+            Domain::List(vec!["attack", "likely_attack", "likely_clean", "clean"]),
+        ),
+        (
+            "http.request.body.mime",
+            Domain::Validate(
+                is_mime_type,
+                "be a mime-type with lowercase characters (e.g., \"image/png\")",
+            ),
+        ),
+        (
+            "http.response.content_type.media_type",
+            Domain::Validate(
+                is_mime_type,
+                "be a mime-type with lowercase characters (e.g., \"image/png\")",
+            ),
+        ),
+        (
+            "http.request.version",
+            Domain::Validate(|s: &str| s.starts_with("HTTP/"), "start with \"HTTP/\""),
+        ),
     ])
 });
 
@@ -325,8 +368,18 @@ mod test {
                 The value(s) `CSS` are not valid for `http.request.uri.path.extension`. Values must consist only of lowercase characters (e.g., "html")."#]],
         );
 
+        // Dot in the extension should raise concerns
+        expect_lint_message(
+            &LINTER,
+            r#"http.request.uri.path.extension eq ".html""#,
+            expect![[r#"
+                Found invalid value for http.request.uri.path.extension (value_domain)
+                The value `.html` is not a valid value for `http.request.uri.path.extension`. Values must consist only of lowercase characters (e.g., "html")."#]],
+        );
+
         // valid cases shouldn't trigger
         assert_no_lint_message(&LINTER, r#"http.request.uri.path.extension eq "html""#);
+        assert_no_lint_message(&LINTER, r#"http.request.uri.path.extension eq "mp3""#);
         assert_no_lint_message(
             &LINTER,
             r#"http.request.uri.path.extension in {"html" "css"}"#,
@@ -421,5 +474,91 @@ mod test {
 
         assert_no_lint_message(&LINTER, r#"cf.bot_management.score eq 1"#);
         assert_no_lint_message(&LINTER, r#"cf.bot_management.score eq 99"#);
+    }
+
+    #[test]
+    fn test_error_type() {
+        expect_lint_message(
+            &LINTER,
+            r#"cf.response.error_type eq "sbfm""#,
+            expect![[r#"
+                Found invalid value for cf.response.error_type (value_domain)
+                The value `sbfm` is not a valid value for `cf.response.error_type`. Valid values are: 1xxx, 5xx, always_online, country_challenge, ip_ban, iuam, legacy_challenge, managed_challenge, ratelimit, waf."#]],
+        );
+
+        assert_no_lint_message(&LINTER, r#"cf.response.error_type eq "waf""#);
+    }
+
+    #[test]
+    fn test_waf_score_class() {
+        expect_lint_message(
+            &LINTER,
+            r#"cf.waf.score.class eq "bot""#,
+            expect![[r#"
+                Found invalid value for cf.waf.score.class (value_domain)
+                The value `bot` is not a valid value for `cf.waf.score.class`. Valid values are: attack, likely_attack, likely_clean, clean."#]],
+        );
+
+        assert_no_lint_message(&LINTER, r#"cf.waf.score.class eq "clean""#);
+    }
+
+    #[test]
+    fn test_mime_type() {
+        expect_lint_message(
+            &LINTER,
+            r#"http.request.body.mime eq "image""#,
+            expect![[r#"
+                Found invalid value for http.request.body.mime (value_domain)
+                The value `image` is not a valid value for `http.request.body.mime`. Values must be a mime-type with lowercase characters (e.g., "image/png")."#]],
+        );
+        expect_lint_message(
+            &LINTER,
+            r#"http.request.body.mime eq "Foo/Bar""#,
+            expect![[r#"
+                Found invalid value for http.request.body.mime (value_domain)
+                The value `Foo/Bar` is not a valid value for `http.request.body.mime`. Values must be a mime-type with lowercase characters (e.g., "image/png")."#]],
+        );
+
+        assert_no_lint_message(&LINTER, r#"http.request.body.mime eq "image/bmp""#);
+        assert_no_lint_message(
+            &LINTER,
+            r#"http.request.body.mime in {"image/bmp" "image/gif" "image/jpeg" "image/png" "image/tiff"}"#,
+        );
+        assert_no_lint_message(
+            &LINTER,
+            r#"http.request.body.mime eq "application/3gpp-media-delivery-metrics-report+json""#,
+        );
+    }
+
+    #[test]
+    fn test_content_media_type() {
+        expect_lint_message(
+            &LINTER,
+            r#"http.response.content_type.media_type eq "text""#,
+            expect![[r#"
+                Found invalid value for http.response.content_type.media_type (value_domain)
+                The value `text` is not a valid value for `http.response.content_type.media_type`. Values must be a mime-type with lowercase characters (e.g., "image/png")."#]],
+        );
+
+        assert_no_lint_message(
+            &LINTER,
+            r#"http.response.content_type.media_type eq "text/html+extra""#,
+        );
+    }
+
+    #[test]
+    fn test_http_version() {
+        expect_lint_message(
+            &LINTER,
+            r#"http.request.version eq "3""#,
+            expect![[r#"
+                Found invalid value for http.request.version (value_domain)
+                The value `3` is not a valid value for `http.request.version`. Values must start with "HTTP/"."#]],
+        );
+
+        assert_no_lint_message(
+            &LINTER,
+            r#"http.request.version in {"HTTP/0.9" "HTTP/1.0" "HTTP/1.1" "HTTP/2" "HTTP/3"}"#,
+        );
     }
 }
