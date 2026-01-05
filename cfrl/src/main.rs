@@ -3,9 +3,8 @@
 use annotate_snippets::{AnnotationKind, Group, Snippet};
 use anyhow::{Context, Result};
 use cloudflare_rules::LinterConfig;
-use hcl_edit::structure::Body;
 use hcl_edit::visit::Visit;
-use hcl_edit::{Decorate, Span};
+use hcl_edit::{Decorate as _, Span as _};
 use log::{debug, warn};
 use std::ops::Range;
 
@@ -28,77 +27,111 @@ struct ExpressionVisitor<'a> {
     block_span: Vec<Range<usize>>,
 }
 
+impl<'a> ExpressionVisitor<'a> {
+    fn lint_expression(
+        &mut self,
+        key: &hcl_edit::Decorated<hcl_edit::Ident>,
+        value: &hcl_edit::expr::Expression,
+    ) {
+        let mut config = self.config.clone();
+        // Tune config if comment-command is found
+        for line in key
+            .decor()
+            .prefix()
+            .map(|rs| &**rs)
+            .unwrap_or("")
+            .lines()
+            .filter(|line| line.contains("cfrl:"))
+        {
+            // Extract the part after "cfrl:"
+            if let Some(cfg) = line.rsplit("cfrl:").next()
+                && let Err(err) = config.parse_expr_config(cfg)
+            {
+                warn!(
+                    "Cannot parse cfrl config string. Using default config.\n{err}\nFound in \
+                     line: {line}"
+                );
+                config = self.config.clone();
+            }
+        }
+
+        let rule_expr = value.as_str().unwrap_or("");
+        let lint_result =
+            cloudflare_rules::parse_and_lint_expression_with_config(config, rule_expr);
+        for report in lint_result {
+            let mut group = if report.id == "parse_error" {
+                annotate_snippets::Level::ERROR
+            } else {
+                annotate_snippets::Level::WARNING
+            }
+            .primary_title(report.title)
+            .id(report.id);
+            if let Some(url) = report.url {
+                group = group.id_url(url);
+            }
+
+            let annotation = {
+                let span = match report.span {
+                    cloudflare_rules::Span::Missing => value.span().unwrap(),
+                    cloudflare_rules::Span::Byte(span) => {
+                        let string_lit_span = value.span().unwrap();
+                        convert_internal_byterange_to_global(self.input, string_lit_span, span)
+                    }
+                    cloudflare_rules::Span::ReverseByte(reverse_span) => {
+                        let span = (rule_expr.len() - reverse_span.start)
+                            ..(rule_expr.len() - reverse_span.end);
+                        let string_lit_span = value.span().unwrap();
+                        convert_internal_byterange_to_global(self.input, string_lit_span, span)
+                    }
+                };
+                AnnotationKind::Primary.span(span).label(report.message)
+            };
+            let mut annotation = Snippet::source(self.input)
+                .path(self.file)
+                .annotation(annotation);
+            if let Some(block_span) = self.block_span.last() {
+                annotation =
+                    annotation.annotation(AnnotationKind::Visible.span(block_span.clone()));
+            }
+            let group = group.element(annotation);
+            self.groups.push(group);
+        }
+    }
+}
+
 impl Visit for ExpressionVisitor<'_> {
     fn visit_attr(&mut self, node: &hcl_edit::structure::Attribute) {
         if node.key.as_str() == "expression" {
-            let mut config = self.config.clone();
-            // Tune config if comment-command is found
-            for line in node
-                .decor()
-                .prefix()
-                .map(|rs| &**rs)
-                .unwrap_or("")
-                .lines()
-                .filter(|line| line.contains("cfrl:"))
-            {
-                // Extract the part after "cfrl:"
-                if let Some(cfg) = line.rsplit("cfrl:").next()
-                    && let Err(err) = config.parse_expr_config(cfg)
-                {
-                    warn!(
-                        "Cannot parse cfrl config string. Using default config.\n{err}\nFound in \
-                         line: {line}"
-                    );
-                    config = self.config.clone();
-                }
-            }
+            self.lint_expression(&node.key, &node.value);
+        }
 
-            let rule_expr = node.value.as_str().unwrap_or("");
-            let lint_result =
-                cloudflare_rules::parse_and_lint_expression_with_config(config, rule_expr);
-            for report in lint_result {
-                let mut group = if report.id == "parse_error" {
-                    annotate_snippets::Level::ERROR
-                } else {
-                    annotate_snippets::Level::WARNING
-                }
-                .primary_title(report.title)
-                .id(report.id);
-                if let Some(url) = report.url {
-                    group = group.id_url(url);
-                }
+        // Recursively visit the rest
+        hcl_edit::visit::visit_attr(self, node);
+    }
 
-                let annotation = {
-                    let span = match report.span {
-                        cloudflare_rules::Span::Missing => node.value.span().unwrap(),
-                        cloudflare_rules::Span::Byte(span) => {
-                            let string_lit_span = node.value.span().unwrap();
-                            convert_internal_byterange_to_global(self.input, string_lit_span, span)
-                        }
-                        cloudflare_rules::Span::ReverseByte(reverse_span) => {
-                            let span = (rule_expr.len() - reverse_span.start)
-                                ..(rule_expr.len() - reverse_span.end);
-                            let string_lit_span = node.value.span().unwrap();
-                            convert_internal_byterange_to_global(self.input, string_lit_span, span)
-                        }
-                    };
-                    AnnotationKind::Primary.span(span).label(report.message)
-                };
-                let mut annotation = Snippet::source(self.input)
-                    .path(self.file)
-                    .annotation(annotation);
-                if let Some(block_span) = self.block_span.last() {
-                    annotation =
-                        annotation.annotation(AnnotationKind::Visible.span(block_span.clone()));
-                }
-                let group = group.element(annotation);
-                self.groups.push(group);
-            }
-            self.visit_ident(&node.key);
-            self.visit_expr(&node.value);
+    fn visit_object_item(
+        &mut self,
+        key: &hcl_edit::expr::ObjectKey,
+        value: &hcl_edit::expr::ObjectValue,
+    ) {
+        if let hcl_edit::expr::ObjectKey::Ident(key) = key
+            && key.as_str() == "expression"
+        {
+            self.lint_expression(key, value.expr());
+        }
+
+        // Keep track of the nesting levels for better error reporting
+        let span = key.span();
+        if let Some(span) = &span {
+            self.block_span.push(span.clone());
+        }
+        hcl_edit::visit::visit_object_item(self, key, value);
+        if !self.block_span.is_empty() && span.is_some() {
+            self.block_span.pop();
         }
     }
 
+    /// Keep track of the nesting levels for better error reporting
     fn visit_block(&mut self, node: &hcl_edit::structure::Block) {
         let span = node.ident.span();
         if let Some(span) = &span {
@@ -204,7 +237,7 @@ fn main() -> Result<()> {
         let input =
             std::fs::read_to_string(&file).context(format!("Could not read file: {file}"))?;
         let body = input
-            .parse::<Body>()
+            .parse::<hcl_edit::structure::Body>()
             .context(format!("Failed for parse Terraform file {file}"))?;
 
         let mut visitor = ExpressionVisitor {
