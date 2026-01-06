@@ -174,10 +174,6 @@ fn convert_internal_byterange_to_global(
 
         match c {
             '\\' if !escaped => escaped = true,
-            'n' | 'r' | 't' | '\\' | '"' | '/' | 'b' | 'f' if escaped => {
-                inner_byte_count += 1;
-                escaped = false;
-            }
             'u' if escaped => {
                 let mut hexbuf = String::new();
                 for _ in 0..4 {
@@ -204,7 +200,10 @@ fn convert_internal_byterange_to_global(
                 inner_byte_count += c.len_utf8();
                 escaped = false;
             }
-            c => inner_byte_count += c.len_utf8(),
+            c => {
+                inner_byte_count += c.len_utf8();
+                escaped = false;
+            }
         }
 
         if inner_byte_count == internal.end {

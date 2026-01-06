@@ -53,4 +53,9 @@ waf_rules {
             expression = "not ( ip.src.country eq \"T1\" ) or not ssl\n\n\n\n\n\n"
         }
     }
+    test_negated_condition {
+        rule0 {
+            expression = "any(http.request.headers[\"foo\"][*] matches \"\.subversion\")"
+        }
+    }
 }
