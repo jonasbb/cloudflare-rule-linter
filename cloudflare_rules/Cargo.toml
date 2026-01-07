@@ -17,7 +17,7 @@ pyo3 = {version = "0.27.0", features = ["anyhow"], optional = true}
 serde = {version = "1.0.228", features = ["derive"]}
 serde_json = "1.0.145"
 strum = {version = "0.27.2", features = ["derive"]}
-wirefilter-engine = {git = "https://github.com/jonasbb/wirefilter/", rev = "2276cc87ffb5dd4f66a78401a80d56774acca6be", features = [
+wirefilter-engine = {git = "https://github.com/jonasbb/wirefilter/", rev = "925b50178dc548506c26758520d566680a7bbf94", features = [
     "regex",
 ]}
 
