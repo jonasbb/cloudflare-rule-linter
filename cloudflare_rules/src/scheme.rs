@@ -978,5 +978,8 @@ pub(crate) fn build_scheme() -> Scheme {
     // Ssl Fields
     builder.add_field("ssl", Type::Bool).unwrap();
 
+    // Matches all incoming traffic
+    builder.add_field("true", Type::Bool).unwrap();
+
     builder.build()
 }
