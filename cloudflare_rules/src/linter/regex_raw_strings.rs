@@ -23,6 +23,8 @@ impl Lint for RegexRawStrings {
             fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
                 if let ComparisonOpExpr::Matches(regex) = &node.op
                     && regex.format() == RegexFormat::Literal
+                    // Only lint if any escaping is necessary
+                    && regex.as_str().contains('\\')
                 {
                     self.result.push(LintReport {
                         id: "regex_raw_strings".into(),
@@ -60,7 +62,7 @@ mod test {
     fn test_regex_literal_warns() {
         expect_lint_message(
             &LINTER,
-            r#"http.host matches ".*example.*""#,
+            r#"http.host matches ".*example\.com""#,
             expect![[r##"
                 Found regex match with non-raw string (regex_raw_strings)
                 Regex matches must use raw string literals (e.g., r"..." or r#"..."#) when using the `matches` operator."##]],
@@ -70,5 +72,10 @@ mod test {
     #[test]
     fn test_regex_raw_no_warn() {
         assert_no_lint_message(&LINTER, r#"http.host matches r".*example.*""#);
+    }
+
+    #[test]
+    fn test_regex_only_if_escapes() {
+        assert_no_lint_message(&LINTER, r#"http.host matches "example""#);
     }
 }
