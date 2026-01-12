@@ -33,6 +33,11 @@ impl<'a> ExpressionVisitor<'a> {
         key: &hcl_edit::Decorated<hcl_edit::Ident>,
         value: &hcl_edit::expr::Expression,
     ) {
+        // Only run if expression is string
+        let Some(rule_expr) = value.as_str() else {
+            return;
+        };
+
         let mut config = self.config.clone();
         // Tune config if comment-command is found
         for line in key
@@ -55,7 +60,6 @@ impl<'a> ExpressionVisitor<'a> {
             }
         }
 
-        let rule_expr = value.as_str().unwrap_or("");
         let lint_result =
             cloudflare_rules::parse_and_lint_expression_with_config(config, rule_expr);
         for report in lint_result {
