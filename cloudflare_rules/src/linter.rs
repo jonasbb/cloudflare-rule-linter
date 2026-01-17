@@ -271,34 +271,37 @@ pub(super) mod test {
             &LINTER,
             "ssl and (ssl)",
             expect![[r#"
-            Combining {
-                op: And,
-                items: [
-                    Comparison(
-                        ComparisonExpr {
-                            lhs: IndexExpr {
-                                identifier: Field(
-                                    ssl,
-                                ),
-                                indexes: [],
+                Combining {
+                    op: And,
+                    items: [
+                        Comparison(
+                            ComparisonExpr {
+                                lhs: IndexExpr {
+                                    identifier: Field(
+                                        ssl,
+                                    ),
+                                    indexes: [],
+                                },
+                                op: IsTrue,
+                                reverse_span: 13..10,
                             },
-                            op: IsTrue,
-                        },
-                    ),
-                    Comparison(
-                        ComparisonExpr {
-                            lhs: IndexExpr {
-                                identifier: Field(
-                                    ssl,
-                                ),
-                                indexes: [],
+                        ),
+                        Comparison(
+                            ComparisonExpr {
+                                lhs: IndexExpr {
+                                    identifier: Field(
+                                        ssl,
+                                    ),
+                                    indexes: [],
+                                },
+                                op: IsTrue,
+                                reverse_span: 4..1,
                             },
-                            op: IsTrue,
-                        },
-                    ),
-                ],
-            }
-        "#]],
+                        ),
+                    ],
+                    reverse_span: 13..1,
+                }
+            "#]],
         );
     }
 
@@ -319,8 +322,10 @@ pub(super) mod test {
                                 indexes: [],
                             },
                             op: IsTrue,
+                            reverse_span: 4..1,
                         },
                     ),
+                    reverse_span: 9..0,
                 }
             "#]],
         );
@@ -341,9 +346,12 @@ pub(super) mod test {
                                     indexes: [],
                                 },
                                 op: IsTrue,
+                                reverse_span: 13..10,
                             },
                         ),
+                        reverse_span: 21..6,
                     },
+                    reverse_span: 31..0,
                 }
             "#]],
         );
@@ -367,6 +375,7 @@ pub(super) mod test {
                                     indexes: [],
                                 },
                                 op: IsTrue,
+                                reverse_span: 55..52,
                             },
                         ),
                         Comparison(
@@ -378,6 +387,7 @@ pub(super) mod test {
                                     indexes: [],
                                 },
                                 op: IsTrue,
+                                reverse_span: 46..43,
                             },
                         ),
                         Comparison(
@@ -389,6 +399,7 @@ pub(super) mod test {
                                     indexes: [],
                                 },
                                 op: IsTrue,
+                                reverse_span: 38..35,
                             },
                         ),
                         Comparison(
@@ -400,6 +411,7 @@ pub(super) mod test {
                                     indexes: [],
                                 },
                                 op: IsTrue,
+                                reverse_span: 29..26,
                             },
                         ),
                         Comparison(
@@ -411,6 +423,7 @@ pub(super) mod test {
                                     indexes: [],
                                 },
                                 op: IsTrue,
+                                reverse_span: 21..18,
                             },
                         ),
                         Comparison(
@@ -422,6 +435,7 @@ pub(super) mod test {
                                     indexes: [],
                                 },
                                 op: IsTrue,
+                                reverse_span: 13..10,
                             },
                         ),
                         Comparison(
@@ -433,9 +447,11 @@ pub(super) mod test {
                                     indexes: [],
                                 },
                                 op: IsTrue,
+                                reverse_span: 5..2,
                             },
                         ),
                     ],
+                    reverse_span: 55..2,
                 }
             "#]],
         );
