@@ -24,7 +24,17 @@ pub static LINT_REGISTRY: &[&'static (dyn Lint + Send + Sync + 'static)] = &[
     &value_domain::ValueDomain,
 ];
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, strum::VariantArray, strum::EnumString)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    strum::VariantArray,
+    strum::EnumString,
+)]
 #[strum(serialize_all = "lowercase")]
 pub enum Category {
     Correctness,
@@ -77,6 +87,7 @@ pub struct Linter {
 }
 
 impl Linter {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             config: LinterConfig::default(),

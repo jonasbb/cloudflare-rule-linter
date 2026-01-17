@@ -1,0 +1,89 @@
+name: Rust CI
+on:
+    # Always test pull requests
+    pull_request:
+    # Bors related branches
+    push:
+        branches:
+            - master
+    # Test once per week: Saturday at 00:00
+    schedule:
+        - cron: "0 0 * * 6"
+    workflow_dispatch:
+permissions: read-all
+
+jobs:
+    clippy_check:
+        strategy:
+            fail-fast: false
+            matrix:
+                os: ["ubuntu-latest"]
+                rust: ["stable"]
+        runs-on: ${{ matrix.os }}
+        steps:
+            - uses: actions/checkout@v6
+            - name: "Install/Update the Rust version"
+              uses: actions-rust-lang/setup-rust-toolchain@v1
+              with:
+                  toolchain: ${{ matrix.rust }}
+                  components: clippy
+
+            - name: clippy "No Default Features" (${{ matrix.os }} / ${{ matrix.rust }})
+              run: cargo clippy --workspace --no-default-features --all-targets
+            - name: clippy "Default" (${{ matrix.os }} / ${{ matrix.rust }})
+              run: cargo clippy --workspace --all-targets
+            - name: clippy "All Features" (${{ matrix.os }} / ${{ matrix.rust }})
+              run: cargo clippy --workspace --all-features --all-targets
+
+    rustfmt:
+        name: Rustfmt
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                rust:
+                    - stable
+        steps:
+            - uses: actions/checkout@v6
+            - name: "Install/Update the Rust version"
+              uses: actions-rust-lang/setup-rust-toolchain@v1
+              with:
+                  components: rustfmt
+                  cache: false
+
+            - name: Rustfmt Check (${{ matrix.rust }})
+              uses: actions-rust-lang/rustfmt@v1
+
+    build_and_test:
+        name: Build and Test
+        strategy:
+            matrix:
+                os: ["ubuntu-latest"]
+                rust: ["stable"]
+        runs-on: ${{ matrix.os }}
+        steps:
+            - uses: actions/checkout@v6
+            - name: "Install/Update the Rust version"
+              uses: actions-rust-lang/setup-rust-toolchain@v1
+              with:
+                  toolchain: ${{ matrix.rust }}
+
+            # Build the project
+            - name: "Build (${{ matrix.os }} / ${{ matrix.rust }})"
+              run: cargo build --all-features --all-targets
+
+            # The tests are split into build and run steps, to see the time impact of each
+            # cargo test --all-targets does NOT run doctests
+            # since doctests are important this should not be added
+            # https://github.com/rust-lang/cargo/issues/6669
+            - name: "Test Build (No Default Features / ${{ matrix.os }} / ${{ matrix.rust }})"
+              run: cargo test --no-default-features --no-run
+            - name: "Test Run (No Default Features / ${{ matrix.os }} / ${{ matrix.rust }})"
+              run: cargo test --no-default-features --no-fail-fast
+            - name: "Test Build (Default Features / ${{ matrix.os }} / ${{ matrix.rust }})"
+              run: cargo test --no-run
+            - name: "Test Run (Default Features / ${{ matrix.os }} / ${{ matrix.rust }})"
+              run: cargo test --no-fail-fast
+            - name: "Test Build (All Features / ${{ matrix.os }} / ${{ matrix.rust }})"
+              run: cargo test --all-features  --no-run
+            - name: "Test Run (All Features / ${{ matrix.os }} / ${{ matrix.rust }})"
+              run: cargo test --all-features --no-fail-fast

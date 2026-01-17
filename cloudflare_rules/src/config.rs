@@ -51,8 +51,13 @@ impl LinterConfig {
                         self.lints.disable_categories.push(cat);
                     } else {
                         self.lints.disable_lints.push(cmd_value.into());
-                    }}
-                None => return Err("Unknown action symbol, expected + or - but got empty string".to_string()),
+                    }
+                }
+                None => {
+                    return Err(
+                        "Unknown action symbol, expected + or - but got empty string".to_string(),
+                    );
+                }
                 Some(c) => return Err(format!("Unknown action symbol, expected + or - but `{c}`")),
             }
         }
