@@ -1,0 +1,25 @@
+name: Security audit
+on:
+  pull_request:
+    paths:
+      - 'Cargo.toml'
+      - '**/Cargo.toml'
+      - 'Cargo.lock'
+  push:
+    branches:
+    - master
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+permissions: read-all
+
+jobs:
+  security_audit:
+    name: Rustsec Audit
+    runs-on: ubuntu-latest
+    permissions:
+      # Allow the action to post about found problems
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions-rust-lang/audit@v1
