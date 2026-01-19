@@ -40,3 +40,11 @@ doc_markdown = "warn"
 # Checks for closures which only invoke a method on the closure argument and can be replaced by referencing the method directly.
 redundant_closure_for_method_calls = "warn"
 semicolon_if_nothing_returned = "warn"
+
+[profile.wasm-release]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "debuginfo"

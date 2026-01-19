@@ -106,32 +106,18 @@ jobs:
                   toolchain: ${{ matrix.rust }}
                   target: wasm32-unknown-unknown
 
-            - name: Install wasm-bindgen-cli, and Binaryen (wasm-opt)
-              run: |
-                  cargo install --locked wasm-bindgen-cli
-                  sudo apt-get update
-                  sudo apt-get install -y binaryen
-
-            - name: Build webui (wasm target, optimized for size)
-              env:
-                  RUSTFLAGS: "-C opt-level=z -C lto=fat -C codegen-units=1 -C link-arg=-s -C panic=abort"
-              run: |
-                  cargo build --manifest-path webui/Cargo.toml --release --target wasm32-unknown-unknown
+            - uses: taiki-e/install-action@v2
+              with:
+                  tool: wasm-bindgen,wasm-pack
 
             - name: Generate JS glue with wasm-bindgen
               run: |
-                  mkdir -p webui/pkg
-                  wasm-bindgen --target web --no-typescript --out-dir webui/pkg --omit-default-module-path target/wasm32-unknown-unknown/release/webui.wasm
+                  cd webui
+                  wasm-pack build -t web --out-dir pkg --out-name wirefilter_wasm --no-pack --no-typescript
 
-            - name: Optimize wasm with wasm-snip + wasm-opt
-              run: |
-                  # best-effort: snip unused symbols, then optimize for size
-                  wasm-opt -Oz -o webui/pkg/webui_bg.wasm webui/pkg/webui_bg.wasm
-
-            - name: Show package contents and sizes
-              run: |
-                  ls -la webui/pkg
-                  du -h webui/pkg/* | sort -h
+                  # Show package contents and sizes
+                  ls -la ./pkg
+                  du -h ./pkg/* | sort -h
 
             - name: Create or update "webui" GitHub release and upload assets (using gh)
               if: github.ref == 'refs/heads/master'
