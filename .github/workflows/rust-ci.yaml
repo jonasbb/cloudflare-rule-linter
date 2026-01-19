@@ -87,3 +87,58 @@ jobs:
               run: cargo test --all-features  --no-run
             - name: "Test Run (All Features / ${{ matrix.os }} / ${{ matrix.rust }})"
               run: cargo test --all-features --no-fail-fast
+
+    wasm_build_and_publish:
+        name: Build and Publish WASM Package
+        strategy:
+            matrix:
+                os: ["ubuntu-latest"]
+                rust: ["stable"]
+        runs-on: ${{ matrix.os }}
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: "Install/Update the Rust version"
+              uses: actions-rust-lang/setup-rust-toolchain@v1
+              with:
+                  toolchain: ${{ matrix.rust }}
+                  target: wasm32-unknown-unknown
+
+            - name: Install wasm-bindgen-cli, and Binaryen (wasm-opt)
+              run: |
+                  cargo install --locked wasm-bindgen-cli
+                  sudo apt-get update
+                  sudo apt-get install -y binaryen
+
+            - name: Build webui (wasm target, optimized for size)
+              env:
+                  RUSTFLAGS: "-C opt-level=z -C lto=fat -C codegen-units=1 -C link-arg=-s -C panic=abort"
+              run: |
+                  cargo build --manifest-path webui/Cargo.toml --release --target wasm32-unknown-unknown
+
+            - name: Generate JS glue with wasm-bindgen
+              run: |
+                  mkdir -p webui/pkg
+                  wasm-bindgen --target web --no-typescript --out-dir webui/pkg --omit-default-module-path target/wasm32-unknown-unknown/release/webui.wasm
+
+            - name: Optimize wasm with wasm-snip + wasm-opt
+              run: |
+                  # best-effort: snip unused symbols, then optimize for size
+                  wasm-opt -Oz -o webui/pkg/webui_bg.wasm webui/pkg/webui_bg.wasm
+
+            - name: Show package contents and sizes
+              run: |
+                  ls -la webui/pkg
+                  du -h webui/pkg/* | sort -h
+
+            - name: Create or update "webui" GitHub release and upload assets (using gh)
+              if: github.ref == 'refs/heads/master'
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  (cd webui/pkg && zip -r ../webui.zip .)
+                  # create release if it doesn't exist, otherwise upload/replace the assets
+                  gh release view webui || gh release create webui --title "webui" --notes "Automated webui build from commit $GITHUB_SHA" --prerelease
+                  gh release upload webui webui/webui.zip --clobber
