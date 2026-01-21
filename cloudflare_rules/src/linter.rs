@@ -6,6 +6,7 @@ use wirefilter::FilterAst;
 
 mod deprecated_field;
 mod duplicate_list_entries;
+mod header_case;
 mod illogical_condition;
 mod negated_comparison;
 mod regex_raw_strings;
@@ -21,6 +22,7 @@ pub static LINT_REGISTRY: &[&'static (dyn Lint + Send + Sync + 'static)] = &[
     &regex_raw_strings::RegexRawStrings,
     &deprecated_field::DeprecatedField,
     &timestamp_bounds::TimestampComparisons,
+    &header_case::HeaderCase,
     &value_domain::ValueDomain,
 ];
 
