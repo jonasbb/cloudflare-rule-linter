@@ -122,6 +122,7 @@ impl Lint for ValueDomain {
                         match (op, rhs) {
                             (OrderingOp::Equal | OrderingOp::NotEqual, RhsValue::Bytes(bytes)) => {
                                 if let IdentifierExpr::Field(field) = &node.lhs.identifier
+                                    && node.lhs.indexes.is_empty()
                                     && let Some(domain) = VALUE_DOMAINS.get(field.name())
                                     && let Ok(s) = std::str::from_utf8(&bytes.data)
                                 {
@@ -176,6 +177,7 @@ impl Lint for ValueDomain {
                             }
                             (OrderingOp::Equal | OrderingOp::NotEqual, RhsValue::Int(iv)) => {
                                 if let IdentifierExpr::Field(field) = &node.lhs.identifier
+                                    && node.lhs.indexes.is_empty()
                                     && let Some(Domain::IntRange(min, max)) =
                                         VALUE_DOMAINS.get(field.name())
                                     && (iv < min || iv > max)
@@ -201,6 +203,7 @@ impl Lint for ValueDomain {
                     }
                     ComparisonOpExpr::OneOf(values) => {
                         if let IdentifierExpr::Field(field) = &node.lhs.identifier
+                            && node.lhs.indexes.is_empty()
                             && let Some(domain) = VALUE_DOMAINS.get(field.name())
                         {
                             let mut invalids = Vec::new();
