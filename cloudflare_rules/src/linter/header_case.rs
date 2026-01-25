@@ -40,32 +40,6 @@ impl Lint for HeaderCase {
 
         impl Visitor<'_> for MapKeyCaseVisitor {
             fn visit_comparison_expr(&mut self, node: &'_ wirefilter::ComparisonExpr) {
-                // Check the string used as map key for header fields
-                // http.request.headers["content-type"][*]
-                //                       ^^^^^^^^^^^^
-                //
-                // Only consider comparisons with an IndexExpr on the LHS
-                // Only consider the header map fields we care about
-                // Look at the first index only as that is the map key
-                if let IdentifierExpr::Field(field) = &node.lhs.identifier
-                    && HEADER_MAP_FIELDS.contains(&field.name())
-                    && let [FieldIndex::MapKey(header), ..] = &node.lhs.indexes[..]
-                    && header.chars().any(|c| c.is_ascii_uppercase())
-                {
-                    self.result.push(LintReport {
-                        id: "header_case".into(),
-                        url: None,
-                        title: format!("Found uppercase characters in header name `{}`", header),
-                        message: format!(
-                            "The map key `{}` used to index `{}` contains uppercase characters; \
-                             keys should be lowercase (e.g., \"content-type\").",
-                            header,
-                            field.name()
-                        ),
-                        span: Span::ReverseByte(node.reverse_span.clone()),
-                    });
-                }
-
                 if let IdentifierExpr::Field(field) = &node.lhs.identifier
                     && !node.lhs.indexes.is_empty()
                     && HEADER_FIELDS.contains(&field.name())
@@ -129,6 +103,36 @@ impl Lint for HeaderCase {
 
                 // Continue walking the expression
                 self.visit_value_expr(&node.lhs);
+            }
+
+            fn visit_index_expr(&mut self, node: &'_ wirefilter::IndexExpr) {
+                // Check the string used as map key for header fields
+                // http.request.headers["content-type"][*]
+                //                       ^^^^^^^^^^^^
+                //
+                // Only consider comparisons with an IndexExpr on the LHS
+                // Only consider the header map fields we care about
+                // Look at the first index only as that is the map key
+                if let IdentifierExpr::Field(field) = &node.identifier
+                    && HEADER_MAP_FIELDS.contains(&field.name())
+                    && let [FieldIndex::MapKey(header), ..] = &node.indexes[..]
+                    && header.chars().any(|c| c.is_ascii_uppercase())
+                {
+                    self.result.push(LintReport {
+                        id: "header_case".into(),
+                        url: None,
+                        title: format!("Found uppercase characters in header name `{}`", header),
+                        message: format!(
+                            "The map key `{}` used to index `{}` contains uppercase characters; \
+                             keys should be lowercase (e.g., \"content-type\").",
+                            header,
+                            field.name()
+                        ),
+                        span: Span::ReverseByte(node.reverse_span.clone()),
+                    });
+                }
+
+                self.visit_value_expr(node);
             }
         }
 
@@ -228,6 +232,41 @@ mod test {
         assert_no_lint_message(
             &LINTER,
             r#"any(raw.http.response.headers.names[*] eq "content-type")"#,
+        );
+    }
+
+    #[test]
+    fn test_header_in_function_call() {
+        expect_lint_message(
+            &LINTER,
+            r#"lower(http.request.headers["Mac"][0]) eq """#,
+            expect![[r#"
+                Found uppercase characters in header name `Mac` (header_case)
+                The map key `Mac` used to index `http.request.headers` contains uppercase characters; keys should be lowercase (e.g., "content-type")."#]],
+        );
+    }
+
+    #[test]
+    fn test_header_in_function_call_complex() {
+        expect_lint_message(
+            &LINTER,
+            r#"is_timed_hmac_valid_v0(
+  "mysecretkey",
+  concat(
+    http.request.uri,
+    http.request.headers["Timestamp"][0],
+    "-",
+    http.request.headers["Mac"][0]),
+  100000,
+  http.request.timestamp.sec,
+  0
+)"#,
+            expect![[r#"
+                Found uppercase characters in header name `Timestamp` (header_case)
+                The map key `Timestamp` used to index `http.request.headers` contains uppercase characters; keys should be lowercase (e.g., "content-type").
+
+                Found uppercase characters in header name `Mac` (header_case)
+                The map key `Mac` used to index `http.request.headers` contains uppercase characters; keys should be lowercase (e.g., "content-type")."#]],
         );
     }
 }
