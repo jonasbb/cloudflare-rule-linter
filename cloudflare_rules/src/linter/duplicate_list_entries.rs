@@ -116,7 +116,7 @@ impl Lint for DuplicateListEntries {
                     }
                 }
 
-                self.visit_value_expr(&node.lhs);
+                self.visit_expr(node);
             }
         }
 

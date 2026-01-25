@@ -25,7 +25,6 @@ impl Lint for TimestampComparisons {
         }
 
         impl Visitor<'_> for TimestampVisitor {
-            // TODO use visit_comparison_expr
             fn visit_comparison_expr(&mut self, node: &'_ wirefilter::ComparisonExpr) {
                 // Only proceed if the left-hand-side is the http.request.timestamp.sec field
                 if let IdentifierExpr::Field(field) = &node.lhs.identifier

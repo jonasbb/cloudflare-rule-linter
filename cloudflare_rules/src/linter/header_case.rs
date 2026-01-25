@@ -102,7 +102,7 @@ impl Lint for HeaderCase {
                 }
 
                 // Continue walking the expression
-                self.visit_value_expr(&node.lhs);
+                self.visit_expr(node);
             }
 
             fn visit_index_expr(&mut self, node: &'_ wirefilter::IndexExpr) {

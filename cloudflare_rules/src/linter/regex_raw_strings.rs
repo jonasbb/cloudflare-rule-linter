@@ -37,7 +37,7 @@ impl Lint for RegexRawStrings {
                     });
                 }
 
-                self.visit_value_expr(&node.lhs);
+                self.visit_expr(node);
             }
         }
 
