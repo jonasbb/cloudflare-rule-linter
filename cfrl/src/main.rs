@@ -8,10 +8,24 @@ use hcl_edit::{Decorate as _, Span as _};
 use log::{debug, warn};
 use std::iter;
 use std::ops::Range;
+use std::io::IsTerminal;
+
+/// Color choice for output
+#[derive(clap::ValueEnum, Clone, Debug)]
+pub enum ColorChoice {
+    /// Let the program decide whether to use colors
+    Auto,
+    /// Always use colors
+    Always,
+    /// Never use colors
+    Never,
+}
 
 #[derive(clap::Parser, Debug)]
 #[command(arg_required_else_help(true))]
 struct CliArgs {
+    #[arg(long = "color", default_value_t = ColorChoice::Auto, value_enum, global = true)]
+    color: ColorChoice,
     #[arg(short = 'c', long = "config")]
     config: Option<String>,
     // #[arg(short = 'f', long = "file")]
@@ -258,7 +272,18 @@ fn convert_internal_byterange_to_global(
 
 fn main() -> Result<()> {
     env_logger::init();
-    let cli_args: CliArgs = clap::Parser::parse();
+    let mut cli_args: CliArgs = clap::Parser::parse();
+
+    if std::env::var("NO_COLOR").is_ok() {
+        cli_args.color = ColorChoice::Never;
+    }
+    if matches!(cli_args.color, ColorChoice::Auto) {
+        if std::io::stdout().is_terminal() {
+            cli_args.color = ColorChoice::Always;
+        } else {
+            cli_args.color = ColorChoice::Never;
+        }
+    }
 
     let config: LinterConfig = match cli_args.config {
         Some(file) => {
@@ -287,8 +312,12 @@ fn main() -> Result<()> {
         visitor.visit_body(&body);
 
         if !visitor.groups.is_empty() {
-            let renderer = annotate_snippets::Renderer::styled()
-                .decor_style(annotate_snippets::renderer::DecorStyle::Unicode);
+            let renderer = if matches!(cli_args.color, ColorChoice::Always) {
+                annotate_snippets::Renderer::styled()
+            } else {
+                annotate_snippets::Renderer::plain()
+            }
+            .decor_style(annotate_snippets::renderer::DecorStyle::Unicode);
             println!("{}", renderer.render(&visitor.groups));
         }
     }
