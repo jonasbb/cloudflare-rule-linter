@@ -6,6 +6,7 @@ use cloudflare_rules::LinterConfig;
 use hcl_edit::visit::Visit;
 use hcl_edit::{Decorate as _, Span as _};
 use log::{debug, warn};
+use std::iter;
 use std::ops::Range;
 
 #[derive(clap::Parser, Debug)]
@@ -33,8 +34,37 @@ impl<'a> ExpressionVisitor<'a> {
         key: &hcl_edit::Decorated<hcl_edit::Ident>,
         value: &hcl_edit::expr::Expression,
     ) {
+        // For extending the lifetime of the expression string
+        let mut expr;
         // Only run if expression is string
-        let Some(rule_expr) = value.as_str() else {
+        let (rule_expr, rule_expr_span) = if let Some(rule_expr) = value.as_str() {
+            (rule_expr, value.span().unwrap())
+        } else if let Some(template) = value.as_heredoc_template()
+            && let Some(elem) = template.template.as_single_element()
+            && let Some(rule_expr) = elem.as_literal()
+        {
+            // The span assumes a leading and trailing " for normal string literals.
+            // Since that does not exist for heredocs, we need to adjust the span accordingly.
+            let span = rule_expr.span().unwrap();
+            let span = span.start - 1..span.end + 1;
+
+            // Re-indent heredoc
+            // The whitespace is not semantically relevant, but helps with reporting correct spans
+            if let Some(indent) = template.indent() {
+                expr = String::with_capacity(rule_expr.as_str().len());
+
+                for line in rule_expr.as_str().lines() {
+                    if !line.is_empty() {
+                        expr.extend(iter::repeat_n(' ', indent));
+                        expr.push_str(line);
+                    }
+                    expr.push('\n');
+                }
+                (&*expr, span)
+            } else {
+                (rule_expr.as_str(), span)
+            }
+        } else {
             return;
         };
 
@@ -76,16 +106,20 @@ impl<'a> ExpressionVisitor<'a> {
 
             let annotation = {
                 let span = match report.span {
-                    cloudflare_rules::Span::Missing => value.span().unwrap(),
-                    cloudflare_rules::Span::Byte(span) => {
-                        let string_lit_span = value.span().unwrap();
-                        convert_internal_byterange_to_global(self.input, string_lit_span, span)
-                    }
+                    cloudflare_rules::Span::Missing => rule_expr_span.clone(),
+                    cloudflare_rules::Span::Byte(span) => convert_internal_byterange_to_global(
+                        self.input,
+                        rule_expr_span.clone(),
+                        span,
+                    ),
                     cloudflare_rules::Span::ReverseByte(reverse_span) => {
                         let span = (rule_expr.len() - reverse_span.start)
                             ..(rule_expr.len() - reverse_span.end);
-                        let string_lit_span = value.span().unwrap();
-                        convert_internal_byterange_to_global(self.input, string_lit_span, span)
+                        convert_internal_byterange_to_global(
+                            self.input,
+                            rule_expr_span.clone(),
+                            span,
+                        )
                     }
                 };
                 AnnotationKind::Primary.span(span).label(report.message)
