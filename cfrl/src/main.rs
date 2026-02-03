@@ -9,6 +9,7 @@ use log::{debug, warn};
 use std::iter;
 use std::ops::Range;
 use std::io::IsTerminal;
+use std::process::ExitCode;
 
 /// Color choice for output
 #[derive(clap::ValueEnum, Clone, Debug)]
@@ -270,7 +271,7 @@ fn convert_internal_byterange_to_global(
     }
 }
 
-fn main() -> Result<()> {
+fn main() -> Result<ExitCode> {
     env_logger::init();
     let mut cli_args: CliArgs = clap::Parser::parse();
 
@@ -294,6 +295,8 @@ fn main() -> Result<()> {
         None => LinterConfig::default(),
     };
 
+    let mut exit_code = ExitCode::SUCCESS;
+
     for file in cli_args.files {
         debug!("Process file {file}");
         let input =
@@ -312,6 +315,8 @@ fn main() -> Result<()> {
         visitor.visit_body(&body);
 
         if !visitor.groups.is_empty() {
+            exit_code = ExitCode::FAILURE;
+
             let renderer = if matches!(cli_args.color, ColorChoice::Always) {
                 annotate_snippets::Renderer::styled()
             } else {
@@ -322,5 +327,5 @@ fn main() -> Result<()> {
         }
     }
 
-    Ok(())
+    Ok(exit_code)
 }
