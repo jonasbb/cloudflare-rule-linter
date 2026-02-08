@@ -6,9 +6,9 @@ use cloudflare_rules::LinterConfig;
 use hcl_edit::visit::Visit;
 use hcl_edit::{Decorate as _, Span as _};
 use log::{debug, warn};
+use std::io::IsTerminal;
 use std::iter;
 use std::ops::Range;
-use std::io::IsTerminal;
 use std::process::ExitCode;
 
 /// Color choice for output
