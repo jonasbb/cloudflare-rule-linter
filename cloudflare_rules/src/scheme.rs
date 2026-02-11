@@ -450,6 +450,12 @@ pub(crate) fn build_scheme() -> Scheme {
     builder
         .add_field("cf.timings.client_tcp_rtt_msec", Type::Int)
         .unwrap();
+    builder
+        .add_field("cf.timings.edge_msec", Type::Int)
+        .unwrap();
+    builder
+        .add_field("cf.timings.origin_ttfb_msec", Type::Int)
+        .unwrap();
     builder.add_field("cf.tls_cipher", Type::Bytes).unwrap();
     builder
         .add_field("cf.tls_ciphers_sha1", Type::Bytes)
@@ -978,8 +984,18 @@ pub(crate) fn build_scheme() -> Scheme {
     // Ssl Fields
     builder.add_field("ssl", Type::Bool).unwrap();
 
+    // Undocumented fields
+
     // Matches all incoming traffic
     builder.add_field("true", Type::Bool).unwrap();
+
+    // Matches all incoming traffic
+    builder
+        .add_field(
+            "cf.api_gateway.tokens.valid",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
 
     builder.build()
 }
