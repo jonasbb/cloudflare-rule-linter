@@ -4,6 +4,7 @@ use std::sync::LazyLock;
 use wirefilter::Visitor;
 
 static DEPRECATIONS: LazyLock<BTreeMap<&'static str, &'static str>> = LazyLock::new(|| {
+    // GENERATED_DEPRECATION_REPLACEMENTS_START
     BTreeMap::from([
         ("ip.geoip.asnum", "ip.src.asnum"),
         ("ip.geoip.continent", "ip.src.continent"),
@@ -21,6 +22,7 @@ static DEPRECATIONS: LazyLock<BTreeMap<&'static str, &'static str>> = LazyLock::
             "ip.src.subdivision_2_iso_code",
         ),
     ])
+    // GENERATED_DEPRECATION_REPLACEMENTS_END
 });
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]

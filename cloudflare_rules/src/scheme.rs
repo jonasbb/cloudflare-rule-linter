@@ -368,8 +368,8 @@ pub(crate) fn build_scheme() -> Scheme {
         )
         .unwrap();
 
+    // GENERATED_SCHEMA_FIELDS_START
     // Standard field definitions
-
     // Cf Fields
     builder
         .add_field("cf.api_gateway.auth_id_present", Type::Bool)
@@ -983,6 +983,8 @@ pub(crate) fn build_scheme() -> Scheme {
 
     // Ssl Fields
     builder.add_field("ssl", Type::Bool).unwrap();
+
+    // GENERATED_SCHEMA_FIELDS_END
 
     // Undocumented fields
 
