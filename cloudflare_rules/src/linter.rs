@@ -52,7 +52,7 @@ pub trait Lint {
 }
 
 /// List report for some finding with the rule expression
-#[cfg_attr(feature = "python", ::pyo3::pyclass)]
+#[cfg_attr(feature = "python", ::pyo3::pyclass(from_py_object))]
 #[derive(Debug, Clone)]
 pub struct LintReport {
     /// Identifiable ID of the lint rule
