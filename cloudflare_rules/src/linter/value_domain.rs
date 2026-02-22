@@ -91,6 +91,10 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
             "http.request.version",
             Domain::Validate(|s: &str| s.starts_with("HTTP/"), "start with \"HTTP/\""),
         ),
+        (
+            "cf.fraud.email_risk",
+            Domain::List(vec!["unknown", "low", "medium", "high"]),
+        ),
     ])
 });
 

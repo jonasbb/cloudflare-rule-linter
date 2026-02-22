@@ -999,5 +999,17 @@ pub(crate) fn build_scheme() -> Scheme {
         )
         .unwrap();
 
+    // Fraud detection
+    builder
+        .add_field("cf.fraud.email_risk", Type::Bytes)
+        .unwrap();
+    builder
+        .add_field("cf.fraud.detection_ids", Type::Array(Type::Int.into()))
+        .unwrap();
+    builder
+        .add_field("cf.fraud.detection_tags", Type::Array(Type::Bytes.into()))
+        .unwrap();
+    builder.add_field("cf.fraud.attack", Type::Bytes).unwrap();
+
     builder.build()
 }
