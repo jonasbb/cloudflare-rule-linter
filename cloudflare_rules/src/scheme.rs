@@ -6,6 +6,9 @@ use wirefilter::{
     Type,
 };
 
+mod has_key;
+mod has_value;
+
 fn placeholder_fn<'a>(_args: FunctionArgs<'_, 'a>) -> Option<LhsValue<'a>> {
     unimplemented!()
 }
@@ -152,47 +155,10 @@ pub(crate) fn build_scheme() -> Scheme {
         )
         .unwrap();
     builder
-        .add_function(
-            "has_key",
-            SimpleFunctionDefinition {
-                params: vec![
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Field,
-                        // TODO: Should be Map<T>
-                        val_type: Type::Map(Type::Bytes.into()),
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Both,
-                        val_type: Type::Bytes,
-                    },
-                ],
-                opt_params: vec![],
-                return_type: Type::Bool,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
+        .add_function("has_key", self::has_key::HasKey {})
         .unwrap();
     builder
-        .add_function(
-            "has_value",
-            SimpleFunctionDefinition {
-                params: vec![
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Field,
-                        // TODO: Should be Map<T>|Array<T>
-                        val_type: Type::Map(Type::Bytes.into()),
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Both,
-                        // TODO: Should be T
-                        val_type: Type::Bytes,
-                    },
-                ],
-                opt_params: vec![],
-                return_type: Type::Bool,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
+        .add_function("has_value", self::has_value::HasValue {})
         .unwrap();
     builder
         .add_function("len", wirefilter::LenFunction {})
@@ -230,25 +196,7 @@ pub(crate) fn build_scheme() -> Scheme {
         .add_function("remove_bytes", wirefilter::RemoveBytesFunction {})
         .unwrap();
     builder
-        .add_function(
-            "remove_query_args",
-            SimpleFunctionDefinition {
-                params: vec![
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Field,
-                        val_type: Type::Bytes,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Bytes,
-                    },
-                    // TODO Arbitrary many arguments supported
-                ],
-                opt_params: vec![],
-                return_type: Type::Bytes,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
+        .add_function("remove_query_args", wirefilter::RemoveQueryArgsFunction {})
         .unwrap();
     builder
         .add_function(
@@ -1012,4 +960,26 @@ pub(crate) fn build_scheme() -> Scheme {
     builder.add_field("cf.fraud.attack", Type::Bytes).unwrap();
 
     builder.build()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::RULE_SCHEME;
+    use expect_test::Expect;
+    pub use expect_test::expect;
+
+    #[track_caller]
+    pub(super) fn assert_parse(expr: &str) {
+        RULE_SCHEME
+            .parse(expr)
+            .expect("All wirefilter rules in the test must be valid expressions.");
+    }
+
+    #[track_caller]
+    pub(super) fn assert_parse_error(expr: &str, expected: Expect) {
+        let ast = RULE_SCHEME
+            .parse(expr)
+            .expect_err("Wirefilter expression should not parse");
+        expected.assert_eq(&format!("{}", ast));
+    }
 }
