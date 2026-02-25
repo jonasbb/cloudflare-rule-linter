@@ -7,6 +7,7 @@ use wirefilter::{
 
 enum Domain {
     List(Vec<&'static str>),
+    /// Validation function and error message. The error message must complete the sentence "Values must ..."
     Validate(fn(&str) -> bool, &'static str),
     IntRange(i64, i64),
 }
@@ -15,10 +16,8 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
     fn ascii_uppercase(s: &str) -> bool {
         !s.is_empty() && s.chars().all(|c| c.is_ascii_uppercase())
     }
-    fn no_uppercase_alpha(s: &str) -> bool {
-        !s.is_empty()
-            && s.chars()
-                .all(|c| !c.is_uppercase() && !c.is_ascii_punctuation())
+    fn is_file_extension(s: &str) -> bool {
+        s.chars().all(|c| !c.is_uppercase() && c != '.' && c != '/')
     }
     fn is_mime_type(s: &str) -> bool {
         !s.is_empty() && s.is_ascii() && s.contains('/') && s.chars().all(|c| !c.is_uppercase())
@@ -40,8 +39,18 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
             // The lowercased file extension in the URI path without the dot (.) character
             "http.request.uri.path.extension",
             Domain::Validate(
-                no_uppercase_alpha,
-                "consist only of lowercase characters (e.g., \"html\")",
+                is_file_extension,
+                "not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., \
+                 \"html\")",
+            ),
+        ),
+        (
+            // The lowercased file extension in the URI path without the dot (.) character
+            "raw.http.request.uri.path.extension",
+            Domain::Validate(
+                is_file_extension,
+                "not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., \
+                 \"html\")",
             ),
         ),
         (
@@ -94,6 +103,34 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
         (
             "cf.fraud.email_risk",
             Domain::List(vec!["unknown", "low", "medium", "high"]),
+        ),
+        (
+            "http.request.uri.path",
+            Domain::Validate(
+                |s: &str| -> bool { s.starts_with('/') },
+                "start with a slash (/)",
+            ),
+        ),
+        (
+            "raw.http.request.uri.path",
+            Domain::Validate(
+                |s: &str| -> bool { s.starts_with('/') },
+                "start with a slash (/)",
+            ),
+        ),
+        (
+            "http.request.full_uri",
+            Domain::Validate(
+                |s: &str| -> bool { s.starts_with("http://") || s.starts_with("https://") },
+                "start with \"http://\" or \"https://\"",
+            ),
+        ),
+        (
+            "raw.http.request.full_uri",
+            Domain::Validate(
+                |s: &str| -> bool { s.starts_with("http://") || s.starts_with("https://") },
+                "start with \"http://\" or \"https://\"",
+            ),
         ),
     ])
 });
@@ -546,7 +583,7 @@ mod test {
             r#"http.request.uri.path.extension eq "HTML""#,
             expect![[r#"
                 Found invalid value for http.request.uri.path.extension (value_domain)
-                The value `HTML` is not a valid value for `http.request.uri.path.extension`. Values must consist only of lowercase characters (e.g., "html")."#]],
+                The value `HTML` is not a valid value for `http.request.uri.path.extension`. Values must not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., "html")."#]],
         );
 
         // mixed list should flag the uppercase entry
@@ -555,7 +592,7 @@ mod test {
             r#"http.request.uri.path.extension in {"html" "CSS"}"#,
             expect![[r#"
                 Found invalid value(s) for http.request.uri.path.extension (value_domain)
-                The value(s) `CSS` are not valid for `http.request.uri.path.extension`. Values must consist only of lowercase characters (e.g., "html")."#]],
+                The value(s) `CSS` are not valid for `http.request.uri.path.extension`. Values must not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., "html")."#]],
         );
 
         // Dot in the extension should raise concerns
@@ -564,7 +601,7 @@ mod test {
             r#"http.request.uri.path.extension eq ".html""#,
             expect![[r#"
                 Found invalid value for http.request.uri.path.extension (value_domain)
-                The value `.html` is not a valid value for `http.request.uri.path.extension`. Values must consist only of lowercase characters (e.g., "html")."#]],
+                The value `.html` is not a valid value for `http.request.uri.path.extension`. Values must not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., "html")."#]],
         );
 
         // valid cases shouldn't trigger
@@ -574,6 +611,8 @@ mod test {
             &LINTER,
             r#"http.request.uri.path.extension in {"html" "css"}"#,
         );
+        assert_no_lint_message(&LINTER, r#"raw.http.request.uri.path.extension eq """#);
+        assert_no_lint_message(&LINTER, r#"raw.http.request.uri.path.extension eq "mp3""#);
     }
 
     #[test]
@@ -834,5 +873,61 @@ mod test {
         // valid cases shouldn't trigger
         assert_no_lint_message(&LINTER, r#"len(http.request.uri.path.extension) eq 0"#);
         assert_no_lint_message(&LINTER, r#"len(http.request.uri.path.extension) lt 5"#);
+    }
+
+    #[test]
+    fn test_path() {
+        expect_lint_message(
+            &LINTER,
+            r#"http.request.uri.path eq "html""#,
+            expect![[r#"
+                Found invalid value for http.request.uri.path (value_domain)
+                The value `html` is not a valid value for `http.request.uri.path`. Values must start with a slash (/)."#]],
+        );
+        assert_no_lint_message(&LINTER, r#"http.request.uri.path eq "/""#);
+
+        expect_lint_message(
+            &LINTER,
+            r#"raw.http.request.uri.path eq "html""#,
+            expect![[r#"
+                Found invalid value for raw.http.request.uri.path (value_domain)
+                The value `html` is not a valid value for `raw.http.request.uri.path`. Values must start with a slash (/)."#]],
+        );
+        assert_no_lint_message(&LINTER, r#"raw.http.request.uri.path eq "/""#);
+    }
+
+    #[test]
+    fn test_full_uri() {
+        expect_lint_message(
+            &LINTER,
+            r#"http.request.full_uri eq "www.example.com/foo/index.html""#,
+            expect![[r#"
+                Found invalid value for http.request.full_uri (value_domain)
+                The value `www.example.com/foo/index.html` is not a valid value for `http.request.full_uri`. Values must start with "http://" or "https://"."#]],
+        );
+        assert_no_lint_message(
+            &LINTER,
+            r#"http.request.full_uri eq "http://example.com/foo/index.html""#,
+        );
+        assert_no_lint_message(
+            &LINTER,
+            r#"http.request.full_uri eq "https://example.com/""#,
+        );
+
+        expect_lint_message(
+            &LINTER,
+            r#"raw.http.request.full_uri eq "www.example.com/foo/index.html""#,
+            expect![[r#"
+                Found invalid value for raw.http.request.full_uri (value_domain)
+                The value `www.example.com/foo/index.html` is not a valid value for `raw.http.request.full_uri`. Values must start with "http://" or "https://"."#]],
+        );
+        assert_no_lint_message(
+            &LINTER,
+            r#"raw.http.request.full_uri eq "http://example.com/foo/index.html""#,
+        );
+        assert_no_lint_message(
+            &LINTER,
+            r#"raw.http.request.full_uri eq "https://example.com/""#,
+        );
     }
 }
