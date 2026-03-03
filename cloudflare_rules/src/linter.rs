@@ -8,6 +8,7 @@ mod deprecated_field;
 mod duplicate_list_entries;
 mod header_case;
 mod illogical_condition;
+mod invalid_list_name;
 mod negated_comparison;
 mod regex_raw_strings;
 mod reserved_ip_space;
@@ -24,6 +25,7 @@ pub static LINT_REGISTRY: &[&'static (dyn Lint + Send + Sync + 'static)] = &[
     &timestamp_bounds::TimestampComparisons,
     &header_case::HeaderCase,
     &value_domain::ValueDomain,
+    &invalid_list_name::InvalidListName,
 ];
 
 #[derive(

@@ -93,6 +93,8 @@ pub struct LintSettings {
     pub timestamp_bounds_min_timestamp: i64,
     /// Default value: Roughly 5 years into the future
     pub timestamp_bounds_future_delta: i64,
+    /// If Some, a complete list of all custom lists that are allowed. If None, all custom lists are allowed.
+    pub invalid_list_name_custom_lists: Option<Vec<Box<str>>>,
 }
 
 impl Default for LintSettings {
@@ -102,6 +104,7 @@ impl Default for LintSettings {
             timestamp_bounds_min_timestamp: 1262300400,
             // Default value: Roughly 5 years into the future
             timestamp_bounds_future_delta: 5 * 366 * 24 * 60 * 60,
+            invalid_list_name_custom_lists: None,
         }
     }
 }
