@@ -23,46 +23,14 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
         !s.is_empty() && s.is_ascii() && s.contains('/') && s.chars().all(|c| !c.is_uppercase())
     }
 
-    BTreeMap::from([
-        (
-            "ip.src.continent",
-            Domain::List(vec!["AF", "AN", "AS", "EU", "NA", "OC", "SA", "T1"]),
-        ),
-        (
-            "http.request.method",
-            Domain::Validate(
-                ascii_uppercase,
-                "consist only of uppercase characters (e.g., \"GET\")",
-            ),
-        ),
-        (
-            // The lowercased file extension in the URI path without the dot (.) character
-            "http.request.uri.path.extension",
-            Domain::Validate(
-                is_file_extension,
-                "not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., \
-                 \"html\")",
-            ),
-        ),
-        (
-            // The lowercased file extension in the URI path without the dot (.) character
-            "raw.http.request.uri.path.extension",
-            Domain::Validate(
-                is_file_extension,
-                "not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., \
-                 \"html\")",
-            ),
-        ),
-        (
-            "ip.src.country",
-            Domain::Validate(
-                |s: &str| s.len() == 2 && s.chars().all(|c| c.is_ascii_uppercase()),
-                "be a 2-letter uppercase ISO 3166-1 Alpha-2 country code (e.g., \"US\")",
-            ),
-        ),
-        ("http.request.timestamp.msec", Domain::IntRange(0, 999)),
-        ("cf.edge.server_port", Domain::IntRange(1, 65535)),
+    let field_definitions = [
         ("cf.bot_management.score", Domain::IntRange(1, 99)),
+        ("cf.edge.server_port", Domain::IntRange(1, 65535)),
+        (
+            "cf.fraud.email_risk",
+            Domain::List(vec!["unknown", "low", "medium", "high"]),
+        ),
+        ("cf.llm.prompt.injection_score", Domain::IntRange(1, 100)),
         (
             "cf.response.error_type",
             Domain::List(vec![
@@ -78,44 +46,19 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
                 "waf",
             ]),
         ),
+        ("cf.waf.score", Domain::IntRange(1, 100)),
         (
             "cf.waf.score.class",
             Domain::List(vec!["attack", "likely_attack", "likely_clean", "clean"]),
         ),
+        ("cf.waf.score.rce", Domain::IntRange(1, 99)),
+        ("cf.waf.score.sqli", Domain::IntRange(1, 99)),
+        ("cf.waf.score.xss", Domain::IntRange(1, 99)),
         (
             "http.request.body.mime",
             Domain::Validate(
                 is_mime_type,
                 "be a mime-type with lowercase characters (e.g., \"image/png\")",
-            ),
-        ),
-        (
-            "http.response.content_type.media_type",
-            Domain::Validate(
-                is_mime_type,
-                "be a mime-type with lowercase characters (e.g., \"image/png\")",
-            ),
-        ),
-        (
-            "http.request.version",
-            Domain::Validate(|s: &str| s.starts_with("HTTP/"), "start with \"HTTP/\""),
-        ),
-        (
-            "cf.fraud.email_risk",
-            Domain::List(vec!["unknown", "low", "medium", "high"]),
-        ),
-        (
-            "http.request.uri.path",
-            Domain::Validate(
-                |s: &str| -> bool { s.starts_with('/') },
-                "start with a slash (/)",
-            ),
-        ),
-        (
-            "raw.http.request.uri.path",
-            Domain::Validate(
-                |s: &str| -> bool { s.starts_with('/') },
-                "start with a slash (/)",
             ),
         ),
         (
@@ -126,13 +69,88 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
             ),
         ),
         (
+            "http.request.method",
+            Domain::Validate(
+                ascii_uppercase,
+                "consist only of uppercase characters (e.g., \"GET\")",
+            ),
+        ),
+        ("http.request.timestamp.msec", Domain::IntRange(0, 999)),
+        (
+            "http.request.uri.path",
+            Domain::Validate(
+                |s: &str| -> bool { s.starts_with('/') },
+                "start with a slash (/)",
+            ),
+        ),
+        (
+            // The lowercased file extension in the URI path without the dot (.) character
+            "http.request.uri.path.extension",
+            Domain::Validate(
+                is_file_extension,
+                "not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., \
+                 \"html\")",
+            ),
+        ),
+        (
+            "http.request.version",
+            Domain::Validate(|s: &str| s.starts_with("HTTP/"), "start with \"HTTP/\""),
+        ),
+        (
+            "http.response.content_type.media_type",
+            Domain::Validate(
+                is_mime_type,
+                "be a mime-type with lowercase characters (e.g., \"image/png\")",
+            ),
+        ),
+        (
+            "ip.src.continent",
+            Domain::List(vec!["AF", "AN", "AS", "EU", "NA", "OC", "SA", "T1"]),
+        ),
+        (
+            "ip.src.country",
+            Domain::Validate(
+                |s: &str| s.len() == 2 && s.chars().all(|c| c.is_ascii_uppercase()),
+                "be a 2-letter uppercase ISO 3166-1 Alpha-2 country code (e.g., \"US\")",
+            ),
+        ),
+        (
             "raw.http.request.full_uri",
             Domain::Validate(
                 |s: &str| -> bool { s.starts_with("http://") || s.starts_with("https://") },
                 "start with \"http://\" or \"https://\"",
             ),
         ),
-    ])
+        (
+            "raw.http.request.uri.path",
+            Domain::Validate(
+                |s: &str| -> bool { s.starts_with('/') },
+                "start with a slash (/)",
+            ),
+        ),
+        (
+            // The lowercased file extension in the URI path without the dot (.) character
+            "raw.http.request.uri.path.extension",
+            Domain::Validate(
+                is_file_extension,
+                "not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., \
+                 \"html\")",
+            ),
+        ),
+    ];
+    // Check that the field names are unique and sorted
+    field_definitions
+        .iter()
+        .fold(None, |prev: Option<&str>, (field, _)| {
+            if let Some(prev) = prev {
+                assert!(
+                    prev < *field,
+                    "Field names must be unique and sorted: `{prev}` >= `{field}`"
+                );
+            }
+            Some(*field)
+        });
+    BTreeMap::from(field_definitions)
 });
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
