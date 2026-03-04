@@ -55,6 +55,13 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
         ("cf.waf.score.sqli", Domain::IntRange(1, 99)),
         ("cf.waf.score.xss", Domain::IntRange(1, 99)),
         (
+            "http.host",
+            Domain::Validate(
+                |s: &str| -> bool { !s.contains('/') },
+                "follow the pattern <host> or <host>:<port>",
+            ),
+        ),
+        (
             "http.request.body.mime",
             Domain::Validate(
                 is_mime_type,
