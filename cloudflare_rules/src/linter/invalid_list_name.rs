@@ -35,9 +35,9 @@ impl Lint for InvalidListName {
                         "cf.open_proxies",
                         "cf.vpn",
                     ];
-                    if (name.as_str().starts_with("cf.") || name.as_str().contains("."))
-                        && !predefined_lists.contains(&name.as_str())
-                    {
+                    if predefined_lists.contains(&name.as_str()) {
+                        // Valid managed list name, do nothing
+                    } else if name.as_str().starts_with("cf.") || name.as_str().contains(".") {
                         self.result.push(LintReport {
                             id: "invalid_list_name".into(),
                             url: None,
@@ -119,5 +119,6 @@ mod test {
         );
 
         assert_no_lint_message(&linter, r#"ip.src in $allowed_list"#);
+        assert_no_lint_message(&linter, r#"ip.src in $allowed_list or ip.src in $cf.vpn"#);
     }
 }
