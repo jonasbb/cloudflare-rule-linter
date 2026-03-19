@@ -29,29 +29,50 @@ inventory::submit! {
     }
 }
 
-    fn lint( _config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
-        struct MapKeyCaseVisitor {
-            result: Vec<LintReport>,
-        }
+fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
+    struct MapKeyCaseVisitor {
+        result: Vec<LintReport>,
+    }
 
-        let mut visitor = MapKeyCaseVisitor { result: Vec::new() };
+    let mut visitor = MapKeyCaseVisitor { result: Vec::new() };
 
-        impl Visitor<'_> for MapKeyCaseVisitor {
-            fn visit_comparison_expr(&mut self, node: &'_ wirefilter::ComparisonExpr) {
-                if let IdentifierExpr::Field(field) = &node.lhs.identifier
-                    && !node.lhs.indexes.is_empty()
-                    && HEADER_FIELDS.contains(&field.name())
-                {
-                    // Only consider Ordering and OneOf comparisons
-                    match &node.op {
-                        ComparisonOpExpr::Ordering { op, rhs } => {
-                            // Only consider equality/inequality comparisons
-                            // The ".names" fields are lists that need to be indexed into
-                            if let (
-                                OrderingOp::Equal | OrderingOp::NotEqual,
-                                RhsValue::Bytes(bytes),
-                            ) = (op, rhs)
-                                && let Ok(header) = std::str::from_utf8(&bytes.data)
+    impl Visitor<'_> for MapKeyCaseVisitor {
+        fn visit_comparison_expr(&mut self, node: &'_ wirefilter::ComparisonExpr) {
+            if let IdentifierExpr::Field(field) = &node.lhs.identifier
+                && !node.lhs.indexes.is_empty()
+                && HEADER_FIELDS.contains(&field.name())
+            {
+                // Only consider Ordering and OneOf comparisons
+                match &node.op {
+                    ComparisonOpExpr::Ordering { op, rhs } => {
+                        // Only consider equality/inequality comparisons
+                        // The ".names" fields are lists that need to be indexed into
+                        if let (OrderingOp::Equal | OrderingOp::NotEqual, RhsValue::Bytes(bytes)) =
+                            (op, rhs)
+                            && let Ok(header) = std::str::from_utf8(&bytes.data)
+                            && header.chars().any(|c| c.is_ascii_uppercase())
+                        {
+                            self.result.push(LintReport {
+                                id: LINT_NAME.into(),
+                                url: None,
+                                title: format!(
+                                    "Found uppercase characters in header name `{}`",
+                                    header
+                                ),
+                                message: format!(
+                                    "Header names must always be all lowercase but `{}` contains \
+                                     uppercase characters. It should be lowercase (e.g., \
+                                     \"content-type\").",
+                                    header
+                                ),
+                                span: Span::ReverseByte(node.reverse_span.clone()),
+                            });
+                        }
+                    }
+                    ComparisonOpExpr::OneOf(RhsValues::Bytes(items)) => {
+                        // The ".names" fields are lists that need to be indexed into
+                        for b in items.iter() {
+                            if let Ok(header) = std::str::from_utf8(&b.data)
                                 && header.chars().any(|c| c.is_ascii_uppercase())
                             {
                                 self.result.push(LintReport {
@@ -71,72 +92,49 @@ inventory::submit! {
                                 });
                             }
                         }
-                        ComparisonOpExpr::OneOf(RhsValues::Bytes(items)) => {
-                            // The ".names" fields are lists that need to be indexed into
-                            for b in items.iter() {
-                                if let Ok(header) = std::str::from_utf8(&b.data)
-                                    && header.chars().any(|c| c.is_ascii_uppercase())
-                                {
-                                    self.result.push(LintReport {
-                                        id: LINT_NAME.into(),
-                                        url: None,
-                                        title: format!(
-                                            "Found uppercase characters in header name `{}`",
-                                            header
-                                        ),
-                                        message: format!(
-                                            "Header names must always be all lowercase but `{}` \
-                                             contains uppercase characters. It should be \
-                                             lowercase (e.g., \"content-type\").",
-                                            header
-                                        ),
-                                        span: Span::ReverseByte(node.reverse_span.clone()),
-                                    });
-                                }
-                            }
-                        }
-                        _ => {}
                     }
+                    _ => {}
                 }
-
-                // Continue walking the expression
-                self.visit_expr(node);
             }
 
-            fn visit_index_expr(&mut self, node: &'_ wirefilter::IndexExpr) {
-                // Check the string used as map key for header fields
-                // http.request.headers["content-type"][*]
-                //                       ^^^^^^^^^^^^
-                //
-                // Only consider comparisons with an IndexExpr on the LHS
-                // Only consider the header map fields we care about
-                // Look at the first index only as that is the map key
-                if let IdentifierExpr::Field(field) = &node.identifier
-                    && HEADER_MAP_FIELDS.contains(&field.name())
-                    && let [FieldIndex::MapKey(header), ..] = &node.indexes[..]
-                    && header.chars().any(|c| c.is_ascii_uppercase())
-                {
-                    self.result.push(LintReport {
-                        id: LINT_NAME.into(),
-                        url: None,
-                        title: format!("Found uppercase characters in header name `{}`", header),
-                        message: format!(
-                            "The map key `{}` used to index `{}` contains uppercase characters; \
-                             keys should be lowercase (e.g., \"content-type\").",
-                            header,
-                            field.name()
-                        ),
-                        span: Span::ReverseByte(node.reverse_span.clone()),
-                    });
-                }
-
-                self.visit_value_expr(node);
-            }
+            // Continue walking the expression
+            self.visit_expr(node);
         }
 
-        ast.walk(&mut visitor);
-        visitor.result
+        fn visit_index_expr(&mut self, node: &'_ wirefilter::IndexExpr) {
+            // Check the string used as map key for header fields
+            // http.request.headers["content-type"][*]
+            //                       ^^^^^^^^^^^^
+            //
+            // Only consider comparisons with an IndexExpr on the LHS
+            // Only consider the header map fields we care about
+            // Look at the first index only as that is the map key
+            if let IdentifierExpr::Field(field) = &node.identifier
+                && HEADER_MAP_FIELDS.contains(&field.name())
+                && let [FieldIndex::MapKey(header), ..] = &node.indexes[..]
+                && header.chars().any(|c| c.is_ascii_uppercase())
+            {
+                self.result.push(LintReport {
+                    id: LINT_NAME.into(),
+                    url: None,
+                    title: format!("Found uppercase characters in header name `{}`", header),
+                    message: format!(
+                        "The map key `{}` used to index `{}` contains uppercase characters; keys \
+                         should be lowercase (e.g., \"content-type\").",
+                        header,
+                        field.name()
+                    ),
+                    span: Span::ReverseByte(node.reverse_span.clone()),
+                });
+            }
+
+            self.visit_value_expr(node);
+        }
     }
+
+    ast.walk(&mut visitor);
+    visitor.result
+}
 
 #[cfg(test)]
 mod test {
