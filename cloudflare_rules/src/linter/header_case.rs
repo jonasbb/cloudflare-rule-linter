@@ -19,19 +19,17 @@ static HEADER_FIELDS: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
     ]
 });
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub(crate) struct HeaderCase;
+static LINT_NAME: &str = "header_case";
 
-impl Lint for HeaderCase {
-    fn name(&self) -> &'static str {
-        "header_case"
+inventory::submit! {
+    Lint {
+        name: LINT_NAME,
+        category: Category::Correctness,
+        lint_fn: lint
     }
+}
 
-    fn category(&self) -> Category {
-        Category::Correctness
-    }
-
-    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
+    fn lint( _config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
         struct MapKeyCaseVisitor {
             result: Vec<LintReport>,
         }
@@ -57,7 +55,7 @@ impl Lint for HeaderCase {
                                 && header.chars().any(|c| c.is_ascii_uppercase())
                             {
                                 self.result.push(LintReport {
-                                    id: "header_case".into(),
+                                    id: LINT_NAME.into(),
                                     url: None,
                                     title: format!(
                                         "Found uppercase characters in header name `{}`",
@@ -80,7 +78,7 @@ impl Lint for HeaderCase {
                                     && header.chars().any(|c| c.is_ascii_uppercase())
                                 {
                                     self.result.push(LintReport {
-                                        id: "header_case".into(),
+                                        id: LINT_NAME.into(),
                                         url: None,
                                         title: format!(
                                             "Found uppercase characters in header name `{}`",
@@ -119,7 +117,7 @@ impl Lint for HeaderCase {
                     && header.chars().any(|c| c.is_ascii_uppercase())
                 {
                     self.result.push(LintReport {
-                        id: "header_case".into(),
+                        id: LINT_NAME.into(),
                         url: None,
                         title: format!("Found uppercase characters in header name `{}`", header),
                         message: format!(
@@ -139,7 +137,6 @@ impl Lint for HeaderCase {
         ast.walk(&mut visitor);
         visitor.result
     }
-}
 
 #[cfg(test)]
 mod test {
@@ -149,7 +146,7 @@ mod test {
     static LINTER: std::sync::LazyLock<Linter> = std::sync::LazyLock::new(|| {
         let mut linter = Linter::new();
         linter.config = LinterConfig::default_disable_all_lints();
-        linter.config.lints.enable_lints = vec![HeaderCase.name().into()];
+        linter.config.lints.enable_lints = vec![LINT_NAME.into()];
         linter
     });
 

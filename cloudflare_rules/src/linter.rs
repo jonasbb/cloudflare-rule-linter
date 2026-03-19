@@ -15,18 +15,13 @@ mod reserved_ip_space;
 mod timestamp_bounds;
 mod value_domain;
 
-pub static LINT_REGISTRY: &[&'static (dyn Lint + Send + Sync + 'static)] = &[
-    &reserved_ip_space::ReservedIpSpace,
-    &negated_comparison::NegatedComparison,
-    &illogical_condition::IllogicalCondition,
-    &duplicate_list_entries::DuplicateListEntries,
-    &regex_raw_strings::RegexRawStrings,
-    &deprecated_field::DeprecatedField,
-    &timestamp_bounds::TimestampComparisons,
-    &header_case::HeaderCase,
-    &value_domain::ValueDomain,
-    &invalid_list_name::InvalidListName,
-];
+pub struct Lint {
+    pub name: &'static str,
+    pub category: Category,
+    pub lint_fn: fn(&LinterConfig, &FilterAst) -> Vec<LintReport>,
+}
+
+inventory::collect!(Lint);
 
 #[derive(
     Debug,
@@ -44,13 +39,6 @@ pub enum Category {
     Correctness,
     Deprecated,
     Style,
-}
-
-pub trait Lint {
-    fn name(&self) -> &'static str;
-    fn category(&self) -> Category;
-
-    fn lint(&self, config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport>;
 }
 
 /// List report for some finding with the rule expression
@@ -106,13 +94,13 @@ impl Linter {
         let mut results = Vec::new();
 
         // Check for all lints that should run
-        let mut runlint = vec![true; LINT_REGISTRY.len()];
-        for (rl, lint) in iter::zip(&mut runlint, LINT_REGISTRY) {
+        let mut runlint = vec![true; inventory::iter::<Lint>.into_iter().count()];
+        for (rl, lint) in iter::zip(&mut runlint, inventory::iter::<Lint>) {
             if self
                 .config
                 .lints
                 .enable_categories
-                .contains(&lint.category())
+                .contains(&lint.category)
             {
                 *rl = true;
             }
@@ -120,17 +108,17 @@ impl Linter {
                 .config
                 .lints
                 .disable_categories
-                .contains(&lint.category())
+                .contains(&lint.category)
             {
                 *rl = false;
             }
             for enable_lint in &self.config.lints.enable_lints {
-                if &**enable_lint == lint.name() {
+                if &**enable_lint == lint.name {
                     *rl = true;
                 }
             }
             for disable_lint in &self.config.lints.disable_lints {
-                if &**disable_lint == lint.name() {
+                if &**disable_lint == lint.name {
                     *rl = false;
                 }
             }
@@ -138,9 +126,9 @@ impl Linter {
 
         // Run all enabled lints
         self.simplify_ast(ast);
-        for (rl, lint) in iter::zip(runlint, LINT_REGISTRY) {
+        for (rl, lint) in iter::zip(runlint, inventory::iter::<Lint>) {
             if rl {
-                results.extend(lint.lint(&self.config, ast));
+                results.extend((lint.lint_fn)(&self.config, ast));
             }
         }
         results

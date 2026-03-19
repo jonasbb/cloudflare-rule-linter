@@ -12,6 +12,7 @@ name = "cloudflare_rules"
 python = ["dep:pyo3"]
 
 [dependencies]
+inventory = "0.3.22"
 ipnet = {version = "2.12.0", features = ["serde"]}
 pyo3 = {version = "0.28.2", features = ["anyhow"], optional = true}
 serde = {version = "1.0.228", features = ["derive"]}

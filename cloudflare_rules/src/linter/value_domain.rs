@@ -160,154 +160,193 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
     BTreeMap::from(field_definitions)
 });
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub(crate) struct ValueDomain;
+static LINT_NAME: &str = "value_domain";
 
-impl Lint for ValueDomain {
-    fn name(&self) -> &'static str {
-        "value_domain"
+inventory::submit! {
+    Lint {
+        name: LINT_NAME,
+        category: Category::Correctness,
+        lint_fn: lint
+    }
+}
+
+fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
+    struct ValueDomainVisitor {
+        result: Vec<LintReport>,
     }
 
-    fn category(&self) -> Category {
-        Category::Correctness
-    }
+    let mut visitor = ValueDomainVisitor { result: Vec::new() };
 
-    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
-        struct ValueDomainVisitor {
-            result: Vec<LintReport>,
-        }
-
-        let mut visitor = ValueDomainVisitor { result: Vec::new() };
-
-        impl Visitor<'_> for ValueDomainVisitor {
-            fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
-                // Only consider Ordering and OneOf comparisons
-                match &node.op {
-                    ComparisonOpExpr::Ordering { op, rhs } => {
-                        // Only consider equality/inequality and pertinent ordering comparisons
-                        match (op, rhs) {
-                            (OrderingOp::Equal | OrderingOp::NotEqual, RhsValue::Bytes(bytes)) => {
-                                // Field equality checks (existing domain checks)
-                                if let IdentifierExpr::Field(field) = &node.lhs.identifier
-                                    && node.lhs.indexes.is_empty()
-                                    && let Some(domain) = VALUE_DOMAINS.get(field.name())
-                                    && let Ok(s) = std::str::from_utf8(&bytes.data)
-                                {
-                                    match domain {
-                                        Domain::List(valids) => {
-                                            if !valids.contains(&s) {
-                                                self.result.push(LintReport {
-                                                    id: "value_domain".into(),
-                                                    url: None,
-                                                    title: format!(
-                                                        "Found invalid value for {}",
-                                                        field.name()
-                                                    ),
-                                                    message: format!(
-                                                        "The value `{}` is not a valid value for \
-                                                         `{}`. Valid values are: {}.",
-                                                        s,
-                                                        field.name(),
-                                                        valids.join(", ")
-                                                    ),
-                                                    span: Span::ReverseByte(
-                                                        node.reverse_span.clone(),
-                                                    ),
-                                                });
-                                            }
+    impl Visitor<'_> for ValueDomainVisitor {
+        fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
+            // Only consider Ordering and OneOf comparisons
+            match &node.op {
+                ComparisonOpExpr::Ordering { op, rhs } => {
+                    // Only consider equality/inequality and pertinent ordering comparisons
+                    match (op, rhs) {
+                        (OrderingOp::Equal | OrderingOp::NotEqual, RhsValue::Bytes(bytes)) => {
+                            // Field equality checks (existing domain checks)
+                            if let IdentifierExpr::Field(field) = &node.lhs.identifier
+                                && node.lhs.indexes.is_empty()
+                                && let Some(domain) = VALUE_DOMAINS.get(field.name())
+                                && let Ok(s) = std::str::from_utf8(&bytes.data)
+                            {
+                                match domain {
+                                    Domain::List(valids) => {
+                                        if !valids.contains(&s) {
+                                            self.result.push(LintReport {
+                                                id: LINT_NAME.into(),
+                                                url: None,
+                                                title: format!(
+                                                    "Found invalid value for {}",
+                                                    field.name()
+                                                ),
+                                                message: format!(
+                                                    "The value `{}` is not a valid value for \
+                                                     `{}`. Valid values are: {}.",
+                                                    s,
+                                                    field.name(),
+                                                    valids.join(", ")
+                                                ),
+                                                span: Span::ReverseByte(node.reverse_span.clone()),
+                                            });
                                         }
-                                        Domain::Validate(func, desc) => {
-                                            if !func(s) {
-                                                self.result.push(LintReport {
-                                                    id: "value_domain".into(),
-                                                    url: None,
-                                                    title: format!(
-                                                        "Found invalid value for {}",
-                                                        field.name()
-                                                    ),
-                                                    message: format!(
-                                                        "The value `{}` is not a valid value for \
-                                                         `{}`. Values must {}.",
-                                                        s,
-                                                        field.name(),
-                                                        desc
-                                                    ),
-                                                    span: Span::ReverseByte(
-                                                        node.reverse_span.clone(),
-                                                    ),
-                                                });
-                                            }
+                                    }
+                                    Domain::Validate(func, desc) => {
+                                        if !func(s) {
+                                            self.result.push(LintReport {
+                                                id: LINT_NAME.into(),
+                                                url: None,
+                                                title: format!(
+                                                    "Found invalid value for {}",
+                                                    field.name()
+                                                ),
+                                                message: format!(
+                                                    "The value `{}` is not a valid value for \
+                                                     `{}`. Values must {}.",
+                                                    s,
+                                                    field.name(),
+                                                    desc
+                                                ),
+                                                span: Span::ReverseByte(node.reverse_span.clone()),
+                                            });
                                         }
-                                        _ => {}
                                     }
-                                }
-                                // Function call checks (lower/upper)
-                                else if let IdentifierExpr::FunctionCallExpr(call) =
-                                    &node.lhs.identifier
-                                    && let Ok(s) = std::str::from_utf8(&bytes.data)
-                                {
-                                    let name = call.function().name();
-                                    let fname_lbl = format!("{}(...)", name);
-                                    if name == "lower" && s.chars().any(|c| c.is_ascii_uppercase())
-                                    {
-                                        self.result.push(LintReport {
-                                            id: "value_domain".into(),
-                                            url: None,
-                                            title: format!("Found invalid value for {}(...)", name),
-                                            message: format!(
-                                                "The value `{}` is not a valid value for `{}`. \
-                                                 Values must not contain uppercase ASCII \
-                                                 characters.",
-                                                s, fname_lbl
-                                            ),
-                                            span: Span::ReverseByte(node.reverse_span.clone()),
-                                        });
-                                    } else if name == "upper"
-                                        && s.chars().any(|c| c.is_ascii_lowercase())
-                                    {
-                                        self.result.push(LintReport {
-                                            id: "value_domain".into(),
-                                            url: None,
-                                            title: format!("Found invalid value for {}(...)", name),
-                                            message: format!(
-                                                "The value `{}` is not a valid value for `{}`. \
-                                                 Values must not contain lowercase ASCII \
-                                                 characters.",
-                                                s, fname_lbl
-                                            ),
-                                            span: Span::ReverseByte(node.reverse_span.clone()),
-                                        });
-                                    }
+                                    _ => {}
                                 }
                             }
-                            (OrderingOp::Equal | OrderingOp::NotEqual, RhsValue::Int(iv)) => {
-                                if let IdentifierExpr::Field(field) = &node.lhs.identifier
-                                    && node.lhs.indexes.is_empty()
-                                    && let Some(Domain::IntRange(min, max)) =
-                                        VALUE_DOMAINS.get(field.name())
-                                    && (iv < min || iv > max)
-                                {
+                            // Function call checks (lower/upper)
+                            else if let IdentifierExpr::FunctionCallExpr(call) =
+                                &node.lhs.identifier
+                                && let Ok(s) = std::str::from_utf8(&bytes.data)
+                            {
+                                let name = call.function().name();
+                                let fname_lbl = format!("{}(...)", name);
+                                if name == "lower" && s.chars().any(|c| c.is_ascii_uppercase()) {
                                     self.result.push(LintReport {
-                                        id: "value_domain".into(),
+                                        id: LINT_NAME.into(),
                                         url: None,
-                                        title: format!("Found invalid value for {}", field.name()),
+                                        title: format!("Found invalid value for {}(...)", name),
                                         message: format!(
-                                            "The value `{}` is not a valid value for `{}`. Valid \
-                                             values are between {} and {}.",
-                                            iv,
-                                            field.name(),
-                                            min,
-                                            max
+                                            "The value `{}` is not a valid value for `{}`. Values \
+                                             must not contain uppercase ASCII characters.",
+                                            s, fname_lbl
                                         ),
                                         span: Span::ReverseByte(node.reverse_span.clone()),
                                     });
-                                } else if let IdentifierExpr::FunctionCallExpr(call) =
-                                    &node.lhs.identifier
-                                    && call.function().name() == "len"
-                                    && *iv < 0
+                                } else if name == "upper"
+                                    && s.chars().any(|c| c.is_ascii_lowercase())
                                 {
                                     self.result.push(LintReport {
-                                        id: "value_domain".into(),
+                                        id: LINT_NAME.into(),
+                                        url: None,
+                                        title: format!("Found invalid value for {}(...)", name),
+                                        message: format!(
+                                            "The value `{}` is not a valid value for `{}`. Values \
+                                             must not contain lowercase ASCII characters.",
+                                            s, fname_lbl
+                                        ),
+                                        span: Span::ReverseByte(node.reverse_span.clone()),
+                                    });
+                                }
+                            }
+                        }
+                        (OrderingOp::Equal | OrderingOp::NotEqual, RhsValue::Int(iv)) => {
+                            if let IdentifierExpr::Field(field) = &node.lhs.identifier
+                                && node.lhs.indexes.is_empty()
+                                && let Some(Domain::IntRange(min, max)) =
+                                    VALUE_DOMAINS.get(field.name())
+                                && (iv < min || iv > max)
+                            {
+                                self.result.push(LintReport {
+                                    id: LINT_NAME.into(),
+                                    url: None,
+                                    title: format!("Found invalid value for {}", field.name()),
+                                    message: format!(
+                                        "The value `{}` is not a valid value for `{}`. Valid \
+                                         values are between {} and {}.",
+                                        iv,
+                                        field.name(),
+                                        min,
+                                        max
+                                    ),
+                                    span: Span::ReverseByte(node.reverse_span.clone()),
+                                });
+                            } else if let IdentifierExpr::FunctionCallExpr(call) =
+                                &node.lhs.identifier
+                                && call.function().name() == "len"
+                                && *iv < 0
+                            {
+                                self.result.push(LintReport {
+                                    id: LINT_NAME.into(),
+                                    url: None,
+                                    title: "Found invalid value for len(...)".into(),
+                                    message: format!(
+                                        "The value `{}` are not valid for `{}`. Values must be >= \
+                                         0.",
+                                        iv, "len(...)"
+                                    ),
+                                    span: Span::ReverseByte(node.reverse_span.clone()),
+                                });
+                            }
+                        }
+                        (OrderingOp::LessThan, RhsValue::Int(iv)) => {
+                            // len(...) < 0 is invalid (RHS == 0 means check for negative lengths)
+                            if let IdentifierExpr::FunctionCallExpr(call) = &node.lhs.identifier
+                                && call.function().name() == "len"
+                                && *iv <= 0
+                            {
+                                self.result.push(LintReport {
+                                    id: LINT_NAME.into(),
+                                    url: None,
+                                    title: "Found invalid value for len(...)".into(),
+                                    message: format!(
+                                        "The value `{}` are not valid for `{}`. Values must be >= \
+                                         0.",
+                                        iv, "len(...)"
+                                    ),
+                                    span: Span::ReverseByte(node.reverse_span.clone()),
+                                });
+                            }
+                        }
+                        (OrderingOp::LessThanEqual, RhsValue::Int(iv)) => {
+                            // len(...) <= 0 should warn (RHS <= 0)
+                            if let IdentifierExpr::FunctionCallExpr(call) = &node.lhs.identifier
+                                && call.function().name() == "len"
+                            {
+                                if *iv == 0 {
+                                    self.result.push(LintReport {
+                                        id: LINT_NAME.into(),
+                                        url: None,
+                                        title: "Found bad value for len(...)".into(),
+                                        message: "len(...) can never be negative thus `lt 0` can \
+                                                  be simplified to `eq 0`."
+                                            .to_string(),
+                                        span: Span::ReverseByte(node.reverse_span.clone()),
+                                    });
+                                } else if *iv < 0 {
+                                    self.result.push(LintReport {
+                                        id: LINT_NAME.into(),
                                         url: None,
                                         title: "Found invalid value for len(...)".into(),
                                         message: format!(
@@ -319,91 +358,135 @@ impl Lint for ValueDomain {
                                     });
                                 }
                             }
-                            (OrderingOp::LessThan, RhsValue::Int(iv)) => {
-                                // len(...) < 0 is invalid (RHS == 0 means check for negative lengths)
-                                if let IdentifierExpr::FunctionCallExpr(call) = &node.lhs.identifier
-                                    && call.function().name() == "len"
-                                    && *iv <= 0
-                                {
-                                    self.result.push(LintReport {
-                                        id: "value_domain".into(),
-                                        url: None,
-                                        title: "Found invalid value for len(...)".into(),
-                                        message: format!(
-                                            "The value `{}` are not valid for `{}`. Values must \
-                                             be >= 0.",
-                                            iv, "len(...)"
-                                        ),
-                                        span: Span::ReverseByte(node.reverse_span.clone()),
-                                    });
+                        }
+                        _ => {}
+                    }
+                }
+                ComparisonOpExpr::OneOf(values) => {
+                    if let IdentifierExpr::Field(field) = &node.lhs.identifier
+                        && node.lhs.indexes.is_empty()
+                        && let Some(domain) = VALUE_DOMAINS.get(field.name())
+                    {
+                        let mut invalids = Vec::new();
+
+                        match values {
+                            RhsValues::Bytes(items) => {
+                                for b in items.iter() {
+                                    if let Ok(s) = std::str::from_utf8(&b.data) {
+                                        match domain {
+                                            Domain::List(valids) => {
+                                                if !valids.contains(&s) {
+                                                    invalids.push(s.to_string());
+                                                }
+                                            }
+                                            Domain::Validate(func, _desc) => {
+                                                if !func(s) {
+                                                    invalids.push(s.to_string());
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    }
                                 }
                             }
-                            (OrderingOp::LessThanEqual, RhsValue::Int(iv)) => {
-                                // len(...) <= 0 should warn (RHS <= 0)
-                                if let IdentifierExpr::FunctionCallExpr(call) = &node.lhs.identifier
-                                    && call.function().name() == "len"
-                                {
-                                    if *iv == 0 {
-                                        self.result.push(LintReport {
-                                            id: "value_domain".into(),
-                                            url: None,
-                                            title: "Found bad value for len(...)".into(),
-                                            message: "len(...) can never be negative thus `lt 0` \
-                                                      can be simplified to `eq 0`."
-                                                .to_string(),
-                                            span: Span::ReverseByte(node.reverse_span.clone()),
-                                        });
-                                    } else if *iv < 0 {
-                                        self.result.push(LintReport {
-                                            id: "value_domain".into(),
-                                            url: None,
-                                            title: "Found invalid value for len(...)".into(),
-                                            message: format!(
-                                                "The value `{}` are not valid for `{}`. Values \
-                                                 must be >= 0.",
-                                                iv, "len(...)"
-                                            ),
-                                            span: Span::ReverseByte(node.reverse_span.clone()),
-                                        });
+                            RhsValues::Int(int_ranges) => {
+                                for r in int_ranges.iter() {
+                                    let range: std::ops::RangeInclusive<i64> = r.clone().into();
+                                    if let Domain::IntRange(min, max) = domain
+                                        && (range.start() < min || range.end() > max)
+                                    {
+                                        let s = if range.start() == range.end() {
+                                            format!("{}", range.start())
+                                        } else {
+                                            format!("{}..{}", range.start(), range.end())
+                                        };
+                                        invalids.push(s);
                                     }
                                 }
                             }
                             _ => {}
                         }
-                    }
-                    ComparisonOpExpr::OneOf(values) => {
-                        if let IdentifierExpr::Field(field) = &node.lhs.identifier
-                            && node.lhs.indexes.is_empty()
-                            && let Some(domain) = VALUE_DOMAINS.get(field.name())
-                        {
-                            let mut invalids = Vec::new();
 
-                            match values {
-                                RhsValues::Bytes(items) => {
-                                    for b in items.iter() {
-                                        if let Ok(s) = std::str::from_utf8(&b.data) {
-                                            match domain {
-                                                Domain::List(valids) => {
-                                                    if !valids.contains(&s) {
-                                                        invalids.push(s.to_string());
-                                                    }
-                                                }
-                                                Domain::Validate(func, _desc) => {
-                                                    if !func(s) {
-                                                        invalids.push(s.to_string());
-                                                    }
-                                                }
-                                                _ => {}
-                                            }
-                                        }
+                        if !invalids.is_empty() {
+                            let msg = match domain {
+                                Domain::List(valids) => format!(
+                                    "The value(s) `{}` are not valid for `{}`. Valid values are: \
+                                     {}.",
+                                    invalids.join(" "),
+                                    field.name(),
+                                    valids.join(", ")
+                                ),
+                                Domain::Validate(_func, desc) => format!(
+                                    "The value(s) `{}` are not valid for `{}`. Values must {}.",
+                                    invalids.join(" "),
+                                    field.name(),
+                                    desc
+                                ),
+                                Domain::IntRange(min, max) => format!(
+                                    "The value(s) `{}` are not valid for `{}`. Valid values are \
+                                     between {} and {}.",
+                                    invalids.join(" "),
+                                    field.name(),
+                                    min,
+                                    max
+                                ),
+                            };
+
+                            self.result.push(LintReport {
+                                id: LINT_NAME.into(),
+                                url: None,
+                                title: format!("Found invalid value(s) for {}", field.name()),
+                                message: msg,
+                                span: Span::ReverseByte(node.reverse_span.clone()),
+                            });
+                        }
+                    } else if let IdentifierExpr::FunctionCallExpr(call) = &node.lhs.identifier {
+                        match values {
+                            RhsValues::Bytes(items) => {
+                                let name = call.function().name();
+                                let mut invalids = Vec::new();
+                                for b in items.iter() {
+                                    if let Ok(s) = std::str::from_utf8(&b.data)
+                                        && ((name == "lower"
+                                            && s.chars().any(|c| c.is_ascii_uppercase()))
+                                            || (name == "upper"
+                                                && s.chars().any(|c| c.is_ascii_lowercase())))
+                                    {
+                                        invalids.push(s.to_string());
                                     }
                                 }
-                                RhsValues::Int(int_ranges) => {
+                                if !invalids.is_empty() {
+                                    let fname_lbl = format!("{}(...)", name);
+                                    let msg = if name == "lower" {
+                                        format!(
+                                            "The value(s) `{}` are not valid for `{}`. Values \
+                                             must not contain uppercase ASCII characters.",
+                                            invalids.join(" "),
+                                            fname_lbl
+                                        )
+                                    } else {
+                                        format!(
+                                            "The value(s) `{}` are not valid for `{}`. Values \
+                                             must not contain lowercase ASCII characters.",
+                                            invalids.join(" "),
+                                            fname_lbl
+                                        )
+                                    };
+                                    self.result.push(LintReport {
+                                        id: LINT_NAME.into(),
+                                        url: None,
+                                        title: format!("Found invalid value(s) for {}(...)", name),
+                                        message: msg,
+                                        span: Span::ReverseByte(node.reverse_span.clone()),
+                                    });
+                                }
+                            }
+                            RhsValues::Int(int_ranges) => {
+                                if call.function().name() == "len" {
+                                    let mut invalids = Vec::new();
                                     for r in int_ranges.iter() {
                                         let range: std::ops::RangeInclusive<i64> = r.clone().into();
-                                        if let Domain::IntRange(min, max) = domain
-                                            && (range.start() < min || range.end() > max)
-                                        {
+                                        if *range.start() < 0 || *range.end() < 0 {
                                             let s = if range.start() == range.end() {
                                                 format!("{}", range.start())
                                             } else {
@@ -412,134 +495,36 @@ impl Lint for ValueDomain {
                                             invalids.push(s);
                                         }
                                     }
-                                }
-                                _ => {}
-                            }
-
-                            if !invalids.is_empty() {
-                                let msg = match domain {
-                                    Domain::List(valids) => format!(
-                                        "The value(s) `{}` are not valid for `{}`. Valid values \
-                                         are: {}.",
-                                        invalids.join(" "),
-                                        field.name(),
-                                        valids.join(", ")
-                                    ),
-                                    Domain::Validate(_func, desc) => format!(
-                                        "The value(s) `{}` are not valid for `{}`. Values must {}.",
-                                        invalids.join(" "),
-                                        field.name(),
-                                        desc
-                                    ),
-                                    Domain::IntRange(min, max) => format!(
-                                        "The value(s) `{}` are not valid for `{}`. Valid values \
-                                         are between {} and {}.",
-                                        invalids.join(" "),
-                                        field.name(),
-                                        min,
-                                        max
-                                    ),
-                                };
-
-                                self.result.push(LintReport {
-                                    id: "value_domain".into(),
-                                    url: None,
-                                    title: format!("Found invalid value(s) for {}", field.name()),
-                                    message: msg,
-                                    span: Span::ReverseByte(node.reverse_span.clone()),
-                                });
-                            }
-                        } else if let IdentifierExpr::FunctionCallExpr(call) = &node.lhs.identifier
-                        {
-                            match values {
-                                RhsValues::Bytes(items) => {
-                                    let name = call.function().name();
-                                    let mut invalids = Vec::new();
-                                    for b in items.iter() {
-                                        if let Ok(s) = std::str::from_utf8(&b.data)
-                                            && ((name == "lower"
-                                                && s.chars().any(|c| c.is_ascii_uppercase()))
-                                                || (name == "upper"
-                                                    && s.chars().any(|c| c.is_ascii_lowercase())))
-                                        {
-                                            invalids.push(s.to_string());
-                                        }
-                                    }
                                     if !invalids.is_empty() {
-                                        let fname_lbl = format!("{}(...)", name);
-                                        let msg = if name == "lower" {
-                                            format!(
-                                                "The value(s) `{}` are not valid for `{}`. Values \
-                                                 must not contain uppercase ASCII characters.",
-                                                invalids.join(" "),
-                                                fname_lbl
-                                            )
-                                        } else {
-                                            format!(
-                                                "The value(s) `{}` are not valid for `{}`. Values \
-                                                 must not contain lowercase ASCII characters.",
-                                                invalids.join(" "),
-                                                fname_lbl
-                                            )
-                                        };
+                                        let msg = format!(
+                                            "The value(s) `{}` are not valid for `{}`. Values \
+                                             must be >= 0.",
+                                            invalids.join(" "),
+                                            "len(...)"
+                                        );
                                         self.result.push(LintReport {
-                                            id: "value_domain".into(),
+                                            id: LINT_NAME.into(),
                                             url: None,
-                                            title: format!(
-                                                "Found invalid value(s) for {}(...)",
-                                                name
-                                            ),
+                                            title: "Found invalid value(s) for len(...)".into(),
                                             message: msg,
                                             span: Span::ReverseByte(node.reverse_span.clone()),
                                         });
                                     }
                                 }
-                                RhsValues::Int(int_ranges) => {
-                                    if call.function().name() == "len" {
-                                        let mut invalids = Vec::new();
-                                        for r in int_ranges.iter() {
-                                            let range: std::ops::RangeInclusive<i64> =
-                                                r.clone().into();
-                                            if *range.start() < 0 || *range.end() < 0 {
-                                                let s = if range.start() == range.end() {
-                                                    format!("{}", range.start())
-                                                } else {
-                                                    format!("{}..{}", range.start(), range.end())
-                                                };
-                                                invalids.push(s);
-                                            }
-                                        }
-                                        if !invalids.is_empty() {
-                                            let msg = format!(
-                                                "The value(s) `{}` are not valid for `{}`. Values \
-                                                 must be >= 0.",
-                                                invalids.join(" "),
-                                                "len(...)"
-                                            );
-                                            self.result.push(LintReport {
-                                                id: "value_domain".into(),
-                                                url: None,
-                                                title: "Found invalid value(s) for len(...)".into(),
-                                                message: msg,
-                                                span: Span::ReverseByte(node.reverse_span.clone()),
-                                            });
-                                        }
-                                    }
-                                }
-                                _ => {}
                             }
+                            _ => {}
                         }
                     }
-                    _ => {}
                 }
-
-                self.visit_expr(node);
+                _ => {}
             }
-        }
 
-        ast.walk(&mut visitor);
-        visitor.result
+            self.visit_expr(node);
+        }
     }
+
+    ast.walk(&mut visitor);
+    visitor.result
 }
 
 #[cfg(test)]
@@ -550,7 +535,7 @@ mod test {
     static LINTER: std::sync::LazyLock<Linter> = std::sync::LazyLock::new(|| {
         let mut linter = Linter::new();
         linter.config = LinterConfig::default_disable_all_lints();
-        linter.config.lints.enable_lints = vec![ValueDomain.name().into()];
+        linter.config.lints.enable_lints = vec![LINT_NAME.into()];
         linter
     });
 

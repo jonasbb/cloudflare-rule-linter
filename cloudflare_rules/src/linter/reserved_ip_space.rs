@@ -135,127 +135,122 @@ const RESERVED_IPV6_RANGES: &[(Ipv6Addr, Ipv6Addr)] = &[
     ), // 100::/64 (IANA)
 ];
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub(crate) struct ReservedIpSpace;
+static LINT_NAME: &str = "reserved_ip_space";
 
-impl Lint for ReservedIpSpace {
-    fn name(&self) -> &'static str {
-        "reserved_ip_space"
+inventory::submit! {
+    Lint {
+        name: LINT_NAME,
+        category: Category::Correctness,
+        lint_fn: lint
+    }
+}
+
+fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
+    struct ReservedIpSpaceVisitor {
+        result: Vec<LintReport>,
     }
 
-    fn category(&self) -> Category {
-        Category::Correctness
-    }
+    let mut visitor = ReservedIpSpaceVisitor { result: Vec::new() };
 
-    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
-        struct ReservedIpSpaceVisitor {
-            result: Vec<LintReport>,
-        }
-
-        let mut visitor = ReservedIpSpaceVisitor { result: Vec::new() };
-
-        impl Visitor<'_> for ReservedIpSpaceVisitor {
-            fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
-                // Check single-IP comparisons (ordering with an IP rhs)
-                match &node.op {
-                    ComparisonOpExpr::Ordering {
-                        rhs: RhsValue::Ip(ip_addr),
-                        ..
-                    } => match ExplicitIpRange::from(*ip_addr) {
-                        ExplicitIpRange::V4(range) => {
-                            for (start, end) in RESERVED_IPV4_RANGES {
-                                if range.start() <= end && start <= range.end() {
-                                    let ip_str = AstPrintVisitor::format_ip_range(
-                                        &IpRange::Explicit(ExplicitIpRange::V4(range.clone())),
-                                    );
-                                    self.result.push(LintReport {
-                                        id: "reserved_ip_space".into(),
-                                        url: None,
-                                        title: "Found usage of reserved IP range".into(),
-                                        message: format!(
-                                            "The value `{ip_str}` is within reserved address \
-                                             space.",
-                                        ),
-                                        span: Span::ReverseByte(node.reverse_span.clone()),
-                                    });
-                                    break;
-                                }
+    impl Visitor<'_> for ReservedIpSpaceVisitor {
+        fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
+            // Check single-IP comparisons (ordering with an IP rhs)
+            match &node.op {
+                ComparisonOpExpr::Ordering {
+                    rhs: RhsValue::Ip(ip_addr),
+                    ..
+                } => match ExplicitIpRange::from(*ip_addr) {
+                    ExplicitIpRange::V4(range) => {
+                        for (start, end) in RESERVED_IPV4_RANGES {
+                            if range.start() <= end && start <= range.end() {
+                                let ip_str = AstPrintVisitor::format_ip_range(&IpRange::Explicit(
+                                    ExplicitIpRange::V4(range.clone()),
+                                ));
+                                self.result.push(LintReport {
+                                    id: LINT_NAME.into(),
+                                    url: None,
+                                    title: "Found usage of reserved IP range".into(),
+                                    message: format!(
+                                        "The value `{ip_str}` is within reserved address space.",
+                                    ),
+                                    span: Span::ReverseByte(node.reverse_span.clone()),
+                                });
+                                break;
                             }
                         }
-                        ExplicitIpRange::V6(range) => {
-                            for (start, end) in RESERVED_IPV6_RANGES {
-                                if range.start() <= end && start <= range.end() {
-                                    let ip_str = AstPrintVisitor::format_ip_range(
-                                        &IpRange::Explicit(ExplicitIpRange::V6(range.clone())),
-                                    );
-                                    self.result.push(LintReport {
-                                        id: "reserved_ip_space".into(),
-                                        url: None,
-                                        title: "Found usage of reserved IP range".into(),
-                                        message: format!(
-                                            "The value `{ip_str}` is within reserved address \
-                                             space.",
-                                        ),
-                                        span: Span::ReverseByte(node.reverse_span.clone()),
-                                    });
-                                    break;
-                                }
+                    }
+                    ExplicitIpRange::V6(range) => {
+                        for (start, end) in RESERVED_IPV6_RANGES {
+                            if range.start() <= end && start <= range.end() {
+                                let ip_str = AstPrintVisitor::format_ip_range(&IpRange::Explicit(
+                                    ExplicitIpRange::V6(range.clone()),
+                                ));
+                                self.result.push(LintReport {
+                                    id: LINT_NAME.into(),
+                                    url: None,
+                                    title: "Found usage of reserved IP range".into(),
+                                    message: format!(
+                                        "The value `{ip_str}` is within reserved address space.",
+                                    ),
+                                    span: Span::ReverseByte(node.reverse_span.clone()),
+                                });
+                                break;
                             }
                         }
-                    },
-                    ComparisonOpExpr::OneOf(RhsValues::Ip(ip_ranges)) => {
-                        for ip in ip_ranges {
-                            let explicit = ExplicitIpRange::from(ip.clone());
-                            match explicit {
-                                ExplicitIpRange::V4(range) => {
-                                    for (start, end) in RESERVED_IPV4_RANGES {
-                                        if range.start() <= end && start <= range.end() {
-                                            let ip_str = AstPrintVisitor::format_ip_range(ip);
-                                            self.result.push(LintReport {
-                                                id: "reserved_ip_space".into(),
-                                                url: None,
-                                                title: "Found usage of reserved IP range".into(),
-                                                message: format!(
-                                                    "The value `{ip_str}` is within reserved \
-                                                     address space.",
-                                                ),
-                                                span: Span::ReverseByte(node.reverse_span.clone()),
-                                            });
-                                            break;
-                                        }
+                    }
+                },
+                ComparisonOpExpr::OneOf(RhsValues::Ip(ip_ranges)) => {
+                    for ip in ip_ranges {
+                        let explicit = ExplicitIpRange::from(ip.clone());
+                        match explicit {
+                            ExplicitIpRange::V4(range) => {
+                                for (start, end) in RESERVED_IPV4_RANGES {
+                                    if range.start() <= end && start <= range.end() {
+                                        let ip_str = AstPrintVisitor::format_ip_range(ip);
+                                        self.result.push(LintReport {
+                                            id: LINT_NAME.into(),
+                                            url: None,
+                                            title: "Found usage of reserved IP range".into(),
+                                            message: format!(
+                                                "The value `{ip_str}` is within reserved address \
+                                                 space.",
+                                            ),
+                                            span: Span::ReverseByte(node.reverse_span.clone()),
+                                        });
+                                        break;
                                     }
                                 }
-                                ExplicitIpRange::V6(range) => {
-                                    for (start, end) in RESERVED_IPV6_RANGES {
-                                        if range.start() <= end && start <= range.end() {
-                                            let ip_str = AstPrintVisitor::format_ip_range(ip);
-                                            self.result.push(LintReport {
-                                                id: "reserved_ip_space".into(),
-                                                url: None,
-                                                title: "Found usage of reserved IP range".into(),
-                                                message: format!(
-                                                    "The value `{ip_str}` is within reserved \
-                                                     address space.",
-                                                ),
-                                                span: Span::ReverseByte(node.reverse_span.clone()),
-                                            });
-                                            break;
-                                        }
+                            }
+                            ExplicitIpRange::V6(range) => {
+                                for (start, end) in RESERVED_IPV6_RANGES {
+                                    if range.start() <= end && start <= range.end() {
+                                        let ip_str = AstPrintVisitor::format_ip_range(ip);
+                                        self.result.push(LintReport {
+                                            id: LINT_NAME.into(),
+                                            url: None,
+                                            title: "Found usage of reserved IP range".into(),
+                                            message: format!(
+                                                "The value `{ip_str}` is within reserved address \
+                                                 space.",
+                                            ),
+                                            span: Span::ReverseByte(node.reverse_span.clone()),
+                                        });
+                                        break;
                                     }
                                 }
                             }
                         }
                     }
-                    _ => {}
                 }
-
-                self.visit_expr(node);
+                _ => {}
             }
-        }
 
-        ast.walk(&mut visitor);
-        visitor.result
+            self.visit_expr(node);
+        }
     }
+
+    ast.walk(&mut visitor);
+    visitor.result
 }
 
 #[cfg(test)]
@@ -266,7 +261,7 @@ mod test {
     static LINTER: LazyLock<Linter> = LazyLock::new(|| {
         let mut linter = Linter::new();
         linter.config = LinterConfig::default_disable_all_lints();
-        linter.config.lints.enable_lints = vec![ReservedIpSpace.name().into()];
+        linter.config.lints.enable_lints = vec![LINT_NAME.into()];
         linter
     });
 

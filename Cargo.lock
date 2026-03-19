@@ -203,6 +203,7 @@ name = "cloudflare-rules"
 version = "0.1.0"
 dependencies = [
  "expect-test",
+ "inventory",
  "ipnet",
  "pretty_assertions",
  "pyo3",
@@ -378,6 +379,15 @@ checksum = "0ad4bb2b565bca0645f4d68c5c9af97fba094e9791da685bf83cb5f3ce74acf2"
 dependencies = [
  "equivalent",
  "hashbrown",
+]
+
+[[package]]
+name = "inventory"
+version = "0.3.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "009ae045c87e7082cb72dab0ccd01ae075dd00141ddc108f43a0ea150a9e7227"
+dependencies = [
+ "rustversion",
 ]
 
 [[package]]

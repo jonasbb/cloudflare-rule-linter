@@ -1,95 +1,92 @@
 use super::*;
 use crate::ast_printer::AstPrintVisitor;
 use wirefilter::{ComparisonOpExpr, LogicalExpr, OrderingOp, UnaryOp, Visitor};
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub(crate) struct NegatedComparison;
 
-impl Lint for NegatedComparison {
-    fn name(&self) -> &'static str {
-        "negated_comparison"
+static LINT_NAME: &str = "negated_comparison";
+
+inventory::submit! {
+    Lint {
+        name: LINT_NAME,
+        category: Category::Style,
+        lint_fn: lint
+    }
+}
+
+fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
+    struct NegatedComparisonVisitor {
+        result: Vec<LintReport>,
     }
 
-    fn category(&self) -> Category {
-        Category::Style
-    }
+    let mut visitor = NegatedComparisonVisitor { result: Vec::new() };
 
-    fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
-        struct NegatedComparisonVisitor {
-            result: Vec<LintReport>,
-        }
+    impl Visitor<'_> for NegatedComparisonVisitor {
+        fn visit_logical_expr(&mut self, node: &'_ LogicalExpr) {
+            if let LogicalExpr::Unary {
+                op: UnaryOp::Not,
+                arg,
+                reverse_span,
+            } = node
+                && let LogicalExpr::Comparison(comp) = &**arg
+            {
+                // Only handle ordering comparisons (eq, ne, lt, le, gt, ge)
+                if let ComparisonOpExpr::Ordering { op, .. } = &comp.op {
+                    use OrderingOp;
+                    let suggestion_op = match op {
+                        OrderingOp::Equal => Some(OrderingOp::NotEqual),
+                        OrderingOp::NotEqual => Some(OrderingOp::Equal),
+                        OrderingOp::LessThan => Some(OrderingOp::GreaterThanEqual),
+                        OrderingOp::LessThanEqual => Some(OrderingOp::GreaterThan),
+                        OrderingOp::GreaterThan => Some(OrderingOp::LessThanEqual),
+                        OrderingOp::GreaterThanEqual => Some(OrderingOp::LessThan),
+                    };
 
-        let mut visitor = NegatedComparisonVisitor { result: Vec::new() };
-
-        impl Visitor<'_> for NegatedComparisonVisitor {
-            fn visit_logical_expr(&mut self, node: &'_ LogicalExpr) {
-                if let LogicalExpr::Unary {
-                    op: UnaryOp::Not,
-                    arg,
-                    reverse_span,
-                } = node
-                    && let LogicalExpr::Comparison(comp) = &**arg
-                {
-                    // Only handle ordering comparisons (eq, ne, lt, le, gt, ge)
-                    if let ComparisonOpExpr::Ordering { op, .. } = &comp.op {
-                        use OrderingOp;
-                        let suggestion_op = match op {
-                            OrderingOp::Equal => Some(OrderingOp::NotEqual),
-                            OrderingOp::NotEqual => Some(OrderingOp::Equal),
-                            OrderingOp::LessThan => Some(OrderingOp::GreaterThanEqual),
-                            OrderingOp::LessThanEqual => Some(OrderingOp::GreaterThan),
-                            OrderingOp::GreaterThan => Some(OrderingOp::LessThanEqual),
-                            OrderingOp::GreaterThanEqual => Some(OrderingOp::LessThan),
+                    if let Some(sugg) = suggestion_op {
+                        let inner = AstPrintVisitor::comparison_expr_to_string(comp);
+                        // Reconstruct a ComparisonExpr string with the suggested op
+                        // We reuse the AST printer on the original and then replace the operator
+                        let sugg_str = match sugg {
+                            OrderingOp::Equal => " eq ",
+                            OrderingOp::NotEqual => " ne ",
+                            OrderingOp::GreaterThanEqual => " ge ",
+                            OrderingOp::LessThanEqual => " le ",
+                            OrderingOp::GreaterThan => " gt ",
+                            OrderingOp::LessThan => " lt ",
                         };
 
-                        if let Some(sugg) = suggestion_op {
-                            let inner = AstPrintVisitor::comparison_expr_to_string(comp);
-                            // Reconstruct a ComparisonExpr string with the suggested op
-                            // We reuse the AST printer on the original and then replace the operator
-                            let sugg_str = match sugg {
-                                OrderingOp::Equal => " eq ",
-                                OrderingOp::NotEqual => " ne ",
-                                OrderingOp::GreaterThanEqual => " ge ",
-                                OrderingOp::LessThanEqual => " le ",
-                                OrderingOp::GreaterThan => " gt ",
-                                OrderingOp::LessThan => " lt ",
-                            };
+                        // Split on known operator tokens to replace
+                        let suggested_expr = inner
+                            .replace(" eq ", sugg_str)
+                            .replace(" == ", sugg_str)
+                            .replace(" ne ", sugg_str)
+                            .replace(" != ", sugg_str)
+                            .replace(" gt ", sugg_str)
+                            .replace(" > ", sugg_str)
+                            .replace(" lt ", sugg_str)
+                            .replace(" < ", sugg_str)
+                            .replace(" ge ", sugg_str)
+                            .replace(" >= ", sugg_str)
+                            .replace(" le ", sugg_str)
+                            .replace(" <= ", sugg_str);
 
-                            // Split on known operator tokens to replace
-                            // TODO: add replacements for c style operators
-                            let suggested_expr = inner
-                                .replace(" eq ", sugg_str)
-                                .replace(" == ", sugg_str)
-                                .replace(" ne ", sugg_str)
-                                .replace(" != ", sugg_str)
-                                .replace(" gt ", sugg_str)
-                                .replace(" > ", sugg_str)
-                                .replace(" lt ", sugg_str)
-                                .replace(" < ", sugg_str)
-                                .replace(" ge ", sugg_str)
-                                .replace(" >= ", sugg_str)
-                                .replace(" le ", sugg_str)
-                                .replace(" <= ", sugg_str);
-
-                            self.result.push(LintReport {
-                                id: "negated_comparison".into(),
-                                url: None,
-                                title: "Found negated comparison".into(),
-                                message: format!(
-                                    "Consider simplifying from `not {inner}` to `{suggested_expr}`",
-                                ),
-                                span: Span::ReverseByte(reverse_span.clone()),
-                            });
-                        }
+                        self.result.push(LintReport {
+                            id: LINT_NAME.into(),
+                            url: None,
+                            title: "Found negated comparison".into(),
+                            message: format!(
+                                "Consider simplifying from `not {inner}` to `{suggested_expr}`",
+                            ),
+                            span: Span::ReverseByte(reverse_span.clone()),
+                        });
                     }
                 }
-
-                self.visit_expr(node);
             }
-        }
 
-        ast.walk(&mut visitor);
-        visitor.result
+            self.visit_expr(node);
+        }
     }
+
+    ast.walk(&mut visitor);
+    visitor.result
 }
 
 #[cfg(test)]
@@ -100,7 +97,7 @@ mod test {
     static LINTER: LazyLock<Linter> = LazyLock::new(|| {
         let mut linter = Linter::new();
         linter.config = LinterConfig::default_disable_all_lints();
-        linter.config.lints.enable_lints = vec![NegatedComparison.name().into()];
+        linter.config.lints.enable_lints = vec![LINT_NAME.into()];
         linter
     });
 
