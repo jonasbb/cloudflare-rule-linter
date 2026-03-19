@@ -96,12 +96,7 @@ impl Linter {
         // Check for all lints that should run
         let mut runlint = vec![true; inventory::iter::<Lint>.into_iter().count()];
         for (rl, lint) in iter::zip(&mut runlint, inventory::iter::<Lint>) {
-            if self
-                .config
-                .lints
-                .enable_categories
-                .contains(&lint.category)
-            {
+            if self.config.lints.enable_categories.contains(&lint.category) {
                 *rl = true;
             }
             if self

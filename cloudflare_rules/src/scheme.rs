@@ -13,20 +13,21 @@ fn placeholder_fn<'a>(_args: FunctionArgs<'_, 'a>) -> Option<LhsValue<'a>> {
     unimplemented!()
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
 pub struct NumList {}
 
 impl wirefilter::ListDefinition for NumList {
-    fn matcher_from_json_value(
-        &self,
-        _: Type,
-        _: serde_json::Value,
-    ) -> Result<Box<dyn wirefilter::ListMatcher>, serde_json::Error> {
-        Ok(Box::new(NumList {}))
-    }
-
     fn new_matcher(&self) -> Box<dyn wirefilter::ListMatcher> {
         Box::new(NumList {})
+    }
+
+    fn deserialize_matcher<'de>(
+        &self,
+        _: Type,
+        deserializer: &mut dyn erased_serde::Deserializer<'de>,
+    ) -> Result<Box<dyn wirefilter::ListMatcher>, erased_serde::Error> {
+        let matcher = erased_serde::deserialize::<NumList>(deserializer)?;
+        Ok(Box::new(matcher))
     }
 }
 
@@ -42,27 +43,24 @@ impl wirefilter::ListMatcher for NumList {
         }
     }
 
-    fn to_json_value(&self) -> serde_json::Value {
-        serde_json::Value::Null
-    }
-
     fn clear(&mut self) {}
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
 pub struct IpList {}
 
 impl wirefilter::ListDefinition for IpList {
-    fn matcher_from_json_value(
-        &self,
-        _: Type,
-        _: serde_json::Value,
-    ) -> Result<Box<dyn wirefilter::ListMatcher>, serde_json::Error> {
-        Ok(Box::new(IpList {}))
-    }
-
     fn new_matcher(&self) -> Box<dyn wirefilter::ListMatcher> {
         Box::new(IpList {})
+    }
+
+    fn deserialize_matcher<'de>(
+        &self,
+        _: Type,
+        deserializer: &mut dyn erased_serde::Deserializer<'de>,
+    ) -> Result<Box<dyn wirefilter::ListMatcher>, erased_serde::Error> {
+        let matcher = erased_serde::deserialize::<IpList>(deserializer)?;
+        Ok(Box::new(matcher))
     }
 }
 
@@ -76,10 +74,6 @@ impl wirefilter::ListMatcher for IpList {
             },
             _ => unreachable!(), // TODO: is this unreachable?
         }
-    }
-
-    fn to_json_value(&self) -> serde_json::Value {
-        serde_json::Value::Null
     }
 
     fn clear(&mut self) {}
@@ -103,7 +97,7 @@ pub(crate) fn build_scheme() -> Scheme {
         .add_function("all", wirefilter::AllFunction {})
         .unwrap();
     builder
-        .add_function("cidr", wirefilter::CIDRFunction {})
+        .add_function("cidr", wirefilter::functions::CIDRFunction {})
         .unwrap();
     builder
         .add_function(
@@ -129,10 +123,13 @@ pub(crate) fn build_scheme() -> Scheme {
         .add_function("concat", wirefilter::ConcatFunction {})
         .unwrap();
     builder
-        .add_function("decode_base64", wirefilter::DecodeBase64Function {})
+        .add_function(
+            "decode_base64",
+            wirefilter::functions::DecodeBase64Function {},
+        )
         .unwrap();
     builder
-        .add_function("ends_with", wirefilter::EndsWithFunction {})
+        .add_function("ends_with", wirefilter::functions::EndsWithFunction {})
         .unwrap();
     builder
         .add_function(
@@ -161,12 +158,12 @@ pub(crate) fn build_scheme() -> Scheme {
         .add_function("has_value", self::has_value::HasValue {})
         .unwrap();
     builder
-        .add_function("len", wirefilter::LenFunction {})
+        .add_function("len", wirefilter::functions::LenFunction {})
         .unwrap();
     // TODO lookup_json_integer
     // TODO lookup_json_string
     builder
-        .add_function("lower", wirefilter::LowerFunction {})
+        .add_function("lower", wirefilter::functions::LowerFunction {})
         .unwrap();
     builder
         .add_function(
@@ -193,10 +190,16 @@ pub(crate) fn build_scheme() -> Scheme {
         )
         .unwrap();
     builder
-        .add_function("remove_bytes", wirefilter::RemoveBytesFunction {})
+        .add_function(
+            "remove_bytes",
+            wirefilter::functions::RemoveBytesFunction {},
+        )
         .unwrap();
     builder
-        .add_function("remove_query_args", wirefilter::RemoveQueryArgsFunction {})
+        .add_function(
+            "remove_query_args",
+            wirefilter::functions::RemoveQueryArgsFunction {},
+        )
         .unwrap();
     builder
         .add_function(
@@ -223,19 +226,19 @@ pub(crate) fn build_scheme() -> Scheme {
         )
         .unwrap();
     builder
-        .add_function("starts_with", wirefilter::StartsWithFunction {})
+        .add_function("starts_with", wirefilter::functions::StartsWithFunction {})
         .unwrap();
     builder
-        .add_function("substring", wirefilter::SubstringFunction {})
+        .add_function("substring", wirefilter::functions::SubstringFunction {})
         .unwrap();
     builder
-        .add_function("to_string", wirefilter::ToStringFunction {})
+        .add_function("to_string", wirefilter::functions::ToStringFunction {})
         .unwrap();
     builder
-        .add_function("upper", wirefilter::UpperFunction {})
+        .add_function("upper", wirefilter::functions::UpperFunction {})
         .unwrap();
     builder
-        .add_function("url_decode", wirefilter::UrlDecodeFunction {})
+        .add_function("url_decode", wirefilter::functions::UrlDecodeFunction {})
         .unwrap();
     builder
         .add_function(

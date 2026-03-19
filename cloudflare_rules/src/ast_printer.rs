@@ -126,13 +126,13 @@ impl AstPrintVisitor {
         }
     }
 
-    fn visit_bytes(&mut self, bytes: &wirefilter::Bytes) {
+    fn visit_bytes(&mut self, bytes: &wirefilter::BytesExpr) {
         self.0.push('"');
         self.0.push_str(&AstPrintVisitor::escape_bytes(bytes));
         self.0.push('"');
     }
 
-    fn visit_bytes_list(&mut self, bytes: &[wirefilter::Bytes]) {
+    fn visit_bytes_list(&mut self, bytes: &[wirefilter::BytesExpr]) {
         self.0.push('{');
         for (idx, bytes) in bytes.iter().enumerate() {
             if idx > 0 {
