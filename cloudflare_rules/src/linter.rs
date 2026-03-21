@@ -6,6 +6,7 @@ use wirefilter::FilterAst;
 
 mod deprecated_field;
 mod duplicate_list_entries;
+mod empty_list;
 mod header_case;
 mod illogical_condition;
 mod invalid_list_name;
