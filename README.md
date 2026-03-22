@@ -53,7 +53,7 @@ warning[illogical_condition]: Found illogical condition with AND
 
 This code relies on manually synchronizing the rule scheme from the Cloudflare documentation.
 The [fields](https://developers.cloudflare.com/ruleset-engine/rules-language/fields/) and [functions](https://developers.cloudflare.com/ruleset-engine/rules-language/functions/) are documented with their types.
-If you notice any discrepancies between the scheme as implemented here compared to Cloudflares implementation, please open an issue or PR.
+If you notice any discrepancies between the scheme as implemented here compared to Cloudflare's implementation, please open an issue or PR.
 
 
 ## Links
@@ -70,3 +70,4 @@ If you notice any discrepancies between the scheme as implemented here compared 
     This is based on the wirefilter crate.
 * <https://raw.githubusercontent.com/cloudflare/cloudflare-docs/HEAD/src/content/fields/index.yaml>
     Wirefilter fields and types.
+* <https://github.com/troymjones/cloudflare-expression-lint>
