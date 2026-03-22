@@ -30,6 +30,7 @@ static LINT_NAME: &str = "deprecated_field";
 inventory::submit! {
     Lint {
         name: LINT_NAME,
+        description: "Check for usage of old field names and suggest the correct new values.",
         category: Category::Deprecated,
         lint_fn: lint
     }
@@ -54,7 +55,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                 // comparison expression here, so keep the message focused on the field.
                 self.result.push(LintReport {
                     id: LINT_NAME.into(),
-                    url: None,
+                    url: Some(create_url(LINT_NAME)),
                     title: format!("Found deprecated field {name}"),
                     message: format!("The value `{name}` should be replaced with `{new_name}`.",),
                     span: Span::ReverseByte(self.last_span.clone()),
@@ -103,7 +104,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
 //                     // comparison expression here, so keep the message focused on the field.
 //                     self.result.push(LintReport {
 //                         id: "deprecated_field".into(),
-//                         url: None,
+//                         url: Some(create_url(LINT_NAME)),
 //                         title: format!("Found deprecated field {name}"),
 //                         message: format!(
 //                             "The value `{name}` should be replaced with `{new_name}`.",

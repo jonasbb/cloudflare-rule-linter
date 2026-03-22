@@ -69,3 +69,8 @@ pub fn parse_and_lint_expression_with_config(config: LinterConfig, expr: &str) -
     }
     result
 }
+
+/// Provides an iterator over all available lints. This can be used to discover lints and their metadata.
+pub fn lint_iter() -> impl Iterator<Item = &'static linter::Lint> {
+    inventory::iter::<linter::Lint>.into_iter()
+}

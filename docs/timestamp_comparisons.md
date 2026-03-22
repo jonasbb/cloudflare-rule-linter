@@ -13,5 +13,6 @@ Values that are too far in the future can similarly be a typo or are unreliable.
 timestamp_bounds_min_timestamp = 1262300400
 # Default value: Roughly 5 years into the future
 # Number of seconds that are permitted for the future.
-timestamp_bounds_future_delta = 5 * 366 * 24 * 60 * 60
+# 158112000 = 5 * 366 * 24 * 60 * 60
+timestamp_bounds_future_delta = 158112000
 ```

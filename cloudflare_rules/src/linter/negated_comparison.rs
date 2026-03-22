@@ -7,6 +7,7 @@ static LINT_NAME: &str = "negated_comparison";
 inventory::submit! {
     Lint {
         name: LINT_NAME,
+        description: "Detect comparisons that are negated and suggest using the opposite comparison operator instead.",
         category: Category::Style,
         lint_fn: lint
     }
@@ -70,7 +71,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
 
                         self.result.push(LintReport {
                             id: LINT_NAME.into(),
-                            url: None,
+                            url: Some(create_url(LINT_NAME)),
                             title: "Found negated comparison".into(),
                             message: format!(
                                 "Consider simplifying from `not {inner}` to `{suggested_expr}`",

@@ -6,6 +6,7 @@ static LINT_NAME: &str = "regex_raw_strings";
 inventory::submit! {
     Lint {
         name: LINT_NAME,
+        description: "Ensure regex matches use raw string literals (r\"...\") instead of normal quoted strings.",
         category: Category::Style,
         lint_fn: lint
     }
@@ -27,7 +28,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
             {
                 self.result.push(LintReport {
                     id: LINT_NAME.into(),
-                    url: None,
+                    url: Some(create_url(LINT_NAME)),
                     title: "Found regex match with non-raw string".into(),
                     message: "Regex matches must use raw string literals (e.g., r\"...\" or \
                               r#\"...\"#) when using the `matches` operator."

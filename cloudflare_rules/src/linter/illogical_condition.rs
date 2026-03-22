@@ -9,6 +9,7 @@ static LINT_NAME: &str = "illogical_condition";
 inventory::submit! {
     Lint {
         name: LINT_NAME,
+        description: "Detect illogical conditions, such as comparing the same field for equality multiple times in an AND expression, or for inequality multiple times in an OR expression.",
         category: Category::Style,
         lint_fn: lint
     }
@@ -69,7 +70,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                     let lhs_str = AstPrintVisitor::value_expr_to_string(lhs);
                                     self.result.push(LintReport {
                                         id: LINT_NAME.into(),
-                                        url: None,
+                                        url: Some(create_url(LINT_NAME)),
                                         title: "Found illogical condition with AND".into(),
                                         message: format!(
                                             "The value `{lhs_str}` is compared for equality \
@@ -106,7 +107,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                         let lhs_str = AstPrintVisitor::value_expr_to_string(lhs);
                                         self.result.push(LintReport {
                                             id: LINT_NAME.into(),
-                                            url: None,
+                                            url: Some(create_url(LINT_NAME)),
                                             title: "Found illogical condition with OR".into(),
                                             message: format!(
                                                 "The value `{lhs_str}` is compared for inequality \
@@ -141,7 +142,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                                 AstPrintVisitor::value_expr_to_string(lhs);
                                             self.result.push(LintReport {
                                                 id: LINT_NAME.into(),
-                                                url: None,
+                                                url: Some(create_url(LINT_NAME)),
                                                 title: "Found illogical condition with OR".into(),
                                                 message: format!(
                                                     "The value `{lhs_str}` is compared for \

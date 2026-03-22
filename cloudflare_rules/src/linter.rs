@@ -18,12 +18,20 @@ mod timestamp_bounds;
 mod value_domain;
 
 pub struct Lint {
+    /// Identifiable name of the lint rule, should be unique across all rules
     pub name: &'static str,
+    /// Short single line description of the lint rule
+    pub description: &'static str,
     pub category: Category,
     pub lint_fn: fn(&LinterConfig, &FilterAst) -> Vec<LintReport>,
 }
 
 inventory::collect!(Lint);
+
+/// Generate a URL for the given lint rule name, pointing to the documentation for that rule
+fn create_url(name: &str) -> String {
+    format!("https://github.com/jonasbb/cloudflare-rule-linter/blob/master/docs/{}.md", name)
+}
 
 #[derive(
     Debug,
@@ -35,6 +43,7 @@ inventory::collect!(Lint);
     Deserialize,
     strum::VariantArray,
     strum::EnumString,
+    strum::Display,
 )]
 #[strum(serialize_all = "lowercase")]
 pub enum Category {

@@ -6,6 +6,7 @@ static LINT_NAME: &str = "empty_list";
 inventory::submit! {
     Lint {
         name: LINT_NAME,
+        description: "Check for comparisons against empty lists, which are always false.",
         category: Category::Correctness,
         lint_fn: lint
     }
@@ -33,7 +34,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                 if is_empty {
                     self.result.push(LintReport {
                         id: LINT_NAME.into(),
-                        url: None,
+                        url: Some(create_url(LINT_NAME)),
                         title: "Comparison with empty list are always false".to_string(),
                         message: "Consider removing the empty list or providing valid values."
                             .to_string(),

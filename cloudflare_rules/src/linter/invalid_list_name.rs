@@ -6,6 +6,7 @@ static LINT_NAME: &str = "invalid_list_name";
 inventory::submit! {
     Lint {
         name: LINT_NAME,
+        description: "Check for invalid managed list names and optionally invalid custom list names.",
         category: Category::Correctness,
         lint_fn: lint
     }
@@ -39,7 +40,7 @@ fn lint(config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                 } else if name.as_str().starts_with("cf.") || name.as_str().contains(".") {
                     self.result.push(LintReport {
                         id: LINT_NAME.into(),
-                        url: None,
+                        url: Some(create_url(LINT_NAME)),
                         title: "Invalid managed list name".into(),
                         message: format!(
                             "Only the following managed list names are allowed: {}",
@@ -54,7 +55,7 @@ fn lint(config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                 {
                     self.result.push(LintReport {
                         id: LINT_NAME.into(),
-                        url: None,
+                        url: Some(create_url(LINT_NAME)),
                         title: "Invalid custom list name".into(),
                         message: format!(
                             "Custom list name `{}` is not in the allowed list of custom lists.",

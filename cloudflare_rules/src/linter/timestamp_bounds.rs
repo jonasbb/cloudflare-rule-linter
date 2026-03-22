@@ -10,6 +10,7 @@ static LINT_NAME: &str = "timestamp_comparisons";
 inventory::submit! {
     Lint {
         name: LINT_NAME,
+        description: "Detect comparisons against http.request.timestamp.sec that use values outside of reasonable bounds.",
         category: Category::Correctness,
         lint_fn: lint
     }
@@ -37,7 +38,7 @@ fn lint(config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                         if *val < self.min_time {
                             self.result.push(LintReport {
                                 id: LINT_NAME.into(),
-                                url: None,
+                                url: Some(create_url(LINT_NAME)),
                                 title: "Comparison with very time constant below `min_timestamp`"
                                     .into(),
                                 message: format!(
@@ -52,7 +53,7 @@ fn lint(config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                             // TODO: Adding max time here breaks the simple expect tests, as the value is dynamic
                             self.result.push(LintReport {
                                 id: LINT_NAME.into(),
-                                url: None,
+                                url: Some(create_url(LINT_NAME)),
                                 title: "Comparison with future time after `future_delta`".into(),
                                 message: format!(
                                     "Found comparison against http.request.timestamp.sec with \
@@ -72,7 +73,7 @@ fn lint(config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                             if low < self.min_time {
                                 self.result.push(LintReport {
                                     id: LINT_NAME.into(),
-                                    url: None,
+                                    url: Some(create_url(LINT_NAME)),
                                     title: "Comparison with very time constant below \
                                             `min_timestamp`"
                                         .into(),
@@ -88,7 +89,7 @@ fn lint(config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                 // TODO: Adding max time here breaks the simple expect tests, as the value is dynamic
                                 self.result.push(LintReport {
                                     id: LINT_NAME.into(),
-                                    url: None,
+                                    url: Some(create_url(LINT_NAME)),
                                     title: "Comparison with future time after `future_delta`"
                                         .into(),
                                     message: format!(

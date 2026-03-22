@@ -165,6 +165,7 @@ static LINT_NAME: &str = "value_domain";
 inventory::submit! {
     Lint {
         name: LINT_NAME,
+        description: "Check for values that are outside of the valid domain for certain fields, such as invalid HTTP methods or invalid continents.",
         category: Category::Correctness,
         lint_fn: lint
     }
@@ -196,7 +197,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                         if !valids.contains(&s) {
                                             self.result.push(LintReport {
                                                 id: LINT_NAME.into(),
-                                                url: None,
+                                                url: Some(create_url(LINT_NAME)),
                                                 title: format!(
                                                     "Found invalid value for {}",
                                                     field.name()
@@ -216,7 +217,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                         if !func(s) {
                                             self.result.push(LintReport {
                                                 id: LINT_NAME.into(),
-                                                url: None,
+                                                url: Some(create_url(LINT_NAME)),
                                                 title: format!(
                                                     "Found invalid value for {}",
                                                     field.name()
@@ -245,7 +246,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                 if name == "lower" && s.chars().any(|c| c.is_ascii_uppercase()) {
                                     self.result.push(LintReport {
                                         id: LINT_NAME.into(),
-                                        url: None,
+                                        url: Some(create_url(LINT_NAME)),
                                         title: format!("Found invalid value for {}(...)", name),
                                         message: format!(
                                             "The value `{}` is not a valid value for `{}`. Values \
@@ -259,7 +260,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                 {
                                     self.result.push(LintReport {
                                         id: LINT_NAME.into(),
-                                        url: None,
+                                        url: Some(create_url(LINT_NAME)),
                                         title: format!("Found invalid value for {}(...)", name),
                                         message: format!(
                                             "The value `{}` is not a valid value for `{}`. Values \
@@ -280,7 +281,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                             {
                                 self.result.push(LintReport {
                                     id: LINT_NAME.into(),
-                                    url: None,
+                                    url: Some(create_url(LINT_NAME)),
                                     title: format!("Found invalid value for {}", field.name()),
                                     message: format!(
                                         "The value `{}` is not a valid value for `{}`. Valid \
@@ -299,7 +300,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                             {
                                 self.result.push(LintReport {
                                     id: LINT_NAME.into(),
-                                    url: None,
+                                    url: Some(create_url(LINT_NAME)),
                                     title: "Found invalid value for len(...)".into(),
                                     message: format!(
                                         "The value `{}` are not valid for `{}`. Values must be >= \
@@ -318,7 +319,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                             {
                                 self.result.push(LintReport {
                                     id: LINT_NAME.into(),
-                                    url: None,
+                                    url: Some(create_url(LINT_NAME)),
                                     title: "Found invalid value for len(...)".into(),
                                     message: format!(
                                         "The value `{}` are not valid for `{}`. Values must be >= \
@@ -337,7 +338,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                 if *iv == 0 {
                                     self.result.push(LintReport {
                                         id: LINT_NAME.into(),
-                                        url: None,
+                                        url: Some(create_url(LINT_NAME)),
                                         title: "Found bad value for len(...)".into(),
                                         message: "len(...) can never be negative thus `lt 0` can \
                                                   be simplified to `eq 0`."
@@ -347,7 +348,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                 } else if *iv < 0 {
                                     self.result.push(LintReport {
                                         id: LINT_NAME.into(),
-                                        url: None,
+                                        url: Some(create_url(LINT_NAME)),
                                         title: "Found invalid value for len(...)".into(),
                                         message: format!(
                                             "The value `{}` are not valid for `{}`. Values must \
@@ -434,7 +435,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
 
                             self.result.push(LintReport {
                                 id: LINT_NAME.into(),
-                                url: None,
+                                url: Some(create_url(LINT_NAME)),
                                 title: format!("Found invalid value(s) for {}", field.name()),
                                 message: msg,
                                 span: Span::ReverseByte(node.reverse_span.clone()),
@@ -474,7 +475,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                     };
                                     self.result.push(LintReport {
                                         id: LINT_NAME.into(),
-                                        url: None,
+                                        url: Some(create_url(LINT_NAME)),
                                         title: format!("Found invalid value(s) for {}(...)", name),
                                         message: msg,
                                         span: Span::ReverseByte(node.reverse_span.clone()),
@@ -504,7 +505,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                         );
                                         self.result.push(LintReport {
                                             id: LINT_NAME.into(),
-                                            url: None,
+                                            url: Some(create_url(LINT_NAME)),
                                             title: "Found invalid value(s) for len(...)".into(),
                                             message: msg,
                                             span: Span::ReverseByte(node.reverse_span.clone()),

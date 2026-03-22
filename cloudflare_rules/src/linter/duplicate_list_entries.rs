@@ -8,6 +8,7 @@ static LINT_NAME: &str = "duplicate_list_entries";
 inventory::submit! {
     Lint {
         name: LINT_NAME,
+        description: "Detect duplicate values in lists.",
         category: Category::Correctness,
         lint_fn: lint
     }
@@ -37,7 +38,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                 {
                                     self.result.push(LintReport {
                                         id: LINT_NAME.into(),
-                                        url: None,
+                                        url: Some(create_url(LINT_NAME)),
                                         title: "Found duplicate entry in list".into(),
                                         message: format!(
                                             "The values `{}..{}` and `{}..{}` overlap.",
@@ -76,7 +77,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                     let range_j_str = AstPrintVisitor::format_ip_range(range_j);
                                     self.result.push(LintReport {
                                         id: LINT_NAME.into(),
-                                        url: None,
+                                        url: Some(create_url(LINT_NAME)),
                                         title: "Found duplicate entry in list".into(),
                                         message: format!(
                                             "The values `{range_i_str}` and `{range_j_str}` \
@@ -97,7 +98,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                     let item_str = AstPrintVisitor::escape_bytes(item_i);
                                     self.result.push(LintReport {
                                         id: LINT_NAME.into(),
-                                        url: None,
+                                        url: Some(create_url(LINT_NAME)),
                                         title: "Found duplicate entry in list".into(),
                                         message: format!(
                                             "The value `{item_str}` appears multiple times in the \

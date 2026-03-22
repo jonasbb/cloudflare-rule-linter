@@ -140,6 +140,7 @@ static LINT_NAME: &str = "reserved_ip_space";
 inventory::submit! {
     Lint {
         name: LINT_NAME,
+        description: "Check for usage of reserved IP ranges that are unlikely to be useful in rules.",
         category: Category::Correctness,
         lint_fn: lint
     }
@@ -168,7 +169,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                 ));
                                 self.result.push(LintReport {
                                     id: LINT_NAME.into(),
-                                    url: None,
+                                    url: Some(create_url(LINT_NAME)),
                                     title: "Found usage of reserved IP range".into(),
                                     message: format!(
                                         "The value `{ip_str}` is within reserved address space.",
@@ -187,7 +188,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                 ));
                                 self.result.push(LintReport {
                                     id: LINT_NAME.into(),
-                                    url: None,
+                                    url: Some(create_url(LINT_NAME)),
                                     title: "Found usage of reserved IP range".into(),
                                     message: format!(
                                         "The value `{ip_str}` is within reserved address space.",
@@ -209,7 +210,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                         let ip_str = AstPrintVisitor::format_ip_range(ip);
                                         self.result.push(LintReport {
                                             id: LINT_NAME.into(),
-                                            url: None,
+                                            url: Some(create_url(LINT_NAME)),
                                             title: "Found usage of reserved IP range".into(),
                                             message: format!(
                                                 "The value `{ip_str}` is within reserved address \
@@ -227,7 +228,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                                         let ip_str = AstPrintVisitor::format_ip_range(ip);
                                         self.result.push(LintReport {
                                             id: LINT_NAME.into(),
-                                            url: None,
+                                            url: Some(create_url(LINT_NAME)),
                                             title: "Found usage of reserved IP range".into(),
                                             message: format!(
                                                 "The value `{ip_str}` is within reserved address \

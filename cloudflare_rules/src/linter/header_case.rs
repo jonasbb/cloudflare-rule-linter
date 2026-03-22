@@ -24,6 +24,7 @@ static LINT_NAME: &str = "header_case";
 inventory::submit! {
     Lint {
         name: LINT_NAME,
+        description: "Checks for header names that are not all lowercase.",
         category: Category::Correctness,
         lint_fn: lint
     }
@@ -54,7 +55,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                         {
                             self.result.push(LintReport {
                                 id: LINT_NAME.into(),
-                                url: None,
+                                url: Some(create_url(LINT_NAME)),
                                 title: format!(
                                     "Found uppercase characters in header name `{}`",
                                     header
@@ -77,7 +78,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                             {
                                 self.result.push(LintReport {
                                     id: LINT_NAME.into(),
-                                    url: None,
+                                    url: Some(create_url(LINT_NAME)),
                                     title: format!(
                                         "Found uppercase characters in header name `{}`",
                                         header
@@ -116,7 +117,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
             {
                 self.result.push(LintReport {
                     id: LINT_NAME.into(),
-                    url: None,
+                    url: Some(create_url(LINT_NAME)),
                     title: format!("Found uppercase characters in header name `{}`", header),
                     message: format!(
                         "The map key `{}` used to index `{}` contains uppercase characters; keys \

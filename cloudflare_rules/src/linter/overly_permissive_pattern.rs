@@ -6,6 +6,7 @@ static LINT_NAME: &str = "overly_permissive_pattern";
 inventory::submit! {
     Lint {
         name: LINT_NAME,
+        description: "Check for regex and wildcard patterns that are overly permissive.",
         category: Category::Correctness,
         lint_fn: lint
     }
@@ -45,7 +46,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                     if permissive_patterns.contains(&pattern.as_str()) {
                         self.result.push(LintReport {
                             id: LINT_NAME.into(),
-                            url: None,
+                            url: Some(create_url(LINT_NAME)),
                             title: "Overly permissive pattern".to_string(),
                             message: "Consider using a more specific pattern to avoid unintended \
                                       matches."
@@ -66,7 +67,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                     if permissive_patterns.contains(&&**pattern.pattern()) {
                         self.result.push(LintReport {
                             id: LINT_NAME.into(),
-                            url: None,
+                            url: Some(create_url(LINT_NAME)),
                             title: "Overly permissive pattern".to_string(),
                             message: "Consider using a more specific pattern to avoid unintended \
                                       matches."
@@ -87,7 +88,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                     if permissive_patterns.contains(&&**pattern.pattern()) {
                         self.result.push(LintReport {
                             id: LINT_NAME.into(),
-                            url: None,
+                            url: Some(create_url(LINT_NAME)),
                             title: "Overly permissive pattern".to_string(),
                             message: "Consider using a more specific pattern to avoid unintended \
                                       matches."
