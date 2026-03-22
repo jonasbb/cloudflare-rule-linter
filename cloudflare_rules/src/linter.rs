@@ -11,6 +11,7 @@ mod header_case;
 mod illogical_condition;
 mod invalid_list_name;
 mod negated_comparison;
+mod overly_permissive_pattern;
 mod regex_raw_strings;
 mod reserved_ip_space;
 mod timestamp_bounds;
