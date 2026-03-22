@@ -30,7 +30,10 @@ inventory::collect!(Lint);
 
 /// Generate a URL for the given lint rule name, pointing to the documentation for that rule
 fn create_url(name: &str) -> String {
-    format!("https://github.com/jonasbb/cloudflare-rule-linter/blob/master/docs/{}.md", name)
+    format!(
+        "https://github.com/jonasbb/cloudflare-rule-linter/blob/master/docs/{}.md",
+        name
+    )
 }
 
 #[derive(
