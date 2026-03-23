@@ -227,6 +227,7 @@ dependencies = [
  "ipnet",
  "pretty_assertions",
  "pyo3",
+ "regex-syntax",
  "serde",
  "serde_json",
  "strum",

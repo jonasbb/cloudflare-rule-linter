@@ -14,5 +14,6 @@
 | [regex_raw_strings](./regex_raw_strings.md) | style | Ensure regex matches use raw string literals (r"...") instead of normal quoted strings. |
 | [reserved_ip_space](./reserved_ip_space.md) | correctness | Check for usage of reserved IP ranges that are unlikely to be useful in rules. |
 | [timestamp_comparisons](./timestamp_comparisons.md) | correctness | Detect comparisons against http.request.timestamp.sec that use values outside of reasonable bounds. |
+| [unnecessary_patterns](./unnecessary_patterns.md) | style | Detect regex and wildcard patterns that can be simplified to `eq` or `contains` expressions. |
 | [value_domain](./value_domain.md) | correctness | Check for values that are outside of the valid domain for certain fields, such as invalid HTTP methods or invalid continents. |
 <!--END_LINT_SUMMARY-->

@@ -15,6 +15,7 @@ mod overly_permissive_pattern;
 mod regex_raw_strings;
 mod reserved_ip_space;
 mod timestamp_bounds;
+mod unnecessary_patterns;
 mod value_domain;
 
 pub struct Lint {
