@@ -113,7 +113,7 @@ jobs:
             - name: Generate JS glue with wasm-bindgen
               run: |
                   cd webui
-                  wasm-pack build -t web --out-dir pkg --out-name wirefilter_wasm --no-pack --no-typescript
+                  wasm-pack build -t web --out-dir pkg --out-name wirefilter_wasm --no-pack --no-typescript --profile wasm-release
 
                   # Show package contents and sizes
                   ls -la ./pkg
