@@ -84,7 +84,18 @@ fn run() -> Result<(), JsValue> {
             ("No issues found :)".to_string(), "alert alert-success")
         } else {
             (
-                ansi_to_html::convert(&renderer.render(&report).to_string()).unwrap(),
+                {
+                    // Strip out the hyperlink escape codes that annotate_snippets adds, since they don't work in this context and just add noise
+                    let mut errors = renderer.render(&report).to_string();
+                    while let Some((first, second)) = errors.split_once("\x1B]8;") {
+                        if let Some((_, third)) = second.split_once("\x1B\\") {
+                            errors = format!("{first}{third}");
+                        } else {
+                            break;
+                        }
+                    }
+                    ansi_to_html::convert(&errors).unwrap()
+                },
                 if has_error {
                     "alert alert-danger"
                 } else {
