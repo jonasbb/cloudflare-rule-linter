@@ -24,6 +24,27 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
     }
 
     let field_definitions = [
+        (
+            "cf.bot_management.ja3_hash",
+            Domain::Validate(
+                |s: &str| {
+                    s.is_empty() || (s.len() == 32 && s.chars().all(|c| c.is_ascii_hexdigit()))
+                },
+                "be a 32-character hexadecimal string or be empty",
+            ),
+        ),
+        (
+            "cf.bot_management.ja4",
+            Domain::Validate(
+                |s: &str| {
+                    s.is_empty()
+                        || (s.len() == 36
+                            && s.chars()
+                                .all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '_'))
+                },
+                "be a 36-character string or be empty",
+            ),
+        ),
         ("cf.bot_management.score", Domain::IntRange(1, 99)),
         ("cf.edge.server_port", Domain::IntRange(1, 65535)),
         (
@@ -939,6 +960,22 @@ mod test {
         assert_no_lint_message(
             &LINTER,
             r#"raw.http.request.full_uri eq "https://example.com/""#,
+        );
+    }
+
+    #[test]
+    fn test_ja_hashes() {
+        assert_no_lint_message(
+            &LINTER,
+            r#"cf.bot_management.ja3_hash eq "e7d705a3286e19ea42f587b344ee6865""#,
+        );
+        assert_no_lint_message(
+            &LINTER,
+            r#"cf.bot_management.ja3_hash eq "6734f37431670b3ab4292b8f60f29984""#,
+        );
+        assert_no_lint_message(
+            &LINTER,
+            r#"cf.bot_management.ja4 eq "t13d1516h2_8daaf6152771_02713d6af862""#,
         );
     }
 }
