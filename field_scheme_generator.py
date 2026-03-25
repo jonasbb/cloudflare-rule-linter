@@ -1,3 +1,10 @@
+#!/usr/bin/env -S uv run --script
+#
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["requests", "PyYAML"]
+# ///
+
 """
 Generates Wirefilter field scheme code and HTML documentation from Cloudflare's field definitions.
 """
@@ -45,6 +52,7 @@ TYPE_TO_WIREFILTER_TYPE = {
     "IP address": "Type::Ip",
     "Map<Array<Integer>>": "Type::Map(Type::Array(Type::Int.into()).into())",
     "Map<Array<String>>": "Type::Map(Type::Array(Type::Bytes.into()).into())",
+    "Map<Number>": "Type::Map(Type::Int.into())",
     "Number": "Type::Int",
     "String": "Type::Bytes",
 }

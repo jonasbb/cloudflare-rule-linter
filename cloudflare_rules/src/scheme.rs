@@ -360,10 +360,19 @@ pub(crate) fn build_scheme() -> Scheme {
         .unwrap();
     builder.add_field("cf.client.bot", Type::Bool).unwrap();
     builder.add_field("cf.edge.client_tcp", Type::Bool).unwrap();
+    builder
+        .add_field("cf.edge.l4.delivery_rate", Type::Int)
+        .unwrap();
     builder.add_field("cf.edge.server_ip", Type::Ip).unwrap();
     builder.add_field("cf.edge.server_port", Type::Int).unwrap();
     builder
         .add_field("cf.hostname.metadata", Type::Bytes)
+        .unwrap();
+    builder
+        .add_field(
+            "cf.llm.prompt.custom_topic_categories",
+            Type::Map(Type::Int.into()),
+        )
         .unwrap();
     builder
         .add_field("cf.llm.prompt.detected", Type::Bool)
@@ -379,6 +388,9 @@ pub(crate) fn build_scheme() -> Scheme {
         .unwrap();
     builder
         .add_field("cf.llm.prompt.pii_detected", Type::Bool)
+        .unwrap();
+    builder
+        .add_field("cf.llm.prompt.token_count", Type::Int)
         .unwrap();
     builder
         .add_field(
@@ -399,6 +411,9 @@ pub(crate) fn build_scheme() -> Scheme {
         .unwrap();
     builder.add_field("cf.threat_score", Type::Int).unwrap();
     builder
+        .add_field("cf.timings.client_quic_rtt_msec", Type::Int)
+        .unwrap();
+    builder
         .add_field("cf.timings.client_tcp_rtt_msec", Type::Int)
         .unwrap();
     builder
@@ -406,6 +421,9 @@ pub(crate) fn build_scheme() -> Scheme {
         .unwrap();
     builder
         .add_field("cf.timings.origin_ttfb_msec", Type::Int)
+        .unwrap();
+    builder
+        .add_field("cf.timings.worker_msec", Type::Int)
         .unwrap();
     builder.add_field("cf.tls_cipher", Type::Bytes).unwrap();
     builder
