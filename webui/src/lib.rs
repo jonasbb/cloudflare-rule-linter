@@ -20,14 +20,16 @@ extern "C" {
 fn run() -> Result<(), JsValue> {
     set_panic_hook();
 
-    let window = web_sys::window().expect("no global `window` exists");
-    let document = window.document().expect("should have a document on window");
+    let window = web_sys::window().ok_or("no global `window` exists")?;
+    let document = window
+        .document()
+        .ok_or("should have a document on window")?;
     let input = document
         .get_element_by_id("cloudflare-rules-input")
-        .expect("Input element must exist");
+        .ok_or("Input element must exist")?;
     let output = document
         .get_element_by_id("cloudflare-rules-output")
-        .expect("Output element must exist");
+        .ok_or("Output element must exist")?;
 
     #[allow(trivial_casts)]
     let cb = Closure::wrap(Box::new(move |e: Event| {
