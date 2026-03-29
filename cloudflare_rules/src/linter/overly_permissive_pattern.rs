@@ -23,9 +23,12 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
         fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
             match &node.op {
                 ComparisonOpExpr::Matches(pattern) => {
+                    #[rustfmt::skip]
                     let mut permissive_patterns = vec![
+                        // Matches any character
+                        ".",
                         // Matches any string of length 0 or more
-                        ".*", "^.*", ".*$", "^.*$",
+                        "", ".*", "^.*", ".*$", "^.*$",
                         // Matches any string of length 1 or more
                         ".+", "^.+", ".+$", "^.+$",
                         // Matches empty string at start or end
@@ -34,12 +37,15 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                     if let IdentifierExpr::Field(field) = &node.lhs.identifier
                         && node.lhs.indexes.is_empty()
                         && (field.name() == "http.request.uri.path"
-                            || field.name() == "raw.http.request.uri.query")
+                            || field.name() == "raw.http.request.uri.path")
                     {
                         // Paths always start with a "/" so these patterns are also overly permissive in that context
+                        #[rustfmt::skip]
                         permissive_patterns.extend_from_slice(&[
                             // Matches any string of length 0 or more
                             "/.*", "^/.*", "/.*$", "^/.*$",
+                            // Every path has a "/" at the start, so these match any path
+                            "/", "^/",
                         ]);
                     }
 
@@ -60,7 +66,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
                     if let IdentifierExpr::Field(field) = &node.lhs.identifier
                         && node.lhs.indexes.is_empty()
                         && (field.name() == "http.request.uri.path"
-                            || field.name() == "raw.http.request.uri.query")
+                            || field.name() == "raw.http.request.uri.path")
                     {
                         permissive_patterns.push(b"/*");
                     }
