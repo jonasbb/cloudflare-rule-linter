@@ -914,7 +914,7 @@ mod test {
             r#"http.request.uri.path eq "html""#,
             expect![[r#"
                 Found invalid value for http.request.uri.path (value_domain)
-                The value `html` is not a valid value for `http.request.uri.path`. Values must start with a slash (/)."#]],
+                The value `html` is not a valid value for `http.request.uri.path`. Values must start with a slash (/) and not contain a question mark (?)."#]],
         );
         assert_no_lint_message(&LINTER, r#"http.request.uri.path eq "/""#);
 
@@ -923,7 +923,7 @@ mod test {
             r#"raw.http.request.uri.path eq "html""#,
             expect![[r#"
                 Found invalid value for raw.http.request.uri.path (value_domain)
-                The value `html` is not a valid value for `raw.http.request.uri.path`. Values must start with a slash (/)."#]],
+                The value `html` is not a valid value for `raw.http.request.uri.path`. Values must start with a slash (/) and not contain a question mark (?)."#]],
         );
         assert_no_lint_message(&LINTER, r#"raw.http.request.uri.path eq "/""#);
     }
