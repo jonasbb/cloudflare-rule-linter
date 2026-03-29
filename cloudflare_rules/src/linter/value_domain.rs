@@ -107,8 +107,8 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
         (
             "http.request.uri.path",
             Domain::Validate(
-                |s: &str| -> bool { s.starts_with('/') },
-                "start with a slash (/)",
+                |s: &str| -> bool { s.starts_with('/') && !s.contains('?') },
+                "start with a slash (/) and not contain a question mark (?)",
             ),
         ),
         (
@@ -152,8 +152,8 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
         (
             "raw.http.request.uri.path",
             Domain::Validate(
-                |s: &str| -> bool { s.starts_with('/') },
-                "start with a slash (/)",
+                |s: &str| -> bool { s.starts_with('/') && !s.contains('?') },
+                "start with a slash (/) and not contain a question mark (?)",
             ),
         ),
         (
