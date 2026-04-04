@@ -12,7 +12,7 @@ inventory::submit! {
     }
 }
 
-fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
+fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
     struct EmptyListVisitor {
         result: Vec<LintReport>,
     }

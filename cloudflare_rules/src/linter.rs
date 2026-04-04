@@ -11,6 +11,7 @@ mod header_case;
 mod illogical_condition;
 mod invalid_list_name;
 mod negated_comparison;
+mod operator_style;
 mod overly_permissive_pattern;
 mod regex_raw_strings;
 mod reserved_ip_space;
@@ -24,7 +25,7 @@ pub struct Lint {
     /// Short single line description of the lint rule
     pub description: &'static str,
     pub category: Category,
-    pub lint_fn: fn(&LinterConfig, &FilterAst) -> Vec<LintReport>,
+    pub lint_fn: fn(&LinterConfig, &FilterAst, &str) -> Vec<LintReport>,
 }
 
 inventory::collect!(Lint);
@@ -105,7 +106,7 @@ impl Linter {
         Self { config }
     }
 
-    pub fn lint(&self, ast: &mut FilterAst) -> Vec<LintReport> {
+    pub fn lint(&self, ast: &mut FilterAst, expr: &str) -> Vec<LintReport> {
         let mut results = Vec::new();
 
         // Check for all lints that should run
@@ -138,7 +139,7 @@ impl Linter {
         self.simplify_ast(ast);
         for (rl, lint) in iter::zip(runlint, inventory::iter::<Lint>) {
             if rl {
-                results.extend((lint.lint_fn)(&self.config, ast));
+                results.extend((lint.lint_fn)(&self.config, ast, expr));
             }
         }
         results
@@ -217,7 +218,7 @@ pub(super) mod test {
         let mut ast = RULE_SCHEME
             .parse(expr)
             .expect("All wirefilter rules in the test must be valid expressions.");
-        let reports = linter.lint(&mut ast);
+        let reports = linter.lint(&mut ast, expr.trim());
         assert!(
             !reports.is_empty(),
             "Expected a lint message but received nothing."
@@ -237,7 +238,7 @@ pub(super) mod test {
         let mut ast = RULE_SCHEME
             .parse(expr)
             .expect("All wirefilter rules in the test must be valid expressions.");
-        let reports = linter.lint(&mut ast);
+        let reports = linter.lint(&mut ast, expr.trim());
         let mut combined_report = String::new();
         for m in &reports {
             if !combined_report.is_empty() {

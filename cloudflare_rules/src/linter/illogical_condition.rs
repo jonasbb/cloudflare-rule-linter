@@ -15,7 +15,7 @@ inventory::submit! {
     }
 }
 
-fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
+fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
     // Check for illogical conditions
     // A eq 1 and A eq 2 => always false
     // A ne 1 or A ne 2 => always true

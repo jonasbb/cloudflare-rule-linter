@@ -30,7 +30,7 @@ inventory::submit! {
     }
 }
 
-fn lint(_config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
+fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
     struct MapKeyCaseVisitor {
         result: Vec<LintReport>,
     }

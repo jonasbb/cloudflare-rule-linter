@@ -59,7 +59,9 @@ pub fn parse_and_lint_expression_with_config(config: LinterConfig, expr: &str) -
             }];
         }
     };
-    let mut result = linter.lint(&mut ast);
+    // Run the linter with the trimmed expression so lints can inspect
+    // the original source text (for example to detect if `==` or `eq` was used).
+    let mut result = linter.lint(&mut ast, expr.trim());
     // Fixup the reverse byte spans
     for lint in &mut result {
         if let Span::ReverseByte(range) = &mut lint.span {

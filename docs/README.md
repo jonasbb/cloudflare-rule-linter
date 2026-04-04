@@ -10,6 +10,7 @@
 | [illogical_condition](./illogical_condition.md) | style | Detect illogical conditions, such as comparing the same field for equality multiple times in an AND expression, or for inequality multiple times in an OR expression. |
 | [invalid_list_name](./invalid_list_name.md) | correctness | Check for invalid managed list names and optionally invalid custom list names. |
 | [negated_comparison](./negated_comparison.md) | style | Detect comparisons that are negated and suggest using the opposite comparison operator instead. |
+| [operator_style](./operator_style.md) | style | Enforce a consistent operator notation (english vs C-like). |
 | [overly_permissive_pattern](./overly_permissive_pattern.md) | correctness | Check for regex and wildcard patterns that are overly permissive. |
 | [regex_raw_strings](./regex_raw_strings.md) | style | Ensure regex matches use raw string literals (r"...") instead of normal quoted strings. |
 | [reserved_ip_space](./reserved_ip_space.md) | correctness | Check for usage of reserved IP ranges that are unlikely to be useful in rules. |

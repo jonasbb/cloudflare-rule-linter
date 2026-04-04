@@ -16,7 +16,7 @@ inventory::submit! {
     }
 }
 
-fn lint(config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
+fn lint(config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
     struct TimestampVisitor {
         result: Vec<LintReport>,
         min_time: i64,

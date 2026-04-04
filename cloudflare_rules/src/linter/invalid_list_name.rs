@@ -12,7 +12,7 @@ inventory::submit! {
     }
 }
 
-fn lint(config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
+fn lint(config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
     // Ensure regex matches use raw string literals (r"...") instead of normal quoted strings
     struct InvalidListNameVisitor<'a> {
         result: Vec<LintReport>,

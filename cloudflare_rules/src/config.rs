@@ -95,6 +95,8 @@ pub struct LintSettings {
     pub timestamp_bounds_future_delta: i64,
     /// If Some, a complete list of all custom lists that are allowed. If None, all custom lists are allowed.
     pub invalid_list_name_custom_lists: Option<Vec<Box<str>>>,
+    /// Operator style configuration for the `operator_style` lint.
+    pub operator_style_mode: OperatorStyleMode,
 }
 
 impl Default for LintSettings {
@@ -105,6 +107,17 @@ impl Default for LintSettings {
             // Default value: Roughly 5 years into the future
             timestamp_bounds_future_delta: 5 * 366 * 24 * 60 * 60,
             invalid_list_name_custom_lists: None,
+            operator_style_mode: OperatorStyleMode::default(),
         }
     }
+}
+
+/// Mode for the operator style lint.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum OperatorStyleMode {
+    EnforceEnglish,
+    EnforceCLike,
+    #[default]
+    ProhibitMixed,
 }
