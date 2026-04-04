@@ -13,7 +13,7 @@ cloudflare-rules = {path = "../cloudflare_rules"}
 env_logger = "0.11.8"
 hcl-edit = "0.9.3"
 log = "0.4.29"
-toml = "1.0.1"
+toml = "1.1.0"
 
 [lints]
 workspace = true
