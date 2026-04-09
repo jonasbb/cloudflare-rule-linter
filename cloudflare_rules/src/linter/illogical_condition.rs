@@ -60,7 +60,8 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
                                         op: OrderingOp::Equal,
                                         ..
                                     }
-                                    | ComparisonOpExpr::OneOf(..),
+                                    | ComparisonOpExpr::OneOf(..)
+                                    | ComparisonOpExpr::InList { .. },
                                 ..
                             }) = e
                             {
@@ -131,7 +132,8 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
                                                 op: OrderingOp::Equal,
                                                 ..
                                             }
-                                            | ComparisonOpExpr::OneOf(..),
+                                            | ComparisonOpExpr::OneOf(..)
+                                            | ComparisonOpExpr::InList { .. },
                                         ..
                                     }) = &**arg
                                     {
@@ -277,6 +279,25 @@ mod test {
             expect![[r#"
                 Found illogical condition with OR (illogical_condition)
                 The value `http.host` is compared for inequality multiple times in an OR expression."#]],
+        );
+    }
+
+    #[test]
+    fn test_illogical_conditions_or_lists() {
+        // Test for #16
+        expect_lint_message(
+            &LINTER,
+            r#" (not ip.src in {1} or not ip.src in {1})"#,
+            expect![[r#"
+                Found illogical condition with OR (illogical_condition)
+                The value `ip.src` is compared for inequality multiple times in an OR expression."#]],
+        );
+        expect_lint_message(
+            &LINTER,
+            r#" (not ip.src in {1} or not ip.src in $abc)"#,
+            expect![[r#"
+                Found illogical condition with OR (illogical_condition)
+                The value `ip.src` is compared for inequality multiple times in an OR expression."#]],
         );
     }
 }
