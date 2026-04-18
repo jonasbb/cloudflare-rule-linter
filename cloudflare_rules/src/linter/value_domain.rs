@@ -214,45 +214,41 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
                                 && let Ok(s) = std::str::from_utf8(&bytes.data)
                             {
                                 match domain {
-                                    Domain::List(valids) => {
-                                        if !valids.contains(&s) {
-                                            self.result.push(LintReport {
-                                                id: LINT_NAME.into(),
-                                                url: Some(create_url(LINT_NAME)),
-                                                title: format!(
-                                                    "Found invalid value for {}",
-                                                    field.name()
-                                                ),
-                                                message: format!(
-                                                    "The value `{}` is not a valid value for \
-                                                     `{}`. Valid values are: {}.",
-                                                    s,
-                                                    field.name(),
-                                                    valids.join(", ")
-                                                ),
-                                                span: Span::ReverseByte(node.reverse_span.clone()),
-                                            });
-                                        }
+                                    Domain::List(valids) if !valids.contains(&s) => {
+                                        self.result.push(LintReport {
+                                            id: LINT_NAME.into(),
+                                            url: Some(create_url(LINT_NAME)),
+                                            title: format!(
+                                                "Found invalid value for {}",
+                                                field.name()
+                                            ),
+                                            message: format!(
+                                                "The value `{}` is not a valid value for `{}`. \
+                                                 Valid values are: {}.",
+                                                s,
+                                                field.name(),
+                                                valids.join(", ")
+                                            ),
+                                            span: Span::ReverseByte(node.reverse_span.clone()),
+                                        });
                                     }
-                                    Domain::Validate(func, desc) => {
-                                        if !func(s) {
-                                            self.result.push(LintReport {
-                                                id: LINT_NAME.into(),
-                                                url: Some(create_url(LINT_NAME)),
-                                                title: format!(
-                                                    "Found invalid value for {}",
-                                                    field.name()
-                                                ),
-                                                message: format!(
-                                                    "The value `{}` is not a valid value for \
-                                                     `{}`. Values must {}.",
-                                                    s,
-                                                    field.name(),
-                                                    desc
-                                                ),
-                                                span: Span::ReverseByte(node.reverse_span.clone()),
-                                            });
-                                        }
+                                    Domain::Validate(func, desc) if !func(s) => {
+                                        self.result.push(LintReport {
+                                            id: LINT_NAME.into(),
+                                            url: Some(create_url(LINT_NAME)),
+                                            title: format!(
+                                                "Found invalid value for {}",
+                                                field.name()
+                                            ),
+                                            message: format!(
+                                                "The value `{}` is not a valid value for `{}`. \
+                                                 Values must {}.",
+                                                s,
+                                                field.name(),
+                                                desc
+                                            ),
+                                            span: Span::ReverseByte(node.reverse_span.clone()),
+                                        });
                                     }
                                     _ => {}
                                 }
@@ -396,15 +392,11 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
                                 for b in items.iter() {
                                     if let Ok(s) = std::str::from_utf8(&b.data) {
                                         match domain {
-                                            Domain::List(valids) => {
-                                                if !valids.contains(&s) {
-                                                    invalids.push(s.to_string());
-                                                }
+                                            Domain::List(valids) if !valids.contains(&s) => {
+                                                invalids.push(s.to_string());
                                             }
-                                            Domain::Validate(func, _desc) => {
-                                                if !func(s) {
-                                                    invalids.push(s.to_string());
-                                                }
+                                            Domain::Validate(func, _desc) if !func(s) => {
+                                                invalids.push(s.to_string());
                                             }
                                             _ => {}
                                         }
@@ -503,35 +495,33 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
                                     });
                                 }
                             }
-                            RhsValues::Int(int_ranges) => {
-                                if call.function().name() == "len" {
-                                    let mut invalids = Vec::new();
-                                    for r in int_ranges.iter() {
-                                        let range: std::ops::RangeInclusive<i64> = r.clone().into();
-                                        if *range.start() < 0 || *range.end() < 0 {
-                                            let s = if range.start() == range.end() {
-                                                format!("{}", range.start())
-                                            } else {
-                                                format!("{}..{}", range.start(), range.end())
-                                            };
-                                            invalids.push(s);
-                                        }
+                            RhsValues::Int(int_ranges) if call.function().name() == "len" => {
+                                let mut invalids = Vec::new();
+                                for r in int_ranges.iter() {
+                                    let range: std::ops::RangeInclusive<i64> = r.clone().into();
+                                    if *range.start() < 0 || *range.end() < 0 {
+                                        let s = if range.start() == range.end() {
+                                            format!("{}", range.start())
+                                        } else {
+                                            format!("{}..{}", range.start(), range.end())
+                                        };
+                                        invalids.push(s);
                                     }
-                                    if !invalids.is_empty() {
-                                        let msg = format!(
-                                            "The value(s) `{}` are not valid for `{}`. Values \
-                                             must be >= 0.",
-                                            invalids.join(" "),
-                                            "len(...)"
-                                        );
-                                        self.result.push(LintReport {
-                                            id: LINT_NAME.into(),
-                                            url: Some(create_url(LINT_NAME)),
-                                            title: "Found invalid value(s) for len(...)".into(),
-                                            message: msg,
-                                            span: Span::ReverseByte(node.reverse_span.clone()),
-                                        });
-                                    }
+                                }
+                                if !invalids.is_empty() {
+                                    let msg = format!(
+                                        "The value(s) `{}` are not valid for `{}`. Values must be \
+                                         >= 0.",
+                                        invalids.join(" "),
+                                        "len(...)"
+                                    );
+                                    self.result.push(LintReport {
+                                        id: LINT_NAME.into(),
+                                        url: Some(create_url(LINT_NAME)),
+                                        title: "Found invalid value(s) for len(...)".into(),
+                                        message: msg,
+                                        span: Span::ReverseByte(node.reverse_span.clone()),
+                                    });
                                 }
                             }
                             _ => {}
