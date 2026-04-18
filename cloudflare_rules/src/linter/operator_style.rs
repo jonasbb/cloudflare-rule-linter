@@ -187,7 +187,10 @@ fn lint(config: &LinterConfig, ast: &FilterAst, expr: &str) -> Vec<LintReport> {
                     for item in &items[..items.len().saturating_sub(1)] {
                         let start = expr.len().saturating_sub(item.get_reverse_span().end);
                         if start <= expr.len() {
-                            self.check_style_for_next_operator(&expr[start..], start);
+                            self.check_style_for_next_operator(
+                                &expr[start..],
+                                item.get_reverse_span().end,
+                            );
                         }
                     }
                 }
@@ -201,7 +204,10 @@ fn lint(config: &LinterConfig, ast: &FilterAst, expr: &str) -> Vec<LintReport> {
                                 .len()
                                 .saturating_sub(comparison_expr.lhs_expr().reverse_span.end);
                             if start <= expr.len() {
-                                self.check_style_for_next_operator(&expr[start..], start);
+                                self.check_style_for_next_operator(
+                                    &expr[start..],
+                                    comparison_expr.lhs_expr().reverse_span.end,
+                                );
                             }
                         }
 
@@ -222,7 +228,10 @@ fn lint(config: &LinterConfig, ast: &FilterAst, expr: &str) -> Vec<LintReport> {
                 }
                 LogicalExpr::Unary { .. } => {
                     let start = expr.len().saturating_sub(node.get_reverse_span().start);
-                    self.check_style_for_next_operator(&expr[start..], start);
+                    self.check_style_for_next_operator(
+                        &expr[start..],
+                        node.get_reverse_span().start,
+                    );
                 }
             }
         }
