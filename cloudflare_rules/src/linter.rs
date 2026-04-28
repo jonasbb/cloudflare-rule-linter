@@ -15,6 +15,7 @@ mod operator_style;
 mod overly_permissive_pattern;
 mod regex_raw_strings;
 mod reserved_ip_space;
+mod suspicious_regex;
 mod timestamp_bounds;
 mod unnecessary_patterns;
 mod value_domain;
@@ -54,6 +55,7 @@ fn create_url(name: &str) -> String {
 pub enum Category {
     Correctness,
     Deprecated,
+    Suspicious,
     Style,
 }
 

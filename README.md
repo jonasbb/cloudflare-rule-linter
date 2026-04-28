@@ -71,6 +71,7 @@ If you notice any discrepancies between the scheme as implemented here compared 
 | [overly_permissive_pattern](./docs/overly_permissive_pattern.md) | correctness | Check for regex and wildcard patterns that are overly permissive. |
 | [regex_raw_strings](./docs/regex_raw_strings.md) | style | Ensure regex matches use raw string literals (r"...") instead of normal quoted strings. |
 | [reserved_ip_space](./docs/reserved_ip_space.md) | correctness | Check for usage of reserved IP ranges that are unlikely to be useful in rules. |
+| [suspicious_regex](./docs/suspicious_regex.md) | suspicious | Detect regexes that look like they should be wildcard matches or contain unescaped literal special characters. |
 | [timestamp_comparisons](./docs/timestamp_comparisons.md) | correctness | Detect comparisons against http.request.timestamp.sec that use values outside of reasonable bounds. |
 | [unnecessary_patterns](./docs/unnecessary_patterns.md) | style | Detect regex and wildcard patterns that can be simplified to `eq` or `contains` expressions. |
 | [value_domain](./docs/value_domain.md) | correctness | Check for values that are outside of the valid domain for certain fields, such as invalid HTTP methods or invalid continents. |
