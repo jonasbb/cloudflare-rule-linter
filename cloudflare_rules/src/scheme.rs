@@ -158,6 +158,34 @@ pub(crate) fn build_scheme() -> Scheme {
         .add_function("has_value", self::has_value::HasValue {})
         .unwrap();
     builder
+        .add_function(
+            "is_jwt_valid",
+            SimpleFunctionDefinition {
+                params: vec![SimpleFunctionParam {
+                    arg_kind: FunctionArgKind::Literal,
+                    val_type: Type::Bytes,
+                }],
+                opt_params: vec![],
+                return_type: Type::Bool,
+                implementation: SimpleFunctionImpl::new(placeholder_fn),
+            },
+        )
+        .unwrap();
+    builder
+        .add_function(
+            "is_jwt_present",
+            SimpleFunctionDefinition {
+                params: vec![SimpleFunctionParam {
+                    arg_kind: FunctionArgKind::Literal,
+                    val_type: Type::Bytes,
+                }],
+                opt_params: vec![],
+                return_type: Type::Bool,
+                implementation: SimpleFunctionImpl::new(placeholder_fn),
+            },
+        )
+        .unwrap();
+    builder
         .add_function("len", wirefilter::functions::LenFunction {})
         .unwrap();
     // TODO lookup_json_integer
