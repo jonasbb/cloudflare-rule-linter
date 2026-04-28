@@ -430,6 +430,15 @@ pub(crate) fn build_scheme() -> Scheme {
         .add_field("cf.tls_ciphers_sha1", Type::Bytes)
         .unwrap();
     builder
+        .add_field("cf.tls_client_auth.cert_chain_rfc9440", Type::Bytes)
+        .unwrap();
+    builder
+        .add_field(
+            "cf.tls_client_auth.cert_chain_rfc9440_too_large",
+            Type::Bool,
+        )
+        .unwrap();
+    builder
         .add_field("cf.tls_client_auth.cert_fingerprint_sha1", Type::Bytes)
         .unwrap();
     builder
@@ -461,6 +470,12 @@ pub(crate) fn build_scheme() -> Scheme {
         .unwrap();
     builder
         .add_field("cf.tls_client_auth.cert_revoked", Type::Bool)
+        .unwrap();
+    builder
+        .add_field("cf.tls_client_auth.cert_rfc9440", Type::Bytes)
+        .unwrap();
+    builder
+        .add_field("cf.tls_client_auth.cert_rfc9440_too_large", Type::Bool)
         .unwrap();
     builder
         .add_field("cf.tls_client_auth.cert_serial", Type::Bytes)
