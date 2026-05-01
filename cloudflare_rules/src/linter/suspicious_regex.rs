@@ -21,15 +21,14 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
     let mut visitor = SuspiciousRegexVisitor { result: Vec::new() };
 
     // Simple scanner helpers that detect unescaped special characters outside of character classes.
-    fn scan_pattern(pattern: &str) -> (bool, bool, bool, bool) {
-        // returns (has_unescaped_dot_outside_class, has_unescaped_qmark_outside_class, contains_slash_star_slash, ends_with_slash_star)
+    // Returns (has_unescaped_literal_dot, has_unescaped_query_like, contains_slash_star_slash)
+    fn scan_pattern(pattern: &str) -> (bool, bool, bool) {
         let mut escaped = false;
         let mut in_class = false;
         let mut prev: Option<char> = None;
-        let mut has_dot = false;
-        let mut has_q = false;
+        let mut has_unescaped_dot_literal = false;
+        let mut has_unescaped_query_like = false;
         let mut contains_slash_star_slash = false;
-        let mut ends_with_slash_star = false;
 
         let chars: Vec<char> = pattern.chars().collect();
         for (i, &c) in chars.iter().enumerate() {
@@ -40,6 +39,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
             }
             if c == '\\' {
                 escaped = true;
+                prev = Some(c);
                 continue;
             }
             if c == '[' && !in_class {
@@ -54,39 +54,44 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
             }
 
             if !in_class {
+                let next = chars.get(i + 1).copied();
                 if c == '.' {
-                    has_dot = true;
-                }
-                if c == '?' {
-                    has_q = true;
-                }
-                if c == '*'
-                    && let Some(p) = prev
-                    && p == '/'
-                {
-                    // pattern contains "/*"; check following char for another '/'
-                    if i + 1 < chars.len() && chars[i + 1] == '/' {
-                        contains_slash_star_slash = true;
+                    // Treat an unescaped '.' as suspicious only when it's not immediately
+                    // followed by a quantifier (e.g., '.*', '.+', '.?','.{') since those
+                    // are commonly intentional uses of the dot metacharacter.
+                    let next_is_quant = matches!(next, Some('*' | '+' | '?' | '{'));
+                    if !next_is_quant {
+                        has_unescaped_dot_literal = true;
                     }
+                }
+
+                if c == '?' {
+                    // Ignore the ? if the previous character is a quantifier (e.g., '.*?', '.+?') or otherwise part of a sensible use
+                    // (? starts regex commands eg (?i) or (?:...), so we only flag it when it looks like a literal question mark that might be intended as a query separator.
+                    // Optional character classes like [a-z]? are common
+                    let prev_is_valid = matches!(prev, Some('*' | '+' | '(' | ')' | '[' | ']'));
+                    // If a '?' appears unescaped and is followed by an alphanumeric or '='/'&',
+                    // it is likely the literal query separator rather than a regex quantifier.
+                    if !prev_is_valid {
+                        has_unescaped_query_like = true;
+                    }
+                }
+
+                if c == '*'
+                    && let Some('/') = prev
+                    && let Some('/') | None = next
+                {
+                    contains_slash_star_slash = true;
                 }
             }
 
             prev = Some(c);
         }
 
-        // ends_with_slash_star check (unescaped)
-        if pattern.ends_with("/*") {
-            // ensure it isn't escaped (i.e., ends with "\/*")
-            if !pattern.ends_with("\\/*") {
-                ends_with_slash_star = true;
-            }
-        }
-
         (
-            has_dot,
-            has_q,
+            has_unescaped_dot_literal,
+            has_unescaped_query_like,
             contains_slash_star_slash,
-            ends_with_slash_star,
         )
     }
 
@@ -99,8 +104,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
                 // pattern is a valid regex (we ignore parse errors and still run the heuristics).
                 let _ = Parser::new().parse(pattern);
 
-                let (has_dot, has_q, contains_slash_star_slash, ends_with_slash_star) =
-                    scan_pattern(pattern);
+                let (has_dot, has_q, contains_slash_star_slash) = scan_pattern(pattern);
 
                 // Determine field context when available to make smarter heuristics.
                 let field_name = if let IdentifierExpr::Field(field) = &node.lhs.identifier {
@@ -115,7 +119,7 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
                 // Path-related heuristics
                 if let Some(fname) = &field_name {
                     if fname == "http.request.uri.path" || fname == "raw.http.request.uri.path" {
-                        if contains_slash_star_slash || ends_with_slash_star {
+                        if contains_slash_star_slash {
                             suspicious = true;
                             message = "Regex uses quantifiers on path separators (e.g., `/*`); \
                                        this often indicates a wildcard intent — consider using a \
@@ -134,7 +138,8 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
                         || fname == "raw.http.request.full_uri"
                     {
                         // Full URI: unescaped dots and question marks are common mistakes
-                        if has_dot || has_q {
+                        // Allow matching on optional 's' in 'https' (e.g., https?://) without flagging as suspicious since that's a common pattern, but flag other unescaped '?' characters that look like they might be intended as query separators.
+                        if has_dot || (has_q && !pattern.contains("https?")) {
                             suspicious = true;
                             message = r"Regex contains unescaped `.` or `?` characters in a URI; escape them (e.g., `\.` and `\?`) or use a wildcard match where appropriate.".to_string();
                         }
@@ -145,27 +150,6 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
                             suspicious = true;
                             message = r"Regex contains unescaped `.` in a hostname; escape the dot as `\.` or use a wildcard match if you intended to match subdomains.".to_string();
                         }
-                    }
-                }
-
-                // Generic heuristics (applies regardless of field)
-                if !suspicious {
-                    // common glob-like regex: ^/foo/.*$ or /.*
-                    if pattern.contains("/.*")
-                        || pattern.starts_with("^/") && pattern.contains(".*")
-                    {
-                        suspicious = true;
-                        message = "Regex uses `.*` to match path segments; consider using a \
-                                   wildcard match or be more specific."
-                            .to_string();
-                    }
-                }
-
-                if !suspicious {
-                    // question marks used literally in query parts
-                    if has_q && pattern.contains("https://") {
-                        suspicious = true;
-                        message = r"Regex contains an unescaped `?` within a URI; escape it as `\?` or use a wildcard match.".to_string();
                     }
                 }
 
@@ -322,6 +306,53 @@ mod test {
         assert_no_lint_message(
             &LINTER,
             r#"http.request.uri.path matches "/foo/bar/index\.html""#,
+        );
+    }
+
+    #[test]
+    fn test_ok_dot_star_patterns() {
+        assert_no_lint_message(&LINTER, r#"http.request.uri.path matches "^/foo/.*""#);
+        assert_no_lint_message(&LINTER, r#"http.request.uri.path matches "^/foo.*""#);
+        assert_no_lint_message(&LINTER, r#"http.request.uri.path matches "^/.*/bar""#);
+    }
+
+    #[test]
+    fn test_https_optional() {
+        assert_no_lint_message(
+            &LINTER,
+            r#"http.request.uri matches "https?://www\.example\.com/foo""#,
+        );
+    }
+
+    #[test]
+    fn test_case_insensitive() {
+        assert_no_lint_message(
+            &LINTER,
+            r#"http.request.uri matches "(?i)https://www\.example\.com/foo""#,
+        );
+    }
+
+    #[test]
+    fn test_case_groups() {
+        assert_no_lint_message(
+            &LINTER,
+            r#"http.request.uri matches "https://www\.example\.com/(?:foo/|bar/)index\.html""#,
+        );
+        assert_no_lint_message(
+            &LINTER,
+            r#"http.request.uri matches "https://www\.example\.com/(foo/|bar/)?index\.html""#,
+        );
+        assert_no_lint_message(
+            &LINTER,
+            r#"http.request.uri matches "https://www\.example\.com/api/v1[0-9]?/foo""#,
+        );
+    }
+
+    #[test]
+    fn test_non_greedy_and_charclass_no_warn() {
+        assert_no_lint_message(
+            &LINTER,
+            r#"http.request.uri.path matches "/foo/[abc]*?/bar""#,
         );
     }
 }
