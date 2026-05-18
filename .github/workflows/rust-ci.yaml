@@ -27,7 +27,7 @@ jobs:
               with:
                 persist-credentials: false
             - name: "Install/Update the Rust version"
-              uses: actions-rust-lang/setup-rust-toolchain@2b1f5e9b395427c92ee4e3331786ca3c37afe2d7 # v1
+              uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
               with:
                   toolchain: ${{ matrix.rust }}
                   components: clippy
@@ -51,7 +51,7 @@ jobs:
               with:
                 persist-credentials: false
             - name: "Install/Update the Rust version"
-              uses: actions-rust-lang/setup-rust-toolchain@2b1f5e9b395427c92ee4e3331786ca3c37afe2d7 # v1
+              uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
               with:
                   components: rustfmt
                   cache: false
@@ -71,7 +71,7 @@ jobs:
               with:
                 persist-credentials: false
             - name: "Install/Update the Rust version"
-              uses: actions-rust-lang/setup-rust-toolchain@2b1f5e9b395427c92ee4e3331786ca3c37afe2d7 # v1
+              uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
               with:
                   toolchain: ${{ matrix.rust }}
 
@@ -111,12 +111,12 @@ jobs:
                 persist-credentials: false
 
             - name: "Install/Update the Rust version"
-              uses: actions-rust-lang/setup-rust-toolchain@2b1f5e9b395427c92ee4e3331786ca3c37afe2d7 # v1
+              uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
               with:
                   toolchain: ${{ matrix.rust }}
                   target: wasm32-unknown-unknown
 
-            - uses: taiki-e/install-action@cf525cb33f51aca27cd6fa02034117ab963ff9f1 # v2
+            - uses: taiki-e/install-action@b550161ef8a7bc4f2a671c0b03a18ac9ccedea1e # v2.79.1
               with:
                   tool: wasm-bindgen,wasm-pack
 
