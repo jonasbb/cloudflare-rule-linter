@@ -1,17 +1,6 @@
 // Transform functions implementations
 
-use wirefilter::{
-    FunctionArgs, LhsValue, Scheme, SimpleFunctionArgKind as FunctionArgKind,
-    SimpleFunctionDefinition, SimpleFunctionImpl, SimpleFunctionOptParam, SimpleFunctionParam,
-    Type,
-};
-
-mod has_key;
-mod has_value;
-
-fn placeholder_fn<'a>(_args: FunctionArgs<'_, 'a>) -> Option<LhsValue<'a>> {
-    unimplemented!()
-}
+use wirefilter::{LhsValue, Scheme, Type};
 
 #[derive(Debug, PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
 pub struct NumList {}
@@ -100,24 +89,7 @@ pub(crate) fn build_scheme() -> Scheme {
         .add_function("cidr", wirefilter::functions::CIDRFunction {})
         .unwrap();
     builder
-        .add_function(
-            "cidr6",
-            SimpleFunctionDefinition {
-                params: vec![
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Field,
-                        val_type: Type::Ip,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Int,
-                    },
-                ],
-                opt_params: vec![],
-                return_type: Type::Ip,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
+        .add_function("cidr6", wirefilter::functions::CIDR6Function {})
         .unwrap();
     builder
         .add_function("concat", wirefilter::ConcatFunction {})
@@ -129,92 +101,54 @@ pub(crate) fn build_scheme() -> Scheme {
         )
         .unwrap();
     builder
+        .add_function(
+            "encode_base64",
+            wirefilter::functions::EncodeBase64Function {},
+        )
+        .unwrap();
+    builder
         .add_function("ends_with", wirefilter::functions::EndsWithFunction {})
         .unwrap();
     builder
-        .add_function(
-            "join",
-            SimpleFunctionDefinition {
-                params: vec![
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Field,
-                        val_type: Type::Array(Type::Bytes.into()),
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Bytes,
-                    },
-                ],
-                opt_params: vec![],
-                return_type: Type::Bytes,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
+        .add_function("join", wirefilter::functions::JoinFunction {})
         .unwrap();
     builder
-        .add_function("has_key", self::has_key::HasKey {})
+        .add_function("has_key", wirefilter::functions::HasKeyFunction {})
         .unwrap();
     builder
-        .add_function("has_value", self::has_value::HasValue {})
-        .unwrap();
-    builder
-        .add_function(
-            "is_jwt_valid",
-            SimpleFunctionDefinition {
-                params: vec![SimpleFunctionParam {
-                    arg_kind: FunctionArgKind::Literal,
-                    val_type: Type::Bytes,
-                }],
-                opt_params: vec![],
-                return_type: Type::Bool,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
+        .add_function("has_value", wirefilter::functions::HasValueFunction {})
         .unwrap();
     builder
         .add_function(
             "is_jwt_present",
-            SimpleFunctionDefinition {
-                params: vec![SimpleFunctionParam {
-                    arg_kind: FunctionArgKind::Literal,
-                    val_type: Type::Bytes,
-                }],
-                opt_params: vec![],
-                return_type: Type::Bool,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
+            wirefilter::functions::IsJwtPresentFunction {},
         )
+        .unwrap();
+    builder
+        .add_function("is_jwt_valid", wirefilter::functions::IsJwtValidFunction {})
         .unwrap();
     builder
         .add_function("len", wirefilter::functions::LenFunction {})
         .unwrap();
-    // TODO lookup_json_integer
-    // TODO lookup_json_string
+    builder
+        .add_function(
+            "lookup_json_integer",
+            wirefilter::functions::JsonLookupIntegerFunction {},
+        )
+        .unwrap();
+    builder
+        .add_function(
+            "lookup_json_string",
+            wirefilter::functions::JsonLookupStringFunction {},
+        )
+        .unwrap();
     builder
         .add_function("lower", wirefilter::functions::LowerFunction {})
         .unwrap();
     builder
         .add_function(
             "regex_replace",
-            SimpleFunctionDefinition {
-                params: vec![
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Both,
-                        val_type: Type::Bytes,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Bytes,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Bytes,
-                    },
-                ],
-                opt_params: vec![],
-                return_type: Type::Bytes,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
+            wirefilter::functions::RegexReplaceFunction {},
         )
         .unwrap();
     builder
@@ -230,28 +164,10 @@ pub(crate) fn build_scheme() -> Scheme {
         )
         .unwrap();
     builder
-        .add_function(
-            "split",
-            SimpleFunctionDefinition {
-                params: vec![
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Field,
-                        val_type: Type::Bytes,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Bytes,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Int,
-                    },
-                ],
-                opt_params: vec![],
-                return_type: Type::Array(Type::Bytes.into()),
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
+        .add_function("sha256", wirefilter::functions::Sha256Function {})
+        .unwrap();
+    builder
+        .add_function("split", wirefilter::functions::SplitFunction {})
         .unwrap();
     builder
         .add_function("starts_with", wirefilter::functions::StartsWithFunction {})
@@ -269,81 +185,18 @@ pub(crate) fn build_scheme() -> Scheme {
         .add_function("url_decode", wirefilter::functions::UrlDecodeFunction {})
         .unwrap();
     builder
-        .add_function(
-            "uuidv4",
-            SimpleFunctionDefinition {
-                params: vec![SimpleFunctionParam {
-                    arg_kind: FunctionArgKind::Field,
-                    val_type: Type::Bytes,
-                }],
-                opt_params: vec![],
-                return_type: Type::Bytes,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
-        )
+        .add_function("uuidv4", wirefilter::functions::UUID4Function {})
         .unwrap();
     builder
         .add_function(
             "wildcard_replace",
-            SimpleFunctionDefinition {
-                params: vec![
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Field,
-                        val_type: Type::Bytes,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Bytes,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Bytes,
-                    },
-                ],
-                opt_params: vec![SimpleFunctionOptParam {
-                    arg_kind: FunctionArgKind::Literal,
-                    default_value: LhsValue::Bytes(b"".into()),
-                }],
-                return_type: Type::Bytes,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
+            wirefilter::functions::WildcardReplaceFunction {},
         )
         .unwrap();
     builder
         .add_function(
             "is_timed_hmac_valid_v0",
-            SimpleFunctionDefinition {
-                params: vec![
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Bytes,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Both,
-                        val_type: Type::Bytes,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        val_type: Type::Int,
-                    },
-                    SimpleFunctionParam {
-                        arg_kind: FunctionArgKind::Both,
-                        val_type: Type::Int,
-                    },
-                ],
-                opt_params: vec![
-                    SimpleFunctionOptParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        default_value: LhsValue::Int(0),
-                    },
-                    SimpleFunctionOptParam {
-                        arg_kind: FunctionArgKind::Literal,
-                        default_value: LhsValue::Bytes(b"".into()),
-                    },
-                ],
-                return_type: Type::Bool,
-                implementation: SimpleFunctionImpl::new(placeholder_fn),
-            },
+            wirefilter::functions::IsTimedHmacValidV0Function {},
         )
         .unwrap();
 
@@ -379,6 +232,9 @@ pub(crate) fn build_scheme() -> Scheme {
         .unwrap();
     builder
         .add_field("cf.bot_management.score", Type::Int)
+        .unwrap();
+    builder
+        .add_field("cf.bot_management.signed_agent", Type::Bool)
         .unwrap();
     builder
         .add_field("cf.bot_management.static_resource", Type::Bool)
@@ -1024,26 +880,4 @@ pub(crate) fn build_scheme() -> Scheme {
     builder.add_field("cf.fraud.attack", Type::Bytes).unwrap();
 
     builder.build()
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::RULE_SCHEME;
-    use expect_test::Expect;
-    pub use expect_test::expect;
-
-    #[track_caller]
-    pub(super) fn assert_parse(expr: &str) {
-        RULE_SCHEME
-            .parse(expr)
-            .expect("All wirefilter rules in the test must be valid expressions.");
-    }
-
-    #[track_caller]
-    pub(super) fn assert_parse_error(expr: &str, expected: Expect) {
-        let ast = RULE_SCHEME
-            .parse(expr)
-            .expect_err("Wirefilter expression should not parse");
-        expected.assert_eq(&format!("{}", ast));
-    }
 }
