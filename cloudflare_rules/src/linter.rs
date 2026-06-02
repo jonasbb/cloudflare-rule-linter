@@ -1,4 +1,5 @@
 use crate::config::LinterConfig;
+use crate::phase::Phase;
 use serde::{Deserialize, Serialize};
 use std::iter;
 use std::ops::Range;
@@ -109,6 +110,16 @@ impl Linter {
     }
 
     pub fn lint(&self, ast: &mut FilterAst, expr: &str) -> Vec<LintReport> {
+        self.lint_with_phase(ast, expr, Phase::Unknown)
+    }
+
+    /// Lint the provided AST using an explicit `rule_phase` for this invocation.
+    pub fn lint_with_phase(
+        &self,
+        ast: &mut FilterAst,
+        expr: &str,
+        _rule_phase: Phase,
+    ) -> Vec<LintReport> {
         let mut results = Vec::new();
 
         // Check for all lints that should run
@@ -211,13 +222,25 @@ impl Linter {
 #[cfg(test)]
 pub(super) mod test {
     use super::*;
-    use crate::RULE_SCHEME;
+    use crate::SCHEMES;
     pub(super) use expect_test::{Expect, expect};
     pub(super) use std::sync::LazyLock;
 
     #[track_caller]
     pub(super) fn expect_lint_message(linter: &Linter, expr: &str, expected: Expect) {
-        let mut ast = RULE_SCHEME
+        expect_lint_message_phase(linter, Phase::Unknown, expr, expected);
+    }
+
+    #[track_caller]
+    pub(super) fn expect_lint_message_phase(
+        linter: &Linter,
+        phase: Phase,
+        expr: &str,
+        expected: Expect,
+    ) {
+        let mut ast = SCHEMES
+            .get(&phase)
+            .expect("SCHEMES is always set")
             .parse(expr)
             .expect("All wirefilter rules in the test must be valid expressions.");
         let reports = linter.lint(&mut ast, expr.trim());
@@ -234,10 +257,16 @@ pub(super) mod test {
         }
         expected.assert_eq(&combined_report);
     }
-
     #[track_caller]
     pub(super) fn assert_no_lint_message(linter: &Linter, expr: &str) {
-        let mut ast = RULE_SCHEME
+        assert_no_lint_message_phase(linter, Phase::Unknown, expr);
+    }
+
+    #[track_caller]
+    pub(super) fn assert_no_lint_message_phase(linter: &Linter, phase: Phase, expr: &str) {
+        let mut ast = SCHEMES
+            .get(&phase)
+            .expect("SCHEMES is always set")
             .parse(expr)
             .expect("All wirefilter rules in the test must be valid expressions.");
         let reports = linter.lint(&mut ast, expr.trim());
@@ -257,7 +286,19 @@ pub(super) mod test {
 
     #[track_caller]
     pub(super) fn assert_simplify_ast(linter: &Linter, expr: &str, expected: Expect) {
-        let mut ast = RULE_SCHEME
+        assert_simplify_ast_phase(linter, Phase::Unknown, expr, expected);
+    }
+
+    #[track_caller]
+    pub(super) fn assert_simplify_ast_phase(
+        linter: &Linter,
+        phase: Phase,
+        expr: &str,
+        expected: Expect,
+    ) {
+        let mut ast = SCHEMES
+            .get(&phase)
+            .expect("SCHEMES is always set")
             .parse(expr)
             .expect("All wirefilter rules in the test must be valid expressions.");
         linter.simplify_ast(&mut ast);

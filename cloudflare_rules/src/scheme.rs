@@ -1,5 +1,9 @@
 // Transform functions implementations
 
+use crate::phase::Phase;
+use std::collections::HashMap;
+use std::sync::LazyLock;
+use strum::IntoEnumIterator as _;
 use wirefilter::{LhsValue, Scheme, Type};
 
 #[derive(Debug, PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
@@ -881,3 +885,13 @@ pub(crate) fn build_scheme() -> Scheme {
 
     builder.build()
 }
+
+/// Per-phase scheme mapping. Currently each phase uses the same base scheme,
+/// but this allows switching to phase-specific schemes later without API churn.
+pub static SCHEMES: LazyLock<HashMap<Phase, Scheme>> = LazyLock::new(|| {
+    let mut m = HashMap::new();
+    for p in Phase::iter() {
+        m.insert(p, build_scheme());
+    }
+    m
+});

@@ -84,6 +84,7 @@ impl<'a> ExpressionVisitor<'a> {
         };
 
         let mut config = self.config.clone();
+        let mut rule_phase = cloudflare_rules::Phase::default();
         // Tune config if comment-command is found
         for line in key
             .decor()
@@ -94,19 +95,37 @@ impl<'a> ExpressionVisitor<'a> {
             .filter(|line| line.contains("cfrl:"))
         {
             // Extract the part after "cfrl:"
-            if let Some(cfg) = line.rsplit("cfrl:").next()
-                && let Err(err) = config.parse_expr_config(cfg)
-            {
-                warn!(
-                    "Cannot parse cfrl config string. Using default config.\n{err}\nFound in \
-                     line: {line}"
-                );
-                config = self.config.clone();
+            if let Some(cfg) = line.rsplit("cfrl:").next() {
+                // Allow a 'phase=...' token in the directive to explicitly set the rule phase.
+                // Example: `# cfrl: phase=transform_request, +operator_style`
+                let mut remaining = cfg.trim().to_string();
+                if let Some(phase_tok) = remaining
+                    .split(',')
+                    .find(|s| s.trim().starts_with("phase="))
+                {
+                    let val = phase_tok.trim().trim_start_matches("phase=");
+                    if let Ok(phase) = val.parse::<cloudflare_rules::Phase>() {
+                        rule_phase = phase;
+                    }
+                    // Remove the phase token before passing to parse_expr_config
+                    remaining = remaining.replacen(phase_tok, "", 1);
+                }
+
+                if !remaining.trim().is_empty()
+                    && let Err(err) = config.parse_expr_config(&remaining)
+                {
+                    warn!(
+                        "Cannot parse cfrl config string. Using default config.\n{err}\nFound in \
+                         line: {line}"
+                    );
+                    config = self.config.clone();
+                }
             }
         }
 
-        let lint_result =
-            cloudflare_rules::parse_and_lint_expression_with_config(config, rule_expr);
+        let lint_result = cloudflare_rules::parse_and_lint_expression_with_config_and_phase(
+            config, rule_expr, rule_phase,
+        );
         for report in lint_result {
             let mut group = if report.id == "parse_error" {
                 annotate_snippets::Level::ERROR

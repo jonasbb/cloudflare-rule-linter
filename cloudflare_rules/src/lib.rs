@@ -3,20 +3,20 @@
 pub use self::linter::{LintReport, Span};
 pub use crate::ast_printer::AstPrintVisitor;
 pub use crate::config::{LintConfig, LintSettings, LinterConfig};
+pub use crate::phase::Phase;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
-use std::sync::LazyLock;
-use wirefilter::Scheme;
 
 mod ast_printer;
 mod config;
 mod linter;
+mod phase;
 mod scheme;
 
 /// Default scheme matching the one Cloudflare uses
 ///
 /// This includes fields, functions, and lists.
-pub static RULE_SCHEME: LazyLock<Scheme> = LazyLock::new(scheme::build_scheme);
+pub use crate::scheme::SCHEMES;
 
 /// A Python module implemented in Rust.
 #[cfg(feature = "python")]
@@ -39,7 +39,15 @@ pub fn parse_and_lint_expression(expr: &str) -> Vec<LintReport> {
 
 /// Take a [`wirefilter`] expression and a string and run the linter on it.
 pub fn parse_and_lint_expression_with_config(config: LinterConfig, expr: &str) -> Vec<LintReport> {
-    let linter = linter::Linter::with_config(config);
+    parse_and_lint_expression_with_config_and_phase(config, expr, Phase::Unknown)
+}
+
+/// Parse and lint an expression with an explicit `rule_phase` for this call.
+pub fn parse_and_lint_expression_with_config_and_phase(
+    config: LinterConfig,
+    expr: &str,
+    rule_phase: Phase,
+) -> Vec<LintReport> {
     // The byte offsets will be unusable if there are multiple lines.
     // To avoid this situation, replace all newlines with spaces
     let expr = expr.replace("\n", " ");
@@ -47,7 +55,14 @@ pub fn parse_and_lint_expression_with_config(config: LinterConfig, expr: &str) -
     // This messes with the reverse span information, as they are relative to the trimmed string.
     // For restoring them, keep track of the trailing spaces
     let trailing_whitespace = expr.chars().rev().take_while(|c| c.is_whitespace()).count();
-    let mut ast = match RULE_SCHEME.parse(&expr) {
+
+    // Select a scheme based on the provided rule_phase. If no phase is set,
+    // fallback to the default `RULE_SCHEME` to preserve backwards compatibility.
+    let scheme = SCHEMES
+        .get(&rule_phase)
+        .expect("SCHEMES is always initialized for all phases.");
+
+    let mut ast = match scheme.parse(&expr) {
         Ok(ast) => ast,
         Err(err) => {
             return vec![LintReport {
@@ -59,9 +74,10 @@ pub fn parse_and_lint_expression_with_config(config: LinterConfig, expr: &str) -
             }];
         }
     };
-    // Run the linter with the trimmed expression so lints can inspect
-    // the original source text (for example to detect if `==` or `eq` was used).
-    let mut result = linter.lint(&mut ast, expr.trim());
+    // Construct the linter (moving the config) and run it with the trimmed
+    // expression so lints can inspect the original source text.
+    let linter = linter::Linter::with_config(config);
+    let mut result = linter.lint_with_phase(&mut ast, expr.trim(), rule_phase);
     // Fixup the reverse byte spans
     for lint in &mut result {
         if let Span::ReverseByte(range) = &mut lint.span {
