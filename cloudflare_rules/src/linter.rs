@@ -15,6 +15,7 @@ mod negated_comparison;
 mod operator_style;
 mod overly_permissive_pattern;
 mod regex_raw_strings;
+mod replace_functions_limit;
 mod reserved_ip_space;
 mod suspicious_regex;
 mod timestamp_bounds;
