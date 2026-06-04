@@ -12,30 +12,90 @@ inventory::submit! {
         name: LINT_NAME,
         description: "Detect comparisons against http.request.timestamp.sec that use values outside of reasonable bounds.",
         category: Category::Correctness,
-        lint_fn: lint
+        lint_fn: lint,
+        lint_value_fn: lint_value,
     }
 }
 
 fn lint(config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
-    struct TimestampVisitor {
-        result: Vec<LintReport>,
-        min_time: i64,
-        max_time: i64,
-    }
+    let mut visitor = TimestampVisitor::new(config);
+    ast.walk(&mut visitor);
+    visitor.result
+}
 
-    impl Visitor<'_> for TimestampVisitor {
-        fn visit_comparison_expr(&mut self, node: &'_ wirefilter::ComparisonExpr) {
-            // Only proceed if the left-hand-side is the http.request.timestamp.sec field
-            if let IdentifierExpr::Field(field) = &node.lhs.identifier
-                && field.name() == "http.request.timestamp.sec"
-            {
-                // Get basically the right-hand side values depending on the op variant
-                match node.operator() {
-                    ComparisonOpExpr::Ordering {
-                        rhs: RhsValue::Int(val),
-                        ..
-                    } => {
-                        if *val < self.min_time {
+fn lint_value(config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<LintReport> {
+    let mut visitor = TimestampVisitor::new(config);
+    ast.walk(&mut visitor);
+    visitor.result
+}
+struct TimestampVisitor {
+    result: Vec<LintReport>,
+    min_time: i64,
+    max_time: i64,
+}
+
+impl TimestampVisitor {
+    fn new(config: &LinterConfig) -> Self {
+        let now_timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        Self {
+            result: Vec::new(),
+            min_time: config.settings.timestamp_bounds_min_timestamp,
+            max_time: now_timestamp + config.settings.timestamp_bounds_future_delta,
+        }
+    }
+}
+
+impl Visitor<'_> for TimestampVisitor {
+    fn visit_comparison_expr(&mut self, node: &'_ wirefilter::ComparisonExpr) {
+        // Only proceed if the left-hand-side is the http.request.timestamp.sec field
+        if let IdentifierExpr::Field(field) = &node.lhs.identifier
+            && field.name() == "http.request.timestamp.sec"
+        {
+            // Get basically the right-hand side values depending on the op variant
+            match node.operator() {
+                ComparisonOpExpr::Ordering {
+                    rhs: RhsValue::Int(val),
+                    ..
+                } => {
+                    if *val < self.min_time {
+                        self.result.push(LintReport {
+                            id: LINT_NAME.into(),
+                            url: Some(create_url(LINT_NAME)),
+                            title: "Comparison with very time constant below `min_timestamp`"
+                                .into(),
+                            message: format!(
+                                "Found comparison against http.request.timestamp.sec with value \
+                                 {val} which is below min_timestamp ({}).",
+                                self.min_time
+                            ),
+                            span: Span::ReverseByte(node.reverse_span.clone()),
+                        });
+                    }
+                    if *val > self.max_time {
+                        // TODO: Adding max time here breaks the simple expect tests, as the value is dynamic
+                        self.result.push(LintReport {
+                            id: LINT_NAME.into(),
+                            url: Some(create_url(LINT_NAME)),
+                            title: "Comparison with future time after `future_delta`".into(),
+                            message: format!(
+                                "Found comparison against http.request.timestamp.sec with value \
+                                 {val} which is too far in the future.",
+                            ),
+                            span: Span::ReverseByte(node.reverse_span.clone()),
+                        });
+                    }
+                }
+                ComparisonOpExpr::OneOf(RhsValues::Int(vs)) => {
+                    for v in vs {
+                        // v is an IntRange
+                        let range: std::ops::RangeInclusive<i64> = v.clone().into();
+                        let low = *range.start();
+                        let high = *range.end();
+
+                        if low < self.min_time {
                             self.result.push(LintReport {
                                 id: LINT_NAME.into(),
                                 url: Some(create_url(LINT_NAME)),
@@ -43,13 +103,13 @@ fn lint(config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> 
                                     .into(),
                                 message: format!(
                                     "Found comparison against http.request.timestamp.sec with \
-                                     value {val} which is below min_timestamp ({}).",
+                                     value {low} which is below min_timestamp ({}).",
                                     self.min_time
                                 ),
                                 span: Span::ReverseByte(node.reverse_span.clone()),
                             });
                         }
-                        if *val > self.max_time {
+                        if high > self.max_time {
                             // TODO: Adding max time here breaks the simple expect tests, as the value is dynamic
                             self.result.push(LintReport {
                                 id: LINT_NAME.into(),
@@ -57,70 +117,19 @@ fn lint(config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> 
                                 title: "Comparison with future time after `future_delta`".into(),
                                 message: format!(
                                     "Found comparison against http.request.timestamp.sec with \
-                                     value {val} which is too far in the future.",
+                                     value {high} which is too far in the future.",
                                 ),
                                 span: Span::ReverseByte(node.reverse_span.clone()),
                             });
                         }
                     }
-                    ComparisonOpExpr::OneOf(RhsValues::Int(vs)) => {
-                        for v in vs {
-                            // v is an IntRange
-                            let range: std::ops::RangeInclusive<i64> = v.clone().into();
-                            let low = *range.start();
-                            let high = *range.end();
-
-                            if low < self.min_time {
-                                self.result.push(LintReport {
-                                    id: LINT_NAME.into(),
-                                    url: Some(create_url(LINT_NAME)),
-                                    title: "Comparison with very time constant below \
-                                            `min_timestamp`"
-                                        .into(),
-                                    message: format!(
-                                        "Found comparison against http.request.timestamp.sec with \
-                                         value {low} which is below min_timestamp ({}).",
-                                        self.min_time
-                                    ),
-                                    span: Span::ReverseByte(node.reverse_span.clone()),
-                                });
-                            }
-                            if high > self.max_time {
-                                // TODO: Adding max time here breaks the simple expect tests, as the value is dynamic
-                                self.result.push(LintReport {
-                                    id: LINT_NAME.into(),
-                                    url: Some(create_url(LINT_NAME)),
-                                    title: "Comparison with future time after `future_delta`"
-                                        .into(),
-                                    message: format!(
-                                        "Found comparison against http.request.timestamp.sec with \
-                                         value {high} which is too far in the future.",
-                                    ),
-                                    span: Span::ReverseByte(node.reverse_span.clone()),
-                                });
-                            }
-                        }
-                    }
-                    _ => {}
                 }
+                _ => {}
             }
-
-            self.visit_expr(node);
         }
+
+        self.visit_expr(node);
     }
-
-    let now_timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64;
-    let mut visitor = TimestampVisitor {
-        result: Vec::new(),
-        min_time: config.settings.timestamp_bounds_min_timestamp,
-        max_time: now_timestamp + config.settings.timestamp_bounds_future_delta,
-    };
-
-    ast.walk(&mut visitor);
-    visitor.result
 }
 
 #[cfg(test)]

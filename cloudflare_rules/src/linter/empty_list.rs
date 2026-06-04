@@ -8,47 +8,54 @@ inventory::submit! {
         name: LINT_NAME,
         description: "Check for comparisons against empty lists, which are always false.",
         category: Category::Correctness,
-        lint_fn: lint
+        lint_fn: lint,
+        lint_value_fn: lint_value,
     }
 }
 
 fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
-    struct EmptyListVisitor {
-        result: Vec<LintReport>,
-    }
-
-    let mut visitor = EmptyListVisitor { result: Vec::new() };
-
-    impl Visitor<'_> for EmptyListVisitor {
-        fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
-            // Only consider Ordering and OneOf comparisons
-            if let ComparisonOpExpr::OneOf(rhs) = &node.op {
-                let is_empty = match rhs {
-                    RhsValues::Bool(_uninhabited_bool) => unreachable!(),
-                    RhsValues::Int(ints) => ints.is_empty(),
-                    RhsValues::Ip(ip_addrs) => ip_addrs.is_empty(),
-                    RhsValues::Bytes(bytes) => bytes.is_empty(),
-                    RhsValues::Array(_uninhabited_array) => unreachable!(),
-                    RhsValues::Map(_uninhabited_map) => unreachable!(),
-                };
-                if is_empty {
-                    self.result.push(LintReport {
-                        id: LINT_NAME.into(),
-                        url: Some(create_url(LINT_NAME)),
-                        title: "Comparison with empty list are always false".to_string(),
-                        message: "Consider removing the empty list or providing valid values."
-                            .to_string(),
-                        span: Span::ReverseByte(node.reverse_span.clone()),
-                    });
-                }
-            }
-
-            self.visit_expr(node);
-        }
-    }
-
+    let mut visitor = EmptyListVisitor::default();
     ast.walk(&mut visitor);
     visitor.result
+}
+
+fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<LintReport> {
+    let mut visitor = EmptyListVisitor::default();
+    ast.walk(&mut visitor);
+    visitor.result
+}
+
+#[derive(Default)]
+struct EmptyListVisitor {
+    result: Vec<LintReport>,
+}
+
+impl Visitor<'_> for EmptyListVisitor {
+    fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
+        // Only consider Ordering and OneOf comparisons
+        if let ComparisonOpExpr::OneOf(rhs) = &node.op {
+            let is_empty = match rhs {
+                RhsValues::Bool(_uninhabited_bool) => unreachable!(),
+                RhsValues::Int(ints) => ints.is_empty(),
+                RhsValues::Ip(ip_addrs) => ip_addrs.is_empty(),
+                RhsValues::Bytes(bytes) => bytes.is_empty(),
+                RhsValues::Array(_uninhabited_array) => unreachable!(),
+                RhsValues::Map(_uninhabited_map) => unreachable!(),
+            };
+            if is_empty {
+                self.result.push(LintReport {
+                    id: LINT_NAME.into(),
+                    url: Some(create_url(LINT_NAME)),
+                    title: "Comparison with empty list are always false".to_string(),
+                    message: "Consider removing the empty list or providing valid values."
+                        .to_string(),
+                    span: Span::ReverseByte(node.reverse_span.clone()),
+                });
+            }
+        }
+
+        self.visit_expr(node);
+    }
 }
 
 #[cfg(test)]

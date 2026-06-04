@@ -8,91 +8,92 @@ inventory::submit! {
         name: LINT_NAME,
         description: "regex_ and wildcard_replace functions are only allowed once and not nested.",
         category: Category::Correctness,
-        lint_fn: lint
+        lint_fn: lint,
+        lint_value_fn: lint_value,
     }
 }
 
 fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
-    struct ReplaceFunctionVisitor {
-        regex_counter: usize,
-        regex_counter_total: usize,
-        wildcard_counter: usize,
-        wildcard_counter_total: usize,
-        result: Vec<LintReport>,
-    }
-
-    let mut visitor = ReplaceFunctionVisitor {
-        regex_counter: 0,
-        regex_counter_total: 0,
-        wildcard_counter: 0,
-        wildcard_counter_total: 0,
-        result: Vec::new(),
-    };
-
-    impl Visitor<'_> for ReplaceFunctionVisitor {
-        fn visit_function_call_expr(&mut self, node: &'_ wirefilter::FunctionCallExpr) {
-            if node.function().name() == "regex_replace" {
-                self.regex_counter += 1;
-                self.regex_counter_total += 1;
-                if self.wildcard_counter > 0 {
-                    self.result.push(LintReport {
-                        id: LINT_NAME.into(),
-                        url: None,
-                        title: "Nested regex_replace functions are not allowed.".into(),
-                        message: "The function `regex_replace` is not allowed to be nested inside \
-                                  another `wildcard_replace` function."
-                            .into(),
-                        span: Span::ReverseByte(node.function().reverse_span.clone()),
-                    });
-                }
-                if self.regex_counter_total > 1 {
-                    self.result.push(LintReport {
-                        id: LINT_NAME.into(),
-                        url: None,
-                        title: "Multiple regex_replace functions are not allowed.".into(),
-                        message: "The function `regex_replace` is only allowed to be used once in \
-                                  a filter expression."
-                            .into(),
-                        span: Span::ReverseByte(node.function().reverse_span.clone()),
-                    });
-                }
-                self.visit_value_expr(node);
-                self.regex_counter -= 1;
-            } else if node.function().name() == "wildcard_replace" {
-                self.wildcard_counter += 1;
-                self.wildcard_counter_total += 1;
-                if self.regex_counter > 0 {
-                    self.result.push(LintReport {
-                        id: LINT_NAME.into(),
-                        url: None,
-                        title: "Nested wildcard_replace functions are not allowed.".into(),
-                        message: "The function `wildcard_replace` is not allowed to be nested \
-                                  inside another `regex_replace` function."
-                            .into(),
-                        span: Span::ReverseByte(node.function().reverse_span.clone()),
-                    });
-                }
-                if self.wildcard_counter_total > 1 {
-                    self.result.push(LintReport {
-                        id: LINT_NAME.into(),
-                        url: None,
-                        title: "Multiple wildcard_replace functions are not allowed.".into(),
-                        message: "The function `wildcard_replace` is only allowed to be used once \
-                                  in a filter expression."
-                            .into(),
-                        span: Span::ReverseByte(node.function().reverse_span.clone()),
-                    });
-                }
-                self.visit_value_expr(node);
-                self.wildcard_counter -= 1;
-            } else {
-                self.visit_value_expr(node);
-            }
-        }
-    }
-
+    let mut visitor = ReplaceFunctionVisitor::default();
     ast.walk(&mut visitor);
     visitor.result
+}
+
+fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<LintReport> {
+    let mut visitor = ReplaceFunctionVisitor::default();
+    ast.walk(&mut visitor);
+    visitor.result
+}
+
+#[derive(Default)]
+struct ReplaceFunctionVisitor {
+    regex_counter: usize,
+    regex_counter_total: usize,
+    wildcard_counter: usize,
+    wildcard_counter_total: usize,
+    result: Vec<LintReport>,
+}
+
+impl Visitor<'_> for ReplaceFunctionVisitor {
+    fn visit_function_call_expr(&mut self, node: &'_ wirefilter::FunctionCallExpr) {
+        if node.function().name() == "regex_replace" {
+            self.regex_counter += 1;
+            self.regex_counter_total += 1;
+            if self.wildcard_counter > 0 {
+                self.result.push(LintReport {
+                    id: LINT_NAME.into(),
+                    url: None,
+                    title: "Nested regex_replace functions are not allowed.".into(),
+                    message: "The function `regex_replace` is not allowed to be nested inside \
+                              another `wildcard_replace` function."
+                        .into(),
+                    span: Span::ReverseByte(node.function().reverse_span.clone()),
+                });
+            }
+            if self.regex_counter_total > 1 {
+                self.result.push(LintReport {
+                    id: LINT_NAME.into(),
+                    url: None,
+                    title: "Multiple regex_replace functions are not allowed.".into(),
+                    message: "The function `regex_replace` is only allowed to be used once in a \
+                              filter expression."
+                        .into(),
+                    span: Span::ReverseByte(node.function().reverse_span.clone()),
+                });
+            }
+            self.visit_value_expr(node);
+            self.regex_counter -= 1;
+        } else if node.function().name() == "wildcard_replace" {
+            self.wildcard_counter += 1;
+            self.wildcard_counter_total += 1;
+            if self.regex_counter > 0 {
+                self.result.push(LintReport {
+                    id: LINT_NAME.into(),
+                    url: None,
+                    title: "Nested wildcard_replace functions are not allowed.".into(),
+                    message: "The function `wildcard_replace` is not allowed to be nested inside \
+                              another `regex_replace` function."
+                        .into(),
+                    span: Span::ReverseByte(node.function().reverse_span.clone()),
+                });
+            }
+            if self.wildcard_counter_total > 1 {
+                self.result.push(LintReport {
+                    id: LINT_NAME.into(),
+                    url: None,
+                    title: "Multiple wildcard_replace functions are not allowed.".into(),
+                    message: "The function `wildcard_replace` is only allowed to be used once in \
+                              a filter expression."
+                        .into(),
+                    span: Span::ReverseByte(node.function().reverse_span.clone()),
+                });
+            }
+            self.visit_value_expr(node);
+            self.wildcard_counter -= 1;
+        } else {
+            self.visit_value_expr(node);
+        }
+    }
 }
 
 #[cfg(test)]

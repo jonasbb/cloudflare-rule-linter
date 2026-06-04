@@ -8,41 +8,49 @@ inventory::submit! {
         name: LINT_NAME,
         description: "Ensure regex matches use raw string literals (r\"...\") instead of normal quoted strings.",
         category: Category::Style,
-        lint_fn: lint
+        lint_fn: lint,
+        lint_value_fn: lint_value,
     }
 }
 
 fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
-    // Ensure regex matches use raw string literals (r"...") instead of normal quoted strings
-    struct RegexRawStringsVisitor {
-        result: Vec<LintReport>,
-    }
-    let mut visitor = RegexRawStringsVisitor { result: Vec::new() };
+    let mut visitor = RegexRawStringsVisitor::default();
+    ast.walk(&mut visitor);
+    visitor.result
+}
 
-    impl Visitor<'_> for RegexRawStringsVisitor {
-        fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
-            if let ComparisonOpExpr::Matches(regex) = &node.op
+fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<LintReport> {
+    let mut visitor = RegexRawStringsVisitor::default();
+    ast.walk(&mut visitor);
+    visitor.result
+}
+
+/// Ensure regex matches use raw string literals (r"...") instead of normal quoted strings
+#[derive(Default)]
+struct RegexRawStringsVisitor {
+    result: Vec<LintReport>,
+}
+
+impl Visitor<'_> for RegexRawStringsVisitor {
+    fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
+        if let ComparisonOpExpr::Matches(regex) = &node.op
                     && regex.format() == RegexFormat::Literal
                     // Only lint if any escaping is necessary
                     && regex.as_str().contains('\\')
-            {
-                self.result.push(LintReport {
-                    id: LINT_NAME.into(),
-                    url: Some(create_url(LINT_NAME)),
-                    title: "Found regex match with non-raw string".into(),
-                    message: "Regex matches must use raw string literals (e.g., r\"...\" or \
-                              r#\"...\"#) when using the `matches` operator."
-                        .to_string(),
-                    span: Span::ReverseByte(node.reverse_span.clone()),
-                });
-            }
-
-            self.visit_expr(node);
+        {
+            self.result.push(LintReport {
+                id: LINT_NAME.into(),
+                url: Some(create_url(LINT_NAME)),
+                title: "Found regex match with non-raw string".into(),
+                message: "Regex matches must use raw string literals (e.g., r\"...\" or \
+                          r#\"...\"#) when using the `matches` operator."
+                    .to_string(),
+                span: Span::ReverseByte(node.reverse_span.clone()),
+            });
         }
-    }
 
-    ast.walk(&mut visitor);
-    visitor.result
+        self.visit_expr(node);
+    }
 }
 
 #[cfg(test)]

@@ -32,98 +32,58 @@ inventory::submit! {
         name: LINT_NAME,
         description: "Check for usage of old field names and suggest the correct new values.",
         category: Category::Deprecated,
-        lint_fn: lint
+        lint_fn: lint,
+        lint_value_fn: lint_value,
     }
 }
 
 fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
-    struct DeprecatedFieldVisitor {
-        result: Vec<LintReport>,
-        last_span: Range<usize>,
-    }
-
-    let mut visitor = DeprecatedFieldVisitor {
-        result: Vec::new(),
-        last_span: 0..0,
-    };
-
-    impl Visitor<'_> for DeprecatedFieldVisitor {
-        fn visit_field(&mut self, field: &'_ wirefilter::Field) {
-            let name = field.name();
-            if let Some(new_name) = DEPRECATIONS.get(name) {
-                // Use the field name in the message. We don't always have the surrounding
-                // comparison expression here, so keep the message focused on the field.
-                self.result.push(LintReport {
-                    id: LINT_NAME.into(),
-                    url: Some(create_url(LINT_NAME)),
-                    title: format!("Found deprecated field {name}"),
-                    message: format!("The value `{name}` should be replaced with `{new_name}`.",),
-                    span: Span::ReverseByte(self.last_span.clone()),
-                });
-            }
-        }
-
-        fn visit_logical_expr(&mut self, node: &'_ wirefilter::LogicalExpr) {
-            self.last_span = node.get_reverse_span();
-            self.visit_expr(node);
-        }
-    }
-
+    let mut visitor = DeprecatedFieldVisitor::default();
     ast.walk(&mut visitor);
     visitor.result
 }
 
-// #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-// pub(crate) struct DeprecatedField;
+fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<LintReport> {
+    let mut visitor = DeprecatedFieldVisitor::default();
+    ast.walk(&mut visitor);
+    visitor.result
+}
 
-// impl Lint for DeprecatedField {
-//     fn name(&self) -> &'static str {
-//         "deprecated_field"
-//     }
+struct DeprecatedFieldVisitor {
+    result: Vec<LintReport>,
+    last_span: Range<usize>,
+}
 
-//     fn category(&self) -> Category {
-//         Category::Deprecated
-//     }
+impl Default for DeprecatedFieldVisitor {
+    fn default() -> Self {
+        Self {
+            result: Vec::new(),
+            last_span: 0..0,
+        }
+    }
+}
 
-//     fn lint(&self, _config: &LinterConfig, ast: &FilterAst) -> Vec<LintReport> {
-//         struct DeprecatedFieldVisitor {
-//             result: Vec<LintReport>,
-//             last_span: Range<usize>,
-//         }
+impl Visitor<'_> for DeprecatedFieldVisitor {
+    fn visit_field(&mut self, field: &'_ wirefilter::Field) {
+        let name = field.name();
+        if let Some(new_name) = DEPRECATIONS.get(name) {
+            // Use the field name in the message. We don't always have the surrounding
+            // comparison expression here, so keep the message focused on the field.
+            self.result.push(LintReport {
+                id: LINT_NAME.into(),
+                url: Some(create_url(LINT_NAME)),
+                title: format!("Found deprecated field {name}"),
+                message: format!("The value `{name}` should be replaced with `{new_name}`.",),
+                span: Span::ReverseByte(self.last_span.clone()),
+            });
+        }
+    }
 
-//         let mut visitor = DeprecatedFieldVisitor {
-//             result: Vec::new(),
-//             last_span: 0..0,
-//         };
-
-//         impl Visitor<'_> for DeprecatedFieldVisitor {
-//             fn visit_field(&mut self, field: &'_ wirefilter::Field) {
-//                 let name = field.name();
-//                 if let Some(new_name) = DEPRECATIONS.get(name) {
-//                     // Use the field name in the message. We don't always have the surrounding
-//                     // comparison expression here, so keep the message focused on the field.
-//                     self.result.push(LintReport {
-//                         id: "deprecated_field".into(),
-//                         url: Some(create_url(LINT_NAME)),
-//                         title: format!("Found deprecated field {name}"),
-//                         message: format!(
-//                             "The value `{name}` should be replaced with `{new_name}`.",
-//                         ),
-//                         span: Span::ReverseByte(self.last_span.clone()),
-//                     });
-//                 }
-//             }
-
-//             fn visit_logical_expr(&mut self, node: &'_ wirefilter::LogicalExpr) {
-//                 self.last_span = node.get_reverse_span();
-//                 self.visit_expr(node);
-//             }
-//         }
-
-//         ast.walk(&mut visitor);
-//         visitor.result
-//     }
-// }
+    fn visit_logical_expr(&mut self, node: &'_ wirefilter::LogicalExpr) {
+        self.last_span = node.get_reverse_span();
+        self.visit_expr(node);
+    }
+}
 
 #[cfg(test)]
 mod test {

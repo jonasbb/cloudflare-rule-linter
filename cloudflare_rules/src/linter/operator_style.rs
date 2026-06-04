@@ -9,8 +9,21 @@ inventory::submit! {
         name: LINT_NAME,
         description: "Enforce a consistent operator notation (english vs C-like).",
         category: Category::Style,
-        lint_fn: lint
+        lint_fn: lint,
+        lint_value_fn: lint_value,
     }
+}
+
+fn lint(config: &LinterConfig, ast: &FilterAst, expr: &str) -> Vec<LintReport> {
+    let mut visitor = OperatorStyleVisitor::new(config, expr);
+    ast.walk(&mut visitor);
+    visitor.result
+}
+
+fn lint_value(config: &LinterConfig, ast: &FilterValueAst, expr: &str) -> Vec<LintReport> {
+    let mut visitor = OperatorStyleVisitor::new(config, expr);
+    ast.walk(&mut visitor);
+    visitor.result
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -19,233 +32,223 @@ enum OpStyle {
     CLike,
 }
 
-fn lint(config: &LinterConfig, ast: &FilterAst, expr: &str) -> Vec<LintReport> {
-    struct V<'a> {
-        result: Vec<LintReport>,
-        first: Option<OpStyle>,
-        mode: OperatorStyleMode,
-        expr: &'a str,
-    }
-    impl<'a> V<'a> {
-        fn check_style_for_next_operator(
-            &mut self,
-            mut remaining: &str,
-            reverse_span_start: usize,
-        ) {
-            let original_remaining = remaining;
-            let original_length = remaining.len();
+struct OperatorStyleVisitor<'a> {
+    result: Vec<LintReport>,
+    first: Option<OpStyle>,
+    mode: OperatorStyleMode,
+    expr: &'a str,
+}
 
-            // These characters are not semantically meaningful here.
-            // This includes the original space characters
-            // plus ( and ) which are used for parenthesized expressions but we treat them transparently
-            const SKIPPABLE_CHARS: &[char] = &[' ', '\r', '\n', '(', ')'];
-            const ENGLISH_OPERATORS: &[&str] = &[
-                "eq",
-                "ne",
-                "ge",
-                "le",
-                "gt",
-                "lt",
-                "matches",
-                "bitwise_and",
-                "and",
-                "or",
-                "xor",
-                "not",
-            ];
-            const CLIKE_OPERATORS: &[&str] = &[
-                "==", "!=", ">=", "<=", ">", "<", "~", "&", "&&", "||", "^^", "!",
-            ];
-            debug_assert_eq!(ENGLISH_OPERATORS.len(), CLIKE_OPERATORS.len());
-
-            remaining = remaining.trim_start_matches(SKIPPABLE_CHARS);
-            let skipped_chars = original_length - remaining.len();
-
-            match (self.mode, self.first) {
-                (OperatorStyleMode::EnforceEnglish, _)
-                | (OperatorStyleMode::ProhibitMixed, Some(OpStyle::English)) => {
-                    for (i, cop) in CLIKE_OPERATORS.iter().enumerate() {
-                        if remaining.starts_with(cop) {
-                            // Handle C-style operators
-
-                            let (title, message) = if self.mode == OperatorStyleMode::EnforceEnglish
-                            {
-                                (
-                                    "Prefer english operator notation",
-                                    format!(
-                                        "Prefer english operator notation; rewrite `{}` to `{}`",
-                                        cop, ENGLISH_OPERATORS[i]
-                                    ),
-                                )
-                            } else {
-                                (
-                                    "Mixed operator styles",
-                                    format!(
-                                        "Found mixed operator styles; rewrite `{}` to `{}`",
-                                        cop, ENGLISH_OPERATORS[i]
-                                    ),
-                                )
-                            };
-
-                            self.result.push(LintReport {
-                                id: LINT_NAME.into(),
-                                url: Some(create_url(LINT_NAME)),
-                                title: title.into(),
-                                message,
-                                // From the original span,
-                                // account for the skipped characters and the operator length to get the correct span for the operator itself
-                                span: Span::ReverseByte(
-                                    reverse_span_start.saturating_sub(skipped_chars)
-                                        ..(reverse_span_start
-                                            .saturating_sub(skipped_chars)
-                                            .saturating_sub(cop.len())),
-                                ),
-                            });
-                        }
-                    }
-                }
-                (OperatorStyleMode::EnforceCLike, _)
-                | (OperatorStyleMode::ProhibitMixed, Some(OpStyle::CLike)) => {
-                    for (i, eop) in ENGLISH_OPERATORS.iter().enumerate() {
-                        if remaining.starts_with(eop) {
-                            // Handle english operators
-
-                            let (title, message) = if self.mode == OperatorStyleMode::EnforceCLike {
-                                (
-                                    "Prefer C-like operator notation",
-                                    format!(
-                                        "Prefer C-like operator notation; rewrite `{}` to `{}`",
-                                        eop, CLIKE_OPERATORS[i]
-                                    ),
-                                )
-                            } else {
-                                (
-                                    "Mixed operator styles",
-                                    format!(
-                                        "Found mixed operator styles; rewrite `{}` to `{}`",
-                                        eop, CLIKE_OPERATORS[i]
-                                    ),
-                                )
-                            };
-
-                            self.result.push(LintReport {
-                                id: LINT_NAME.into(),
-                                url: Some(create_url(LINT_NAME)),
-                                title: title.into(),
-                                message,
-                                // From the original span,
-                                // account for the skipped characters and the operator length to get the correct span for the operator itself
-                                span: Span::ReverseByte(
-                                    reverse_span_start.saturating_sub(skipped_chars)
-                                        ..(reverse_span_start
-                                            .saturating_sub(skipped_chars)
-                                            .saturating_sub(eop.len())),
-                                ),
-                            });
-                        }
-                    }
-                }
-
-                (OperatorStyleMode::ProhibitMixed, None) => {
-                    // Check what kind of operators we see, then call itself recursively for the reporting
-                    for eop in ENGLISH_OPERATORS {
-                        if remaining.starts_with(eop) {
-                            self.first = Some(OpStyle::English);
-                            break;
-                        }
-                    }
-
-                    for cop in CLIKE_OPERATORS {
-                        if remaining.starts_with(cop) {
-                            self.first = Some(OpStyle::CLike);
-                            break;
-                        }
-                    }
-
-                    // Now that we have a style, recurse into detection
-                    assert!(
-                        self.first.is_some(),
-                        "If we are in ProhibitMixed mode, we should have detected an operator \
-                         style by now"
-                    );
-                    self.check_style_for_next_operator(original_remaining, reverse_span_start);
-                }
-            }
+impl<'a> OperatorStyleVisitor<'a> {
+    fn new(config: &'a LinterConfig, expr: &'a str) -> Self {
+        Self {
+            result: Vec::new(),
+            first: None,
+            mode: config.settings.operator_style_mode,
+            expr,
         }
     }
 
-    impl<'a> Visitor<'a> for V<'a> {
-        fn visit_logical_expr(&mut self, node: &'a LogicalExpr) {
-            self.visit_expr(node);
+    fn check_style_for_next_operator(&mut self, mut remaining: &str, reverse_span_start: usize) {
+        let original_remaining = remaining;
+        let original_length = remaining.len();
 
-            let expr = self.expr;
+        // These characters are not semantically meaningful here.
+        // This includes the original space characters
+        // plus ( and ) which are used for parenthesized expressions but we treat them transparently
+        const SKIPPABLE_CHARS: &[char] = &[' ', '\r', '\n', '(', ')'];
+        const ENGLISH_OPERATORS: &[&str] = &[
+            "eq",
+            "ne",
+            "ge",
+            "le",
+            "gt",
+            "lt",
+            "matches",
+            "bitwise_and",
+            "and",
+            "or",
+            "xor",
+            "not",
+        ];
+        const CLIKE_OPERATORS: &[&str] = &[
+            "==", "!=", ">=", "<=", ">", "<", "~", "&", "&&", "||", "^^", "!",
+        ];
+        debug_assert_eq!(ENGLISH_OPERATORS.len(), CLIKE_OPERATORS.len());
 
-            match node {
-                LogicalExpr::Combining { items, .. } => {
-                    // For each logical expression, check what is the operator used behind it
-                    // Skip the last element as there is something unrelated or nothing behind it.
-                    for item in &items[..items.len().saturating_sub(1)] {
-                        let start = expr.len().saturating_sub(item.get_reverse_span().end);
+        remaining = remaining.trim_start_matches(SKIPPABLE_CHARS);
+        let skipped_chars = original_length - remaining.len();
+
+        match (self.mode, self.first) {
+            (OperatorStyleMode::EnforceEnglish, _)
+            | (OperatorStyleMode::ProhibitMixed, Some(OpStyle::English)) => {
+                for (i, cop) in CLIKE_OPERATORS.iter().enumerate() {
+                    if remaining.starts_with(cop) {
+                        // Handle C-style operators
+
+                        let (title, message) = if self.mode == OperatorStyleMode::EnforceEnglish {
+                            (
+                                "Prefer english operator notation",
+                                format!(
+                                    "Prefer english operator notation; rewrite `{}` to `{}`",
+                                    cop, ENGLISH_OPERATORS[i]
+                                ),
+                            )
+                        } else {
+                            (
+                                "Mixed operator styles",
+                                format!(
+                                    "Found mixed operator styles; rewrite `{}` to `{}`",
+                                    cop, ENGLISH_OPERATORS[i]
+                                ),
+                            )
+                        };
+
+                        self.result.push(LintReport {
+                            id: LINT_NAME.into(),
+                            url: Some(create_url(LINT_NAME)),
+                            title: title.into(),
+                            message,
+                            // From the original span,
+                            // account for the skipped characters and the operator length to get the correct span for the operator itself
+                            span: Span::ReverseByte(
+                                reverse_span_start.saturating_sub(skipped_chars)
+                                    ..(reverse_span_start
+                                        .saturating_sub(skipped_chars)
+                                        .saturating_sub(cop.len())),
+                            ),
+                        });
+                    }
+                }
+            }
+            (OperatorStyleMode::EnforceCLike, _)
+            | (OperatorStyleMode::ProhibitMixed, Some(OpStyle::CLike)) => {
+                for (i, eop) in ENGLISH_OPERATORS.iter().enumerate() {
+                    if remaining.starts_with(eop) {
+                        // Handle english operators
+
+                        let (title, message) = if self.mode == OperatorStyleMode::EnforceCLike {
+                            (
+                                "Prefer C-like operator notation",
+                                format!(
+                                    "Prefer C-like operator notation; rewrite `{}` to `{}`",
+                                    eop, CLIKE_OPERATORS[i]
+                                ),
+                            )
+                        } else {
+                            (
+                                "Mixed operator styles",
+                                format!(
+                                    "Found mixed operator styles; rewrite `{}` to `{}`",
+                                    eop, CLIKE_OPERATORS[i]
+                                ),
+                            )
+                        };
+
+                        self.result.push(LintReport {
+                            id: LINT_NAME.into(),
+                            url: Some(create_url(LINT_NAME)),
+                            title: title.into(),
+                            message,
+                            // From the original span,
+                            // account for the skipped characters and the operator length to get the correct span for the operator itself
+                            span: Span::ReverseByte(
+                                reverse_span_start.saturating_sub(skipped_chars)
+                                    ..(reverse_span_start
+                                        .saturating_sub(skipped_chars)
+                                        .saturating_sub(eop.len())),
+                            ),
+                        });
+                    }
+                }
+            }
+
+            (OperatorStyleMode::ProhibitMixed, None) => {
+                // Check what kind of operators we see, then call itself recursively for the reporting
+                for eop in ENGLISH_OPERATORS {
+                    if remaining.starts_with(eop) {
+                        self.first = Some(OpStyle::English);
+                        break;
+                    }
+                }
+
+                for cop in CLIKE_OPERATORS {
+                    if remaining.starts_with(cop) {
+                        self.first = Some(OpStyle::CLike);
+                        break;
+                    }
+                }
+
+                // Now that we have a style, recurse into detection
+                assert!(
+                    self.first.is_some(),
+                    "If we are in ProhibitMixed mode, we should have detected an operator style \
+                     by now"
+                );
+                self.check_style_for_next_operator(original_remaining, reverse_span_start);
+            }
+        }
+    }
+}
+
+impl<'a> Visitor<'a> for OperatorStyleVisitor<'a> {
+    fn visit_logical_expr(&mut self, node: &'a LogicalExpr) {
+        self.visit_expr(node);
+
+        let expr = self.expr;
+
+        match node {
+            LogicalExpr::Combining { items, .. } => {
+                // For each logical expression, check what is the operator used behind it
+                // Skip the last element as there is something unrelated or nothing behind it.
+                for item in &items[..items.len().saturating_sub(1)] {
+                    let start = expr.len().saturating_sub(item.get_reverse_span().end);
+                    if start <= expr.len() {
+                        self.check_style_for_next_operator(
+                            &expr[start..],
+                            item.get_reverse_span().end,
+                        );
+                    }
+                }
+            }
+            LogicalExpr::Comparison(comparison_expr) => {
+                match &comparison_expr.op {
+                    ComparisonOpExpr::Ordering { .. }
+                    | ComparisonOpExpr::Int { .. }
+                    | ComparisonOpExpr::Matches(..) => {
+                        // Skip the LHS expression and look at the next value afterwards.
+                        let start = expr
+                            .len()
+                            .saturating_sub(comparison_expr.lhs_expr().reverse_span.end);
                         if start <= expr.len() {
                             self.check_style_for_next_operator(
                                 &expr[start..],
-                                item.get_reverse_span().end,
+                                comparison_expr.lhs_expr().reverse_span.end,
                             );
                         }
                     }
-                }
-                LogicalExpr::Comparison(comparison_expr) => {
-                    match &comparison_expr.op {
-                        ComparisonOpExpr::Ordering { .. }
-                        | ComparisonOpExpr::Int { .. }
-                        | ComparisonOpExpr::Matches(..) => {
-                            // Skip the LHS expression and look at the next value afterwards.
-                            let start = expr
-                                .len()
-                                .saturating_sub(comparison_expr.lhs_expr().reverse_span.end);
-                            if start <= expr.len() {
-                                self.check_style_for_next_operator(
-                                    &expr[start..],
-                                    comparison_expr.lhs_expr().reverse_span.end,
-                                );
-                            }
-                        }
 
-                        // These only have english operators, so ignore them for style detection
-                        ComparisonOpExpr::Contains(_)
-                        | ComparisonOpExpr::Wildcard(_)
-                        | ComparisonOpExpr::StrictWildcard(_)
-                        | ComparisonOpExpr::OneOf(_)
-                        | ComparisonOpExpr::InList { .. }
-                        | ComparisonOpExpr::ContainsOneOf(_) => {}
+                    // These only have english operators, so ignore them for style detection
+                    ComparisonOpExpr::Contains(_)
+                    | ComparisonOpExpr::Wildcard(_)
+                    | ComparisonOpExpr::StrictWildcard(_)
+                    | ComparisonOpExpr::OneOf(_)
+                    | ComparisonOpExpr::InList { .. }
+                    | ComparisonOpExpr::ContainsOneOf(_) => {}
 
-                        // This has no operator to look at
-                        ComparisonOpExpr::IsTrue => {}
-                    }
-                }
-                LogicalExpr::Parenthesized(_) => {
                     // This has no operator to look at
+                    ComparisonOpExpr::IsTrue => {}
                 }
-                LogicalExpr::Unary { .. } => {
-                    let start = expr.len().saturating_sub(node.get_reverse_span().start);
-                    self.check_style_for_next_operator(
-                        &expr[start..],
-                        node.get_reverse_span().start,
-                    );
-                }
+            }
+            LogicalExpr::Parenthesized(_) => {
+                // This has no operator to look at
+            }
+            LogicalExpr::Unary { .. } => {
+                let start = expr.len().saturating_sub(node.get_reverse_span().start);
+                self.check_style_for_next_operator(&expr[start..], node.get_reverse_span().start);
             }
         }
     }
-
-    let mut visitor = V {
-        result: Vec::new(),
-        first: None,
-        mode: config.settings.operator_style_mode,
-        expr,
-    };
-
-    ast.walk(&mut visitor);
-    visitor.result
 }
 
 #[cfg(test)]

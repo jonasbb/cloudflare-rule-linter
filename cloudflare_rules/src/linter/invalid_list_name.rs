@@ -8,70 +8,83 @@ inventory::submit! {
         name: LINT_NAME,
         description: "Check for invalid managed list names and optionally invalid custom list names.",
         category: Category::Correctness,
-        lint_fn: lint
+        lint_fn: lint,
+        lint_value_fn: lint_value,
     }
 }
 
 fn lint(config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
-    // Ensure regex matches use raw string literals (r"...") instead of normal quoted strings
-    struct InvalidListNameVisitor<'a> {
-        result: Vec<LintReport>,
-        /// If Some, a complete list of all custom lists that are allowed. If None, all custom lists are allowed.
-        check_custom_lists: &'a Option<Vec<Box<str>>>,
-    }
-    let mut visitor = InvalidListNameVisitor {
-        result: Vec::new(),
-        check_custom_lists: &config.settings.invalid_list_name_custom_lists,
-    };
-
-    impl Visitor<'_> for InvalidListNameVisitor<'_> {
-        fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
-            if let ComparisonOpExpr::InList { list: _, name } = &node.op {
-                // Taken from https://developers.cloudflare.com/waf/tools/lists/managed-lists/
-                let predefined_lists = [
-                    "cf.anonymizer",
-                    "cf.botnetcc",
-                    "cf.malware",
-                    "cf.open_proxies",
-                    "cf.vpn",
-                ];
-                if predefined_lists.contains(&name.as_str()) {
-                    // Valid managed list name, do nothing
-                } else if name.as_str().starts_with("cf.") || name.as_str().contains(".") {
-                    self.result.push(LintReport {
-                        id: LINT_NAME.into(),
-                        url: Some(create_url(LINT_NAME)),
-                        title: "Invalid managed list name".into(),
-                        message: format!(
-                            "Only the following managed list names are allowed: {}",
-                            predefined_lists.join(", ")
-                        ),
-                        span: Span::ReverseByte(node.reverse_span.clone()),
-                    });
-                } else if let Some(custom_lists) = self.check_custom_lists
-                    && custom_lists
-                        .iter()
-                        .all(|list| list.as_ref() != name.as_str())
-                {
-                    self.result.push(LintReport {
-                        id: LINT_NAME.into(),
-                        url: Some(create_url(LINT_NAME)),
-                        title: "Invalid custom list name".into(),
-                        message: format!(
-                            "Custom list name `{}` is not in the allowed list of custom lists.",
-                            name.as_str()
-                        ),
-                        span: Span::ReverseByte(node.reverse_span.clone()),
-                    });
-                }
-            }
-
-            self.visit_expr(node);
-        }
-    }
-
+    let mut visitor = InvalidListNameVisitor::new(config);
     ast.walk(&mut visitor);
     visitor.result
+}
+
+fn lint_value(config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<LintReport> {
+    let mut visitor = InvalidListNameVisitor::new(config);
+    ast.walk(&mut visitor);
+    visitor.result
+}
+
+/// Ensure regex matches use raw string literals (r"...") instead of normal quoted strings
+struct InvalidListNameVisitor<'a> {
+    result: Vec<LintReport>,
+    /// If Some, a complete list of all custom lists that are allowed. If None, all custom lists are allowed.
+    check_custom_lists: &'a Option<Vec<Box<str>>>,
+}
+
+impl<'a> InvalidListNameVisitor<'a> {
+    fn new(config: &'a LinterConfig) -> Self {
+        Self {
+            result: Vec::new(),
+            check_custom_lists: &config.settings.invalid_list_name_custom_lists,
+        }
+    }
+}
+
+impl Visitor<'_> for InvalidListNameVisitor<'_> {
+    fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
+        if let ComparisonOpExpr::InList { list: _, name } = &node.op {
+            // Taken from https://developers.cloudflare.com/waf/tools/lists/managed-lists/
+            let predefined_lists = [
+                "cf.anonymizer",
+                "cf.botnetcc",
+                "cf.malware",
+                "cf.open_proxies",
+                "cf.vpn",
+            ];
+            if predefined_lists.contains(&name.as_str()) {
+                // Valid managed list name, do nothing
+            } else if name.as_str().starts_with("cf.") || name.as_str().contains(".") {
+                self.result.push(LintReport {
+                    id: LINT_NAME.into(),
+                    url: Some(create_url(LINT_NAME)),
+                    title: "Invalid managed list name".into(),
+                    message: format!(
+                        "Only the following managed list names are allowed: {}",
+                        predefined_lists.join(", ")
+                    ),
+                    span: Span::ReverseByte(node.reverse_span.clone()),
+                });
+            } else if let Some(custom_lists) = self.check_custom_lists
+                && custom_lists
+                    .iter()
+                    .all(|list| list.as_ref() != name.as_str())
+            {
+                self.result.push(LintReport {
+                    id: LINT_NAME.into(),
+                    url: Some(create_url(LINT_NAME)),
+                    title: "Invalid custom list name".into(),
+                    message: format!(
+                        "Custom list name `{}` is not in the allowed list of custom lists.",
+                        name.as_str()
+                    ),
+                    span: Span::ReverseByte(node.reverse_span.clone()),
+                });
+            }
+        }
+
+        self.visit_expr(node);
+    }
 }
 
 #[cfg(test)]

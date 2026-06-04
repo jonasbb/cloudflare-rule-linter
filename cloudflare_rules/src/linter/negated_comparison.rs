@@ -9,85 +9,92 @@ inventory::submit! {
         name: LINT_NAME,
         description: "Detect comparisons that are negated and suggest using the opposite comparison operator instead.",
         category: Category::Style,
-        lint_fn: lint
+        lint_fn: lint,
+        lint_value_fn: lint_value,
     }
 }
 
 fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
-    struct NegatedComparisonVisitor {
-        result: Vec<LintReport>,
-    }
-
-    let mut visitor = NegatedComparisonVisitor { result: Vec::new() };
-
-    impl Visitor<'_> for NegatedComparisonVisitor {
-        fn visit_logical_expr(&mut self, node: &'_ LogicalExpr) {
-            if let LogicalExpr::Unary {
-                op: UnaryOp::Not,
-                arg,
-                reverse_span,
-            } = node
-                && let LogicalExpr::Comparison(comp) = &**arg
-            {
-                // Only handle ordering comparisons (eq, ne, lt, le, gt, ge)
-                if let ComparisonOpExpr::Ordering { op, .. } = &comp.op {
-                    use OrderingOp;
-                    let suggestion_op = match op {
-                        OrderingOp::Equal => Some(OrderingOp::NotEqual),
-                        OrderingOp::NotEqual => Some(OrderingOp::Equal),
-                        OrderingOp::LessThan => Some(OrderingOp::GreaterThanEqual),
-                        OrderingOp::LessThanEqual => Some(OrderingOp::GreaterThan),
-                        OrderingOp::GreaterThan => Some(OrderingOp::LessThanEqual),
-                        OrderingOp::GreaterThanEqual => Some(OrderingOp::LessThan),
-                    };
-
-                    if let Some(sugg) = suggestion_op {
-                        let inner = AstPrintVisitor::comparison_expr_to_string(comp);
-                        // Reconstruct a ComparisonExpr string with the suggested op
-                        // We reuse the AST printer on the original and then replace the operator
-                        let sugg_str = match sugg {
-                            OrderingOp::Equal => " eq ",
-                            OrderingOp::NotEqual => " ne ",
-                            OrderingOp::GreaterThanEqual => " ge ",
-                            OrderingOp::LessThanEqual => " le ",
-                            OrderingOp::GreaterThan => " gt ",
-                            OrderingOp::LessThan => " lt ",
-                        };
-
-                        // Split on known operator tokens to replace
-                        let suggested_expr = inner
-                            .replace(" eq ", sugg_str)
-                            .replace(" == ", sugg_str)
-                            .replace(" ne ", sugg_str)
-                            .replace(" != ", sugg_str)
-                            .replace(" gt ", sugg_str)
-                            .replace(" > ", sugg_str)
-                            .replace(" lt ", sugg_str)
-                            .replace(" < ", sugg_str)
-                            .replace(" ge ", sugg_str)
-                            .replace(" >= ", sugg_str)
-                            .replace(" le ", sugg_str)
-                            .replace(" <= ", sugg_str);
-
-                        self.result.push(LintReport {
-                            id: LINT_NAME.into(),
-                            url: Some(create_url(LINT_NAME)),
-                            title: "Found negated comparison".into(),
-                            message: format!(
-                                "Consider simplifying from `not {inner}` to `{suggested_expr}`",
-                            ),
-                            span: Span::ReverseByte(reverse_span.clone()),
-                        });
-                    }
-                }
-            }
-
-            self.visit_expr(node);
-        }
-    }
-
+    let mut visitor = NegatedComparisonVisitor::default();
     ast.walk(&mut visitor);
     visitor.result
+}
+
+fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<LintReport> {
+    let mut visitor = NegatedComparisonVisitor::default();
+    ast.walk(&mut visitor);
+    visitor.result
+}
+
+#[derive(Default)]
+struct NegatedComparisonVisitor {
+    result: Vec<LintReport>,
+}
+
+impl Visitor<'_> for NegatedComparisonVisitor {
+    fn visit_logical_expr(&mut self, node: &'_ LogicalExpr) {
+        if let LogicalExpr::Unary {
+            op: UnaryOp::Not,
+            arg,
+            reverse_span,
+        } = node
+            && let LogicalExpr::Comparison(comp) = &**arg
+        {
+            // Only handle ordering comparisons (eq, ne, lt, le, gt, ge)
+            if let ComparisonOpExpr::Ordering { op, .. } = &comp.op {
+                use OrderingOp;
+                let suggestion_op = match op {
+                    OrderingOp::Equal => Some(OrderingOp::NotEqual),
+                    OrderingOp::NotEqual => Some(OrderingOp::Equal),
+                    OrderingOp::LessThan => Some(OrderingOp::GreaterThanEqual),
+                    OrderingOp::LessThanEqual => Some(OrderingOp::GreaterThan),
+                    OrderingOp::GreaterThan => Some(OrderingOp::LessThanEqual),
+                    OrderingOp::GreaterThanEqual => Some(OrderingOp::LessThan),
+                };
+
+                if let Some(sugg) = suggestion_op {
+                    let inner = AstPrintVisitor::comparison_expr_to_string(comp);
+                    // Reconstruct a ComparisonExpr string with the suggested op
+                    // We reuse the AST printer on the original and then replace the operator
+                    let sugg_str = match sugg {
+                        OrderingOp::Equal => " eq ",
+                        OrderingOp::NotEqual => " ne ",
+                        OrderingOp::GreaterThanEqual => " ge ",
+                        OrderingOp::LessThanEqual => " le ",
+                        OrderingOp::GreaterThan => " gt ",
+                        OrderingOp::LessThan => " lt ",
+                    };
+
+                    // Split on known operator tokens to replace
+                    let suggested_expr = inner
+                        .replace(" eq ", sugg_str)
+                        .replace(" == ", sugg_str)
+                        .replace(" ne ", sugg_str)
+                        .replace(" != ", sugg_str)
+                        .replace(" gt ", sugg_str)
+                        .replace(" > ", sugg_str)
+                        .replace(" lt ", sugg_str)
+                        .replace(" < ", sugg_str)
+                        .replace(" ge ", sugg_str)
+                        .replace(" >= ", sugg_str)
+                        .replace(" le ", sugg_str)
+                        .replace(" <= ", sugg_str);
+
+                    self.result.push(LintReport {
+                        id: LINT_NAME.into(),
+                        url: Some(create_url(LINT_NAME)),
+                        title: "Found negated comparison".into(),
+                        message: format!(
+                            "Consider simplifying from `not {inner}` to `{suggested_expr}`",
+                        ),
+                        span: Span::ReverseByte(reverse_span.clone()),
+                    });
+                }
+            }
+        }
+
+        self.visit_expr(node);
+    }
 }
 
 #[cfg(test)]

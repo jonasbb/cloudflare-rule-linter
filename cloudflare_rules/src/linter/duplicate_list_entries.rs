@@ -10,119 +10,125 @@ inventory::submit! {
         name: LINT_NAME,
         description: "Detect duplicate values in lists.",
         category: Category::Correctness,
-        lint_fn: lint
+        lint_fn: lint,
+        lint_value_fn: lint_value,
     }
 }
 
 fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
-    // Check for duplicate entries in list comparisons
-    // A in {1 2 2} => duplicate entry 2
-
-    struct DuplicateListEntriesVisitor {
-        result: Vec<LintReport>,
-    }
-    let mut visitor = DuplicateListEntriesVisitor { result: Vec::new() };
-
-    impl Visitor<'_> for DuplicateListEntriesVisitor {
-        fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
-            if let ComparisonOpExpr::OneOf(values) = &node.op {
-                match values {
-                    RhsValues::Int(int_ranges) => {
-                        for idx in 0..int_ranges.len() {
-                            let range_i: RangeInclusive<i64> = int_ranges[idx].clone().into();
-                            for range_j in &int_ranges[idx + 1..] {
-                                let range_j: RangeInclusive<i64> = range_j.into();
-                                // Check for overlap
-                                if range_i.start() <= range_j.end()
-                                    && range_j.start() <= range_i.end()
-                                {
-                                    self.result.push(LintReport {
-                                        id: LINT_NAME.into(),
-                                        url: Some(create_url(LINT_NAME)),
-                                        title: "Found duplicate entry in list".into(),
-                                        message: format!(
-                                            "The values `{}..{}` and `{}..{}` overlap.",
-                                            range_i.start(),
-                                            range_i.end(),
-                                            range_j.start(),
-                                            range_j.end(),
-                                        ),
-                                        span: Span::ReverseByte(node.reverse_span.clone()),
-                                    });
-                                }
-                            }
-                        }
-                    }
-                    RhsValues::Ip(ip_ranges) => {
-                        for idx in 0..ip_ranges.len() {
-                            let range_i = &ip_ranges[idx];
-                            for range_j in &ip_ranges[idx + 1..] {
-                                // Check for overlap
-                                let overlaps = match (
-                                    ExplicitIpRange::from(range_i.clone()),
-                                    ExplicitIpRange::from(range_j.clone()),
-                                ) {
-                                    (ExplicitIpRange::V4(r_i), ExplicitIpRange::V4(r_j)) => {
-                                        r_i.start() <= r_j.end() && r_j.start() <= r_i.end()
-                                    }
-                                    (ExplicitIpRange::V6(r_i), ExplicitIpRange::V6(r_j)) => {
-                                        r_i.start() <= r_j.end() && r_j.start() <= r_i.end()
-                                    }
-                                    // Different IP versions cannot overlap
-                                    _ => false,
-                                };
-
-                                if overlaps {
-                                    let range_i_str = AstPrintVisitor::format_ip_range(range_i);
-                                    let range_j_str = AstPrintVisitor::format_ip_range(range_j);
-                                    self.result.push(LintReport {
-                                        id: LINT_NAME.into(),
-                                        url: Some(create_url(LINT_NAME)),
-                                        title: "Found duplicate entry in list".into(),
-                                        message: format!(
-                                            "The values `{range_i_str}` and `{range_j_str}` \
-                                             overlap."
-                                        ),
-                                        span: Span::ReverseByte(node.reverse_span.clone()),
-                                    });
-                                }
-                            }
-                        }
-                    }
-                    RhsValues::Bytes(items) => {
-                        for idx in 0..items.len() {
-                            let item_i = &items[idx].data;
-                            for item_j in &items[idx + 1..] {
-                                let item_j = &item_j.data;
-                                if item_i == item_j {
-                                    let item_str = AstPrintVisitor::escape_bytes(item_i);
-                                    self.result.push(LintReport {
-                                        id: LINT_NAME.into(),
-                                        url: Some(create_url(LINT_NAME)),
-                                        title: "Found duplicate entry in list".into(),
-                                        message: format!(
-                                            "The value `{item_str}` appears multiple times in the \
-                                             list."
-                                        ),
-                                        span: Span::ReverseByte(node.reverse_span.clone()),
-                                    });
-                                }
-                            }
-                        }
-                    }
-                    // Unreachable branches due to uninhabited types
-                    RhsValues::Array(..) | RhsValues::Bool(..) | RhsValues::Map(..) => {
-                        unreachable!()
-                    }
-                }
-            }
-
-            self.visit_expr(node);
-        }
-    }
-
+    let mut visitor = DuplicateListEntriesVisitor::default();
     ast.walk(&mut visitor);
     visitor.result
+}
+
+fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<LintReport> {
+    let mut visitor = DuplicateListEntriesVisitor::default();
+    ast.walk(&mut visitor);
+    visitor.result
+}
+
+/// Check for duplicate entries in list comparisons
+///
+/// A in {1 2 2} => duplicate entry 2
+#[derive(Default)]
+struct DuplicateListEntriesVisitor {
+    result: Vec<LintReport>,
+}
+
+impl Visitor<'_> for DuplicateListEntriesVisitor {
+    fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
+        if let ComparisonOpExpr::OneOf(values) = &node.op {
+            match values {
+                RhsValues::Int(int_ranges) => {
+                    for idx in 0..int_ranges.len() {
+                        let range_i: RangeInclusive<i64> = int_ranges[idx].clone().into();
+                        for range_j in &int_ranges[idx + 1..] {
+                            let range_j: RangeInclusive<i64> = range_j.into();
+                            // Check for overlap
+                            if range_i.start() <= range_j.end() && range_j.start() <= range_i.end()
+                            {
+                                self.result.push(LintReport {
+                                    id: LINT_NAME.into(),
+                                    url: Some(create_url(LINT_NAME)),
+                                    title: "Found duplicate entry in list".into(),
+                                    message: format!(
+                                        "The values `{}..{}` and `{}..{}` overlap.",
+                                        range_i.start(),
+                                        range_i.end(),
+                                        range_j.start(),
+                                        range_j.end(),
+                                    ),
+                                    span: Span::ReverseByte(node.reverse_span.clone()),
+                                });
+                            }
+                        }
+                    }
+                }
+                RhsValues::Ip(ip_ranges) => {
+                    for idx in 0..ip_ranges.len() {
+                        let range_i = &ip_ranges[idx];
+                        for range_j in &ip_ranges[idx + 1..] {
+                            // Check for overlap
+                            let overlaps = match (
+                                ExplicitIpRange::from(range_i.clone()),
+                                ExplicitIpRange::from(range_j.clone()),
+                            ) {
+                                (ExplicitIpRange::V4(r_i), ExplicitIpRange::V4(r_j)) => {
+                                    r_i.start() <= r_j.end() && r_j.start() <= r_i.end()
+                                }
+                                (ExplicitIpRange::V6(r_i), ExplicitIpRange::V6(r_j)) => {
+                                    r_i.start() <= r_j.end() && r_j.start() <= r_i.end()
+                                }
+                                // Different IP versions cannot overlap
+                                _ => false,
+                            };
+
+                            if overlaps {
+                                let range_i_str = AstPrintVisitor::format_ip_range(range_i);
+                                let range_j_str = AstPrintVisitor::format_ip_range(range_j);
+                                self.result.push(LintReport {
+                                    id: LINT_NAME.into(),
+                                    url: Some(create_url(LINT_NAME)),
+                                    title: "Found duplicate entry in list".into(),
+                                    message: format!(
+                                        "The values `{range_i_str}` and `{range_j_str}` overlap."
+                                    ),
+                                    span: Span::ReverseByte(node.reverse_span.clone()),
+                                });
+                            }
+                        }
+                    }
+                }
+                RhsValues::Bytes(items) => {
+                    for idx in 0..items.len() {
+                        let item_i = &items[idx].data;
+                        for item_j in &items[idx + 1..] {
+                            let item_j = &item_j.data;
+                            if item_i == item_j {
+                                let item_str = AstPrintVisitor::escape_bytes(item_i);
+                                self.result.push(LintReport {
+                                    id: LINT_NAME.into(),
+                                    url: Some(create_url(LINT_NAME)),
+                                    title: "Found duplicate entry in list".into(),
+                                    message: format!(
+                                        "The value `{item_str}` appears multiple times in the \
+                                         list."
+                                    ),
+                                    span: Span::ReverseByte(node.reverse_span.clone()),
+                                });
+                            }
+                        }
+                    }
+                }
+                // Unreachable branches due to uninhabited types
+                RhsValues::Array(..) | RhsValues::Bool(..) | RhsValues::Map(..) => {
+                    unreachable!()
+                }
+            }
+        }
+
+        self.visit_expr(node);
+    }
 }
 
 #[cfg(test)]

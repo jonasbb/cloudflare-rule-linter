@@ -3,7 +3,7 @@ use crate::phase::Phase;
 use serde::{Deserialize, Serialize};
 use std::iter;
 use std::ops::Range;
-use wirefilter::FilterAst;
+use wirefilter::{FilterAst, FilterValueAst};
 
 mod deprecated_field;
 mod duplicate_list_entries;
@@ -29,6 +29,7 @@ pub struct Lint {
     pub description: &'static str,
     pub category: Category,
     pub lint_fn: fn(&LinterConfig, &FilterAst, &str) -> Vec<LintReport>,
+    pub lint_value_fn: fn(&LinterConfig, &FilterValueAst, &str) -> Vec<LintReport>,
 }
 
 inventory::collect!(Lint);
@@ -121,8 +122,40 @@ impl Linter {
         expr: &str,
         _rule_phase: Phase,
     ) -> Vec<LintReport> {
-        let mut results = Vec::new();
+        // Simplify the AST before running any lints, so that all lints can operate on a normalized AST structure
+        ast.walk_mut(&mut SimplifyVisitor);
 
+        let mut results = Vec::new();
+        // Run all enabled lints
+        for lint in self.iter_active_lints() {
+            results.extend((lint.lint_fn)(&self.config, ast, expr));
+        }
+        results
+    }
+
+    pub fn lint_value(&self, ast: &mut FilterValueAst, expr: &str) -> Vec<LintReport> {
+        self.lint_value_with_phase(ast, expr, Phase::Unknown)
+    }
+
+    /// Lint the provided AST using an explicit `rule_phase` for this invocation.
+    pub fn lint_value_with_phase(
+        &self,
+        ast: &mut FilterValueAst,
+        expr: &str,
+        _rule_phase: Phase,
+    ) -> Vec<LintReport> {
+        // Simplify the AST before running any lints, so that all lints can operate on a normalized AST structure
+        ast.walk_mut(&mut SimplifyVisitor);
+
+        let mut results = Vec::new();
+        // Run all enabled lints
+        for lint in self.iter_active_lints() {
+            results.extend((lint.lint_value_fn)(&self.config, ast, expr));
+        }
+        results
+    }
+
+    fn iter_active_lints(&self) -> impl Iterator<Item = &Lint> {
         // Check for all lints that should run
         let mut runlint = vec![true; inventory::iter::<Lint>.into_iter().count()];
         for (rl, lint) in iter::zip(&mut runlint, inventory::iter::<Lint>) {
@@ -149,74 +182,62 @@ impl Linter {
             }
         }
 
-        // Run all enabled lints
-        self.simplify_ast(ast);
-        for (rl, lint) in iter::zip(runlint, inventory::iter::<Lint>) {
-            if rl {
-                results.extend((lint.lint_fn)(&self.config, ast, expr));
-            }
-        }
-        results
+        iter::zip(runlint, inventory::iter::<Lint>).filter_map(|(rl, lint)| rl.then_some(lint))
     }
+}
 
-    fn simplify_ast(&self, ast: &mut FilterAst) {
-        // Parens in the AST are no longer semantically relevant, so we can remove them
-        // This will make further analysis easier, as we don't have to consider parens nodes
-        //
-        // This might reveal further simplification opportunities of combining expressions
-        // (e.g., A and (B and C) => A and B and C)
+// Parens in the AST are no longer semantically relevant, so we can remove them
+// This will make further analysis easier, as we don't have to consider parens nodes
+//
+// This might reveal further simplification opportunities of combining expressions
+// (e.g., A and (B and C) => A and B and C)
+struct SimplifyVisitor;
 
-        struct SimplifyVisitor;
-        impl wirefilter::VisitorMut<'_> for SimplifyVisitor {
-            fn visit_logical_expr(&mut self, node: &'_ mut wirefilter::LogicalExpr) {
-                match node {
-                    wirefilter::LogicalExpr::Combining { op, items, .. } => {
-                        items.iter_mut().for_each(|item| {
-                            // Recursively visit each item
-                            self.visit_logical_expr(item);
-                        });
-                        // Check if any item is a combining expression with the same operator
-                        let mut new_items = Vec::with_capacity(items.len());
-                        for item in items.drain(..) {
-                            if let wirefilter::LogicalExpr::Combining {
+impl wirefilter::VisitorMut<'_> for SimplifyVisitor {
+    fn visit_logical_expr(&mut self, node: &'_ mut wirefilter::LogicalExpr) {
+        match node {
+            wirefilter::LogicalExpr::Combining { op, items, .. } => {
+                items.iter_mut().for_each(|item| {
+                    // Recursively visit each item
+                    self.visit_logical_expr(item);
+                });
+                // Check if any item is a combining expression with the same operator
+                let mut new_items = Vec::with_capacity(items.len());
+                for item in items.drain(..) {
+                    if let wirefilter::LogicalExpr::Combining {
+                        op: inner_op,
+                        items: inner_items,
+                        reverse_span,
+                    } = item
+                    {
+                        if inner_op == *op {
+                            // Flatten the inner items
+                            new_items.extend(inner_items);
+                        } else {
+                            new_items.push(wirefilter::LogicalExpr::Combining {
                                 op: inner_op,
                                 items: inner_items,
                                 reverse_span,
-                            } = item
-                            {
-                                if inner_op == *op {
-                                    // Flatten the inner items
-                                    new_items.extend(inner_items);
-                                } else {
-                                    new_items.push(wirefilter::LogicalExpr::Combining {
-                                        op: inner_op,
-                                        items: inner_items,
-                                        reverse_span,
-                                    });
-                                }
-                            } else {
-                                new_items.push(item);
-                            }
+                            });
                         }
-                        *items = new_items;
-                    }
-                    wirefilter::LogicalExpr::Parenthesized(parenthesized_expr) => {
-                        self.visit_logical_expr(&mut parenthesized_expr.expr);
-                        // Replace the parenthesized expression with its inner expression
-                        *node = parenthesized_expr.expr.clone();
-                    }
-                    wirefilter::LogicalExpr::Unary { arg, .. } => {
-                        self.visit_logical_expr(arg);
-                    }
-                    wirefilter::LogicalExpr::Comparison(comparison_expr) => {
-                        self.visit_comparison_expr(comparison_expr);
+                    } else {
+                        new_items.push(item);
                     }
                 }
+                *items = new_items;
+            }
+            wirefilter::LogicalExpr::Parenthesized(parenthesized_expr) => {
+                self.visit_logical_expr(&mut parenthesized_expr.expr);
+                // Replace the parenthesized expression with its inner expression
+                *node = parenthesized_expr.expr.clone();
+            }
+            wirefilter::LogicalExpr::Unary { arg, .. } => {
+                self.visit_logical_expr(arg);
+            }
+            wirefilter::LogicalExpr::Comparison(comparison_expr) => {
+                self.visit_comparison_expr(comparison_expr);
             }
         }
-
-        let mut visitor = SimplifyVisitor;
-        ast.walk_mut(&mut visitor);
     }
 }
 
@@ -286,36 +307,25 @@ pub(super) mod test {
     }
 
     #[track_caller]
-    pub(super) fn assert_simplify_ast(linter: &Linter, expr: &str, expected: Expect) {
-        assert_simplify_ast_phase(linter, Phase::Unknown, expr, expected);
+    pub(super) fn assert_simplify_ast(expr: &str, expected: Expect) {
+        assert_simplify_ast_phase(Phase::Unknown, expr, expected);
     }
 
     #[track_caller]
-    pub(super) fn assert_simplify_ast_phase(
-        linter: &Linter,
-        phase: Phase,
-        expr: &str,
-        expected: Expect,
-    ) {
+    pub(super) fn assert_simplify_ast_phase(phase: Phase, expr: &str, expected: Expect) {
         let mut ast = SCHEMES
             .get(&phase)
             .expect("SCHEMES is always set")
             .parse(expr)
             .expect("All wirefilter rules in the test must be valid expressions.");
-        linter.simplify_ast(&mut ast);
+        // Simplify the AST before running any lints, so that all lints can operate on a normalized AST structure
+        ast.walk_mut(&mut SimplifyVisitor);
         expected.assert_debug_eq(&ast);
     }
-
-    static LINTER: LazyLock<Linter> = LazyLock::new(|| {
-        let mut linter = Linter::new();
-        linter.config = LinterConfig::default_disable_all_lints();
-        linter
-    });
 
     #[test]
     fn test_simplify_parens() {
         assert_simplify_ast(
-            &LINTER,
             "ssl and (ssl)",
             expect![[r#"
                 Combining {
@@ -357,7 +367,6 @@ pub(super) mod test {
     #[test]
     fn test_simplify_not_parens() {
         assert_simplify_ast(
-            &LINTER,
             "not (ssl)",
             expect![[r#"
                 Unary {
@@ -380,7 +389,6 @@ pub(super) mod test {
             "#]],
         );
         assert_simplify_ast(
-            &LINTER,
             "not ( ( ( not ( ( ssl ) ) ) ) )",
             expect![[r#"
                 Unary {
@@ -411,7 +419,6 @@ pub(super) mod test {
     #[test]
     fn test_simplify_parens_levels() {
         assert_simplify_ast(
-            &LINTER,
             "ssl and (ssl and ssl and (ssl and ssl and ssl and ssl))",
             expect![[r#"
                 Combining {

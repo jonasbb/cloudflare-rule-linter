@@ -8,22 +8,33 @@ inventory::submit! {
         name: LINT_NAME,
         description: "Check for regex and wildcard patterns that are overly permissive.",
         category: Category::Correctness,
-        lint_fn: lint
+        lint_fn: lint,
+        lint_value_fn: lint_value,
     }
 }
 
 fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
-    struct EmptyListVisitor {
-        result: Vec<LintReport>,
-    }
+    let mut visitor = EmptyListVisitor::default();
+    ast.walk(&mut visitor);
+    visitor.result
+}
 
-    let mut visitor = EmptyListVisitor { result: Vec::new() };
+fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<LintReport> {
+    let mut visitor = EmptyListVisitor::default();
+    ast.walk(&mut visitor);
+    visitor.result
+}
 
-    impl Visitor<'_> for EmptyListVisitor {
-        fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
-            match &node.op {
-                ComparisonOpExpr::Matches(pattern) => {
-                    #[rustfmt::skip]
+#[derive(Default)]
+struct EmptyListVisitor {
+    result: Vec<LintReport>,
+}
+
+impl Visitor<'_> for EmptyListVisitor {
+    fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
+        match &node.op {
+            ComparisonOpExpr::Matches(pattern) => {
+                #[rustfmt::skip]
                     let mut permissive_patterns = vec![
                         // Matches any character
                         ".",
@@ -34,84 +45,80 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
                         // Matches empty string at start or end
                         "^", "$", "|",
                     ];
-                    if let IdentifierExpr::Field(field) = &node.lhs.identifier
-                        && node.lhs.indexes.is_empty()
-                        && (field.name() == "http.request.uri.path"
-                            || field.name() == "raw.http.request.uri.path")
-                    {
-                        // Paths always start with a "/" so these patterns are also overly permissive in that context
-                        #[rustfmt::skip]
+                if let IdentifierExpr::Field(field) = &node.lhs.identifier
+                    && node.lhs.indexes.is_empty()
+                    && (field.name() == "http.request.uri.path"
+                        || field.name() == "raw.http.request.uri.path")
+                {
+                    // Paths always start with a "/" so these patterns are also overly permissive in that context
+                    #[rustfmt::skip]
                         permissive_patterns.extend_from_slice(&[
                             // Matches any string of length 0 or more
                             "/.*", "^/.*", "/.*$", "^/.*$",
                             // Every path has a "/" at the start, so these match any path
                             "/", "^/",
                         ]);
-                    }
+                }
 
-                    if permissive_patterns.contains(&pattern.as_str()) {
-                        self.result.push(LintReport {
-                            id: LINT_NAME.into(),
-                            url: Some(create_url(LINT_NAME)),
-                            title: "Overly permissive pattern".to_string(),
-                            message: "Consider using a more specific pattern to avoid unintended \
-                                      matches."
-                                .to_string(),
-                            span: Span::ReverseByte(node.reverse_span.clone()),
-                        });
-                    }
+                if permissive_patterns.contains(&pattern.as_str()) {
+                    self.result.push(LintReport {
+                        id: LINT_NAME.into(),
+                        url: Some(create_url(LINT_NAME)),
+                        title: "Overly permissive pattern".to_string(),
+                        message: "Consider using a more specific pattern to avoid unintended \
+                                  matches."
+                            .to_string(),
+                        span: Span::ReverseByte(node.reverse_span.clone()),
+                    });
                 }
-                ComparisonOpExpr::Wildcard(pattern) => {
-                    let mut permissive_patterns: Vec<&[u8]> = vec![b"*"];
-                    if let IdentifierExpr::Field(field) = &node.lhs.identifier
-                        && node.lhs.indexes.is_empty()
-                        && (field.name() == "http.request.uri.path"
-                            || field.name() == "raw.http.request.uri.path")
-                    {
-                        permissive_patterns.push(b"/*");
-                    }
-                    if permissive_patterns.contains(&&**pattern.pattern()) {
-                        self.result.push(LintReport {
-                            id: LINT_NAME.into(),
-                            url: Some(create_url(LINT_NAME)),
-                            title: "Overly permissive pattern".to_string(),
-                            message: "Consider using a more specific pattern to avoid unintended \
-                                      matches."
-                                .to_string(),
-                            span: Span::ReverseByte(node.reverse_span.clone()),
-                        });
-                    }
-                }
-                ComparisonOpExpr::StrictWildcard(pattern) => {
-                    let mut permissive_patterns: Vec<&[u8]> = vec![b"*"];
-                    if let IdentifierExpr::Field(field) = &node.lhs.identifier
-                        && node.lhs.indexes.is_empty()
-                        && (field.name() == "http.request.uri.path"
-                            || field.name() == "raw.http.request.uri.query")
-                    {
-                        permissive_patterns.push(b"/*");
-                    }
-                    if permissive_patterns.contains(&&**pattern.pattern()) {
-                        self.result.push(LintReport {
-                            id: LINT_NAME.into(),
-                            url: Some(create_url(LINT_NAME)),
-                            title: "Overly permissive pattern".to_string(),
-                            message: "Consider using a more specific pattern to avoid unintended \
-                                      matches."
-                                .to_string(),
-                            span: Span::ReverseByte(node.reverse_span.clone()),
-                        });
-                    }
-                }
-                _ => {}
             }
-
-            self.visit_expr(node);
+            ComparisonOpExpr::Wildcard(pattern) => {
+                let mut permissive_patterns: Vec<&[u8]> = vec![b"*"];
+                if let IdentifierExpr::Field(field) = &node.lhs.identifier
+                    && node.lhs.indexes.is_empty()
+                    && (field.name() == "http.request.uri.path"
+                        || field.name() == "raw.http.request.uri.path")
+                {
+                    permissive_patterns.push(b"/*");
+                }
+                if permissive_patterns.contains(&&**pattern.pattern()) {
+                    self.result.push(LintReport {
+                        id: LINT_NAME.into(),
+                        url: Some(create_url(LINT_NAME)),
+                        title: "Overly permissive pattern".to_string(),
+                        message: "Consider using a more specific pattern to avoid unintended \
+                                  matches."
+                            .to_string(),
+                        span: Span::ReverseByte(node.reverse_span.clone()),
+                    });
+                }
+            }
+            ComparisonOpExpr::StrictWildcard(pattern) => {
+                let mut permissive_patterns: Vec<&[u8]> = vec![b"*"];
+                if let IdentifierExpr::Field(field) = &node.lhs.identifier
+                    && node.lhs.indexes.is_empty()
+                    && (field.name() == "http.request.uri.path"
+                        || field.name() == "raw.http.request.uri.query")
+                {
+                    permissive_patterns.push(b"/*");
+                }
+                if permissive_patterns.contains(&&**pattern.pattern()) {
+                    self.result.push(LintReport {
+                        id: LINT_NAME.into(),
+                        url: Some(create_url(LINT_NAME)),
+                        title: "Overly permissive pattern".to_string(),
+                        message: "Consider using a more specific pattern to avoid unintended \
+                                  matches."
+                            .to_string(),
+                        span: Span::ReverseByte(node.reverse_span.clone()),
+                    });
+                }
+            }
+            _ => {}
         }
-    }
 
-    ast.walk(&mut visitor);
-    visitor.result
+        self.visit_expr(node);
+    }
 }
 
 #[cfg(test)]

@@ -11,60 +11,109 @@ inventory::submit! {
         name: LINT_NAME,
         description: "Detect illogical conditions, such as comparing the same field for equality multiple times in an AND expression, or for inequality multiple times in an OR expression.",
         category: Category::Style,
-        lint_fn: lint
+        lint_fn: lint,
+        lint_value_fn: lint_value,
     }
 }
 
 fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
-    // Check for illogical conditions
-    // A eq 1 and A eq 2 => always false
-    // A ne 1 or A ne 2 => always true
-    //
-    // Special care for different comparisons options
-    // A eq 1
-    // A in {1 2}
-    //
-    // A ne 1
-    // not A eq 1
-    // not A in {1 2}
-    //
-    // Possible extensions for strings
-    // If regex or wildcard matches do not use any placeholders, they could be considered as equal matches
+    let mut visitor = IllogicalConditionsVisitor::default();
+    ast.walk(&mut visitor);
+    visitor.result
+}
 
-    struct IllogicalConditionsVisitor {
-        result: Vec<LintReport>,
-    }
-    let mut visitor = IllogicalConditionsVisitor { result: Vec::new() };
+fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<LintReport> {
+    let mut visitor = IllogicalConditionsVisitor::default();
+    ast.walk(&mut visitor);
+    visitor.result
+}
 
-    impl Visitor<'_> for IllogicalConditionsVisitor {
-        fn visit_logical_expr(&mut self, node: &'_ LogicalExpr) {
-            // Check for illogical conditions here
-            if let LogicalExpr::Combining {
-                op,
-                items,
-                reverse_span,
-            } = node
-            {
-                match op {
-                    LogicalOp::And => {
-                        // Collect found index expressions to check for duplicates
-                        let mut found_lhs = Vec::new();
+/// Check for illogical conditions
+///
+/// A eq 1 and A eq 2 => always false
+/// A ne 1 or A ne 2 => always true
+///
+/// Special care for different comparisons options
+/// A eq 1
+/// A in {1 2}
+///
+/// A ne 1
+/// not A eq 1
+/// not A in {1 2}
+///
+/// Possible extensions for strings
+/// If regex or wildcard matches do not use any placeholders, they could be considered as equal matches
+#[derive(Default)]
+struct IllogicalConditionsVisitor {
+    result: Vec<LintReport>,
+}
 
-                        // Check for always false conditions
-                        for e in items {
-                            // Analyze each expression
-                            if let LogicalExpr::Comparison(ComparisonExpr {
+impl Visitor<'_> for IllogicalConditionsVisitor {
+    fn visit_logical_expr(&mut self, node: &'_ LogicalExpr) {
+        // Check for illogical conditions here
+        if let LogicalExpr::Combining {
+            op,
+            items,
+            reverse_span,
+        } = node
+        {
+            match op {
+                LogicalOp::And => {
+                    // Collect found index expressions to check for duplicates
+                    let mut found_lhs = Vec::new();
+
+                    // Check for always false conditions
+                    for e in items {
+                        // Analyze each expression
+                        if let LogicalExpr::Comparison(ComparisonExpr {
+                            lhs,
+                            op:
+                                ComparisonOpExpr::Ordering {
+                                    op: OrderingOp::Equal,
+                                    ..
+                                }
+                                | ComparisonOpExpr::OneOf(..)
+                                | ComparisonOpExpr::InList { .. },
+                            ..
+                        }) = e
+                        {
+                            if found_lhs.contains(&lhs) {
+                                // Found duplicate equality comparison on same field
+                                // This is always false
+                                let lhs_str = AstPrintVisitor::value_expr_to_string(lhs);
+                                self.result.push(LintReport {
+                                    id: LINT_NAME.into(),
+                                    url: Some(create_url(LINT_NAME)),
+                                    title: "Found illogical condition with AND".into(),
+                                    message: format!(
+                                        "The value `{lhs_str}` is compared for equality multiple \
+                                         times in an AND expression.",
+                                    ),
+                                    span: Span::ReverseByte(reverse_span.clone()),
+                                });
+                            } else {
+                                found_lhs.push(lhs);
+                            }
+                        }
+                    }
+                }
+                LogicalOp::Or => {
+                    // Collect found index expressions to check for duplicates
+                    let mut found_lhs = Vec::new();
+
+                    // Check for always true conditions
+                    for e in items {
+                        // Analyze each expression
+                        match e {
+                            LogicalExpr::Comparison(ComparisonExpr {
                                 lhs,
                                 op:
                                     ComparisonOpExpr::Ordering {
-                                        op: OrderingOp::Equal,
+                                        op: OrderingOp::NotEqual,
                                         ..
-                                    }
-                                    | ComparisonOpExpr::OneOf(..)
-                                    | ComparisonOpExpr::InList { .. },
+                                    },
                                 ..
-                            }) = e
-                            {
+                            }) => {
                                 if found_lhs.contains(&lhs) {
                                     // Found duplicate equality comparison on same field
                                     // This is always false
@@ -72,10 +121,10 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
                                     self.result.push(LintReport {
                                         id: LINT_NAME.into(),
                                         url: Some(create_url(LINT_NAME)),
-                                        title: "Found illogical condition with AND".into(),
+                                        title: "Found illogical condition with OR".into(),
                                         message: format!(
-                                            "The value `{lhs_str}` is compared for equality \
-                                             multiple times in an AND expression.",
+                                            "The value `{lhs_str}` is compared for inequality \
+                                             multiple times in an OR expression.",
                                         ),
                                         span: Span::ReverseByte(reverse_span.clone()),
                                     });
@@ -83,25 +132,23 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
                                     found_lhs.push(lhs);
                                 }
                             }
-                        }
-                    }
-                    LogicalOp::Or => {
-                        // Collect found index expressions to check for duplicates
-                        let mut found_lhs = Vec::new();
-
-                        // Check for always true conditions
-                        for e in items {
-                            // Analyze each expression
-                            match e {
-                                LogicalExpr::Comparison(ComparisonExpr {
+                            LogicalExpr::Unary {
+                                op: UnaryOp::Not,
+                                arg,
+                                ..
+                            } => {
+                                if let LogicalExpr::Comparison(ComparisonExpr {
                                     lhs,
                                     op:
                                         ComparisonOpExpr::Ordering {
-                                            op: OrderingOp::NotEqual,
+                                            op: OrderingOp::Equal,
                                             ..
-                                        },
+                                        }
+                                        | ComparisonOpExpr::OneOf(..)
+                                        | ComparisonOpExpr::InList { .. },
                                     ..
-                                }) => {
+                                }) = &**arg
+                                {
                                     if found_lhs.contains(&lhs) {
                                         // Found duplicate equality comparison on same field
                                         // This is always false
@@ -120,58 +167,17 @@ fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport>
                                         found_lhs.push(lhs);
                                     }
                                 }
-                                LogicalExpr::Unary {
-                                    op: UnaryOp::Not,
-                                    arg,
-                                    ..
-                                } => {
-                                    if let LogicalExpr::Comparison(ComparisonExpr {
-                                        lhs,
-                                        op:
-                                            ComparisonOpExpr::Ordering {
-                                                op: OrderingOp::Equal,
-                                                ..
-                                            }
-                                            | ComparisonOpExpr::OneOf(..)
-                                            | ComparisonOpExpr::InList { .. },
-                                        ..
-                                    }) = &**arg
-                                    {
-                                        if found_lhs.contains(&lhs) {
-                                            // Found duplicate equality comparison on same field
-                                            // This is always false
-                                            let lhs_str =
-                                                AstPrintVisitor::value_expr_to_string(lhs);
-                                            self.result.push(LintReport {
-                                                id: LINT_NAME.into(),
-                                                url: Some(create_url(LINT_NAME)),
-                                                title: "Found illogical condition with OR".into(),
-                                                message: format!(
-                                                    "The value `{lhs_str}` is compared for \
-                                                     inequality multiple times in an OR \
-                                                     expression.",
-                                                ),
-                                                span: Span::ReverseByte(reverse_span.clone()),
-                                            });
-                                        } else {
-                                            found_lhs.push(lhs);
-                                        }
-                                    }
-                                }
-                                _ => {}
                             }
+                            _ => {}
                         }
                     }
-                    _ => {}
                 }
+                _ => {}
             }
-
-            self.visit_expr(node);
         }
-    }
 
-    ast.walk(&mut visitor);
-    visitor.result
+        self.visit_expr(node);
+    }
 }
 
 #[cfg(test)]

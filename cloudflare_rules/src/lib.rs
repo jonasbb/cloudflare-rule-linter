@@ -88,6 +88,60 @@ pub fn parse_and_lint_expression_with_config_and_phase(
     result
 }
 
+/// Take a [`wirefilter`] value expression and a string and run the linter on it.
+pub fn parse_and_lint_value_expression_with_config(
+    config: LinterConfig,
+    expr: &str,
+) -> Vec<LintReport> {
+    parse_and_lint_value_expression_with_config_and_phase(config, expr, Phase::Unknown)
+}
+
+/// Parse and lint a value expression with an explicit `rule_phase` for this call.
+pub fn parse_and_lint_value_expression_with_config_and_phase(
+    config: LinterConfig,
+    expr: &str,
+    rule_phase: Phase,
+) -> Vec<LintReport> {
+    // The byte offsets will be unusable if there are multiple lines.
+    // To avoid this situation, replace all newlines with spaces
+    let expr = expr.replace("\n", " ");
+    // The string will be trimmed from whitespace.
+    // This messes with the reverse span information, as they are relative to the trimmed string.
+    // For restoring them, keep track of the trailing spaces
+    let trailing_whitespace = expr.chars().rev().take_while(|c| c.is_whitespace()).count();
+
+    // Select a scheme based on the provided rule_phase. If no phase is set,
+    // fallback to the default `RULE_SCHEME` to preserve backwards compatibility.
+    let scheme = SCHEMES
+        .get(&rule_phase)
+        .expect("SCHEMES is always initialized for all phases.");
+
+    let mut ast = match scheme.parse_value(&expr) {
+        Ok(ast) => ast,
+        Err(err) => {
+            return vec![LintReport {
+                id: "parse_error".into(),
+                url: None,
+                title: "Failed to parse rule expression.".into(),
+                message: err.kind.to_string(),
+                span: Span::Byte(err.span_start..(err.span_start + err.span_len)),
+            }];
+        }
+    };
+    // Construct the linter (moving the config) and run it with the trimmed
+    // expression so lints can inspect the original source text.
+    let linter = linter::Linter::with_config(config);
+    let mut result = linter.lint_value_with_phase(&mut ast, expr.trim(), rule_phase);
+    // Fixup the reverse byte spans
+    for lint in &mut result {
+        if let Span::ReverseByte(range) = &mut lint.span {
+            range.start += trailing_whitespace;
+            range.end += trailing_whitespace;
+        }
+    }
+    result
+}
+
 /// Provides an iterator over all available lints. This can be used to discover lints and their metadata.
 pub fn lint_iter() -> impl Iterator<Item = &'static linter::Lint> {
     inventory::iter::<linter::Lint>.into_iter()

@@ -10,8 +10,21 @@ inventory::submit! {
         name: LINT_NAME,
         description: "Detect regex and wildcard patterns that can be simplified to `eq` or `contains` expressions.",
         category: Category::Style,
-        lint_fn: lint
+        lint_fn: lint,
+        lint_value_fn: lint_value,
     }
+}
+
+fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
+    let mut visitor = RegexRawStringsVisitor::default();
+    ast.walk(&mut visitor);
+    visitor.result
+}
+
+fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<LintReport> {
+    let mut visitor = RegexRawStringsVisitor::default();
+    ast.walk(&mut visitor);
+    visitor.result
 }
 
 /// Returns true if the given regex HIR represents a full string literal match (e.g., `^abc$` or `^(?:aa|bb|cc)$`), false otherwise.
@@ -60,70 +73,65 @@ fn is_full_string_literal_alteration(hir: &Hir) -> bool {
     }
 }
 
-fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
-    // Ensure regex matches use raw string literals (r"...") instead of normal quoted strings
-    struct RegexRawStringsVisitor {
-        result: Vec<LintReport>,
-    }
-    let mut visitor = RegexRawStringsVisitor { result: Vec::new() };
+/// Ensure regex matches use raw string literals (r"...") instead of normal quoted strings
+#[derive(Default)]
+struct RegexRawStringsVisitor {
+    result: Vec<LintReport>,
+}
 
-    impl Visitor<'_> for RegexRawStringsVisitor {
-        fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
-            if let ComparisonOpExpr::Matches(regex) = &node.op {
-                let hir = Parser::new()
-                    .parse(regex.as_str())
-                    .unwrap_or_else(|_| Hir::empty());
-                if is_full_string_literal(&hir) {
-                    self.result.push(LintReport {
-                        id: LINT_NAME.into(),
-                        url: Some(create_url(LINT_NAME)),
-                        title: "Found regex match without special characters".into(),
-                        message: "The regex match can be simplified to an equality check with `eq \
-                                  \"...\"`."
-                            .to_string(),
-                        span: Span::ReverseByte(node.reverse_span.clone()),
-                    });
-                } else if is_full_string_literal_alteration(&hir) {
-                    self.result.push(LintReport {
-                        id: LINT_NAME.into(),
-                        url: Some(create_url(LINT_NAME)),
-                        title: "Found regex match without special characters".into(),
-                        message: "The regex match can be simplified to a list check `in {\"...\" \
-                                  \"...\"}`"
-                            .to_string(),
-                        span: Span::ReverseByte(node.reverse_span.clone()),
-                    });
-                } else if hir.properties().is_literal() {
-                    self.result.push(LintReport {
-                        id: LINT_NAME.into(),
-                        url: Some(create_url(LINT_NAME)),
-                        title: "Found regex match without special characters".into(),
-                        message: "The regex match can be simplified to a `contains \"...\"`"
-                            .to_string(),
-                        span: Span::ReverseByte(node.reverse_span.clone()),
-                    });
-                }
-            }
-            if let ComparisonOpExpr::StrictWildcard(wildcard) = &node.op
-                && !(**wildcard.pattern()).contains(&b'*')
-            {
+impl Visitor<'_> for RegexRawStringsVisitor {
+    fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
+        if let ComparisonOpExpr::Matches(regex) = &node.op {
+            let hir = Parser::new()
+                .parse(regex.as_str())
+                .unwrap_or_else(|_| Hir::empty());
+            if is_full_string_literal(&hir) {
                 self.result.push(LintReport {
                     id: LINT_NAME.into(),
                     url: Some(create_url(LINT_NAME)),
-                    title: "Found wildcard match without any wildcards `*`".into(),
-                    message: "The strict wildcard can be simplified to an equality check with `eq \
+                    title: "Found regex match without special characters".into(),
+                    message: "The regex match can be simplified to an equality check with `eq \
                               \"...\"`."
                         .to_string(),
                     span: Span::ReverseByte(node.reverse_span.clone()),
                 });
+            } else if is_full_string_literal_alteration(&hir) {
+                self.result.push(LintReport {
+                    id: LINT_NAME.into(),
+                    url: Some(create_url(LINT_NAME)),
+                    title: "Found regex match without special characters".into(),
+                    message: "The regex match can be simplified to a list check `in {\"...\" \
+                              \"...\"}`"
+                        .to_string(),
+                    span: Span::ReverseByte(node.reverse_span.clone()),
+                });
+            } else if hir.properties().is_literal() {
+                self.result.push(LintReport {
+                    id: LINT_NAME.into(),
+                    url: Some(create_url(LINT_NAME)),
+                    title: "Found regex match without special characters".into(),
+                    message: "The regex match can be simplified to a `contains \"...\"`"
+                        .to_string(),
+                    span: Span::ReverseByte(node.reverse_span.clone()),
+                });
             }
-
-            self.visit_expr(node);
         }
-    }
+        if let ComparisonOpExpr::StrictWildcard(wildcard) = &node.op
+            && !(**wildcard.pattern()).contains(&b'*')
+        {
+            self.result.push(LintReport {
+                id: LINT_NAME.into(),
+                url: Some(create_url(LINT_NAME)),
+                title: "Found wildcard match without any wildcards `*`".into(),
+                message: "The strict wildcard can be simplified to an equality check with `eq \
+                          \"...\"`."
+                    .to_string(),
+                span: Span::ReverseByte(node.reverse_span.clone()),
+            });
+        }
 
-    ast.walk(&mut visitor);
-    visitor.result
+        self.visit_expr(node);
+    }
 }
 
 #[cfg(test)]

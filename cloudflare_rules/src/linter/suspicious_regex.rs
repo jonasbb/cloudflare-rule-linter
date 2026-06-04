@@ -9,167 +9,174 @@ inventory::submit! {
         name: LINT_NAME,
         description: "Detect regexes that look like they should be wildcard matches or contain unescaped literal special characters.",
         category: Category::Suspicious,
-        lint_fn: lint
+        lint_fn: lint,
+        lint_value_fn: lint_value,
     }
 }
 
 fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
-    struct SuspiciousRegexVisitor {
-        result: Vec<LintReport>,
-    }
-
-    let mut visitor = SuspiciousRegexVisitor { result: Vec::new() };
-
-    // Simple scanner helpers that detect unescaped special characters outside of character classes.
-    // Returns (has_unescaped_literal_dot, has_unescaped_query_like, contains_slash_star_slash)
-    fn scan_pattern(pattern: &str) -> (bool, bool, bool) {
-        let mut escaped = false;
-        let mut in_class = false;
-        let mut prev: Option<char> = None;
-        let mut has_unescaped_dot_literal = false;
-        let mut has_unescaped_query_like = false;
-        let mut contains_slash_star_slash = false;
-
-        let chars: Vec<char> = pattern.chars().collect();
-        for (i, &c) in chars.iter().enumerate() {
-            if escaped {
-                escaped = false;
-                prev = Some(c);
-                continue;
-            }
-            if c == '\\' {
-                escaped = true;
-                prev = Some(c);
-                continue;
-            }
-            if c == '[' && !in_class {
-                in_class = true;
-                prev = Some(c);
-                continue;
-            }
-            if c == ']' && in_class {
-                in_class = false;
-                prev = Some(c);
-                continue;
-            }
-
-            if !in_class {
-                let next = chars.get(i + 1).copied();
-                if c == '.' {
-                    // Treat an unescaped '.' as suspicious only when it's not immediately
-                    // followed by a quantifier (e.g., '.*', '.+', '.?','.{') since those
-                    // are commonly intentional uses of the dot metacharacter.
-                    let next_is_quant = matches!(next, Some('*' | '+' | '?' | '{'));
-                    if !next_is_quant {
-                        has_unescaped_dot_literal = true;
-                    }
-                }
-
-                if c == '?' {
-                    // Ignore the ? if the previous character is a quantifier (e.g., '.*?', '.+?') or otherwise part of a sensible use
-                    // (? starts regex commands eg (?i) or (?:...), so we only flag it when it looks like a literal question mark that might be intended as a query separator.
-                    // Optional character classes like [a-z]? are common
-                    let prev_is_valid = matches!(prev, Some('*' | '+' | '(' | ')' | '[' | ']'));
-                    // If a '?' appears unescaped and is followed by an alphanumeric or '='/'&',
-                    // it is likely the literal query separator rather than a regex quantifier.
-                    if !prev_is_valid {
-                        has_unescaped_query_like = true;
-                    }
-                }
-
-                if c == '*'
-                    && let Some('/') = prev
-                    && let Some('/') | None = next
-                {
-                    contains_slash_star_slash = true;
-                }
-            }
-
-            prev = Some(c);
-        }
-
-        (
-            has_unescaped_dot_literal,
-            has_unescaped_query_like,
-            contains_slash_star_slash,
-        )
-    }
-
-    impl Visitor<'_> for SuspiciousRegexVisitor {
-        fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
-            if let ComparisonOpExpr::Matches(regex) = &node.op {
-                let pattern = regex.as_str();
-
-                // Use regex-syntax parser at least to adhere to the requirement and to ensure the
-                // pattern is a valid regex (we ignore parse errors and still run the heuristics).
-                let _ = Parser::new().parse(pattern);
-
-                let (has_dot, has_q, contains_slash_star_slash) = scan_pattern(pattern);
-
-                // Determine field context when available to make smarter heuristics.
-                let field_name = if let IdentifierExpr::Field(field) = &node.lhs.identifier {
-                    Some(field.name().to_string())
-                } else {
-                    None
-                };
-
-                let mut suspicious = false;
-                let mut message = String::new();
-
-                // Path-related heuristics
-                if let Some(fname) = &field_name {
-                    if fname == "http.request.uri.path" || fname == "raw.http.request.uri.path" {
-                        if contains_slash_star_slash {
-                            suspicious = true;
-                            message = "Regex uses quantifiers on path separators (e.g., `/*`); \
-                                       this often indicates a wildcard intent — consider using a \
-                                       wildcard match instead or escaping the separator."
-                                .to_string();
-                        } else if has_dot {
-                            // Unescaped dot inside a path is suspicious when used as a literal separator/extension
-                            // (e.g., index.html)
-                            // Ignore dots inside character classes because those are explicit literal dots.
-                            suspicious = true;
-                            message = r"Regex contains an unescaped `.` which is interpreted as any character; escape it as `\.` or use a wildcard match depending on intent.".to_string();
-                        }
-                    } else if fname == "http.request.uri"
-                        || fname == "raw.http.request.uri"
-                        || fname == "http.request.full_uri"
-                        || fname == "raw.http.request.full_uri"
-                    {
-                        // Full URI: unescaped dots and question marks are common mistakes
-                        // Allow matching on optional 's' in 'https' (e.g., https?://) without flagging as suspicious since that's a common pattern, but flag other unescaped '?' characters that look like they might be intended as query separators.
-                        if has_dot || (has_q && !pattern.contains("https?")) {
-                            suspicious = true;
-                            message = r"Regex contains unescaped `.` or `?` characters in a URI; escape them (e.g., `\.` and `\?`) or use a wildcard match where appropriate.".to_string();
-                        }
-                    } else if fname == "http.host" {
-                        // Hostname: unescaped dots are usually intended as literal separators
-                        // Heuristic: only flag when there are no other regex meta-characters present
-                        if has_dot {
-                            suspicious = true;
-                            message = r"Regex contains unescaped `.` in a hostname; escape the dot as `\.` or use a wildcard match if you intended to match subdomains.".to_string();
-                        }
-                    }
-                }
-
-                if suspicious {
-                    self.result.push(LintReport {
-                        id: LINT_NAME.into(),
-                        url: Some(create_url(LINT_NAME)),
-                        title: "Suspicious regex that looks like a wildcard".to_string(),
-                        message,
-                        span: Span::ReverseByte(node.reverse_span.clone()),
-                    });
-                }
-            }
-
-            self.visit_expr(node);
-        }
-    }
-
+    let mut visitor = SuspiciousRegexVisitor::default();
     ast.walk(&mut visitor);
     visitor.result
+}
+
+fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<LintReport> {
+    let mut visitor = SuspiciousRegexVisitor::default();
+    ast.walk(&mut visitor);
+    visitor.result
+}
+
+#[derive(Default)]
+struct SuspiciousRegexVisitor {
+    result: Vec<LintReport>,
+}
+
+// Simple scanner helpers that detect unescaped special characters outside of character classes.
+// Returns (has_unescaped_literal_dot, has_unescaped_query_like, contains_slash_star_slash)
+fn scan_pattern(pattern: &str) -> (bool, bool, bool) {
+    let mut escaped = false;
+    let mut in_class = false;
+    let mut prev: Option<char> = None;
+    let mut has_unescaped_dot_literal = false;
+    let mut has_unescaped_query_like = false;
+    let mut contains_slash_star_slash = false;
+
+    let chars: Vec<char> = pattern.chars().collect();
+    for (i, &c) in chars.iter().enumerate() {
+        if escaped {
+            escaped = false;
+            prev = Some(c);
+            continue;
+        }
+        if c == '\\' {
+            escaped = true;
+            prev = Some(c);
+            continue;
+        }
+        if c == '[' && !in_class {
+            in_class = true;
+            prev = Some(c);
+            continue;
+        }
+        if c == ']' && in_class {
+            in_class = false;
+            prev = Some(c);
+            continue;
+        }
+
+        if !in_class {
+            let next = chars.get(i + 1).copied();
+            if c == '.' {
+                // Treat an unescaped '.' as suspicious only when it's not immediately
+                // followed by a quantifier (e.g., '.*', '.+', '.?','.{') since those
+                // are commonly intentional uses of the dot metacharacter.
+                let next_is_quant = matches!(next, Some('*' | '+' | '?' | '{'));
+                if !next_is_quant {
+                    has_unescaped_dot_literal = true;
+                }
+            }
+
+            if c == '?' {
+                // Ignore the ? if the previous character is a quantifier (e.g., '.*?', '.+?') or otherwise part of a sensible use
+                // (? starts regex commands eg (?i) or (?:...), so we only flag it when it looks like a literal question mark that might be intended as a query separator.
+                // Optional character classes like [a-z]? are common
+                let prev_is_valid = matches!(prev, Some('*' | '+' | '(' | ')' | '[' | ']'));
+                // If a '?' appears unescaped and is followed by an alphanumeric or '='/'&',
+                // it is likely the literal query separator rather than a regex quantifier.
+                if !prev_is_valid {
+                    has_unescaped_query_like = true;
+                }
+            }
+
+            if c == '*'
+                && let Some('/') = prev
+                && let Some('/') | None = next
+            {
+                contains_slash_star_slash = true;
+            }
+        }
+
+        prev = Some(c);
+    }
+
+    (
+        has_unescaped_dot_literal,
+        has_unescaped_query_like,
+        contains_slash_star_slash,
+    )
+}
+
+impl Visitor<'_> for SuspiciousRegexVisitor {
+    fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
+        if let ComparisonOpExpr::Matches(regex) = &node.op {
+            let pattern = regex.as_str();
+
+            // Use regex-syntax parser at least to adhere to the requirement and to ensure the
+            // pattern is a valid regex (we ignore parse errors and still run the heuristics).
+            let _ = Parser::new().parse(pattern);
+
+            let (has_dot, has_q, contains_slash_star_slash) = scan_pattern(pattern);
+
+            // Determine field context when available to make smarter heuristics.
+            let field_name = if let IdentifierExpr::Field(field) = &node.lhs.identifier {
+                Some(field.name().to_string())
+            } else {
+                None
+            };
+
+            let mut suspicious = false;
+            let mut message = String::new();
+
+            // Path-related heuristics
+            if let Some(fname) = &field_name {
+                if fname == "http.request.uri.path" || fname == "raw.http.request.uri.path" {
+                    if contains_slash_star_slash {
+                        suspicious = true;
+                        message = "Regex uses quantifiers on path separators (e.g., `/*`); this \
+                                   often indicates a wildcard intent — consider using a wildcard \
+                                   match instead or escaping the separator."
+                            .to_string();
+                    } else if has_dot {
+                        // Unescaped dot inside a path is suspicious when used as a literal separator/extension
+                        // (e.g., index.html)
+                        // Ignore dots inside character classes because those are explicit literal dots.
+                        suspicious = true;
+                        message = r"Regex contains an unescaped `.` which is interpreted as any character; escape it as `\.` or use a wildcard match depending on intent.".to_string();
+                    }
+                } else if fname == "http.request.uri"
+                    || fname == "raw.http.request.uri"
+                    || fname == "http.request.full_uri"
+                    || fname == "raw.http.request.full_uri"
+                {
+                    // Full URI: unescaped dots and question marks are common mistakes
+                    // Allow matching on optional 's' in 'https' (e.g., https?://) without flagging as suspicious since that's a common pattern, but flag other unescaped '?' characters that look like they might be intended as query separators.
+                    if has_dot || (has_q && !pattern.contains("https?")) {
+                        suspicious = true;
+                        message = r"Regex contains unescaped `.` or `?` characters in a URI; escape them (e.g., `\.` and `\?`) or use a wildcard match where appropriate.".to_string();
+                    }
+                } else if fname == "http.host" {
+                    // Hostname: unescaped dots are usually intended as literal separators
+                    // Heuristic: only flag when there are no other regex meta-characters present
+                    if has_dot {
+                        suspicious = true;
+                        message = r"Regex contains unescaped `.` in a hostname; escape the dot as `\.` or use a wildcard match if you intended to match subdomains.".to_string();
+                    }
+                }
+            }
+
+            if suspicious {
+                self.result.push(LintReport {
+                    id: LINT_NAME.into(),
+                    url: Some(create_url(LINT_NAME)),
+                    title: "Suspicious regex that looks like a wildcard".to_string(),
+                    message,
+                    span: Span::ReverseByte(node.reverse_span.clone()),
+                });
+            }
+        }
+
+        self.visit_expr(node);
+    }
 }
 
 #[cfg(test)]
