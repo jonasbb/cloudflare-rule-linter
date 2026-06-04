@@ -266,6 +266,32 @@ pub(super) mod test {
             .parse(expr)
             .expect("All wirefilter rules in the test must be valid expressions.");
         let reports = linter.lint(&mut ast, expr.trim());
+        check_expect_message(&reports, &expected);
+    }
+
+    #[track_caller]
+    pub(super) fn expect_value_lint_message(linter: &Linter, expr: &str, expected: Expect) {
+        expect_value_lint_message_phase(linter, Phase::Unknown, expr, expected);
+    }
+
+    #[track_caller]
+    pub(super) fn expect_value_lint_message_phase(
+        linter: &Linter,
+        phase: Phase,
+        expr: &str,
+        expected: Expect,
+    ) {
+        let mut ast = SCHEMES
+            .get(&phase)
+            .expect("SCHEMES is always set")
+            .parse_value(expr)
+            .expect("All wirefilter rules in the test must be valid expressions.");
+        let reports = linter.lint_value(&mut ast, expr.trim());
+        check_expect_message(&reports, &expected);
+    }
+
+    #[track_caller]
+    fn check_expect_message(reports: &[LintReport], expected: &Expect) {
         assert!(
             !reports.is_empty(),
             "Expected a lint message but received nothing."
@@ -279,6 +305,7 @@ pub(super) mod test {
         }
         expected.assert_eq(&combined_report);
     }
+
     #[track_caller]
     pub(super) fn assert_no_lint_message(linter: &Linter, expr: &str) {
         assert_no_lint_message_phase(linter, Phase::Unknown, expr);
@@ -292,8 +319,29 @@ pub(super) mod test {
             .parse(expr)
             .expect("All wirefilter rules in the test must be valid expressions.");
         let reports = linter.lint(&mut ast, expr.trim());
+        check_no_message(&reports);
+    }
+
+    #[track_caller]
+    pub(super) fn assert_value_no_lint_message(linter: &Linter, expr: &str) {
+        assert_value_no_lint_message_phase(linter, Phase::Unknown, expr);
+    }
+
+    #[track_caller]
+    pub(super) fn assert_value_no_lint_message_phase(linter: &Linter, phase: Phase, expr: &str) {
+        let mut ast = SCHEMES
+            .get(&phase)
+            .expect("SCHEMES is always set")
+            .parse_value(expr)
+            .expect("All wirefilter rules in the test must be valid expressions.");
+        let reports = linter.lint_value(&mut ast, expr.trim());
+        check_no_message(&reports);
+    }
+
+    #[track_caller]
+    fn check_no_message(reports: &[LintReport]) {
         let mut combined_report = String::new();
-        for m in &reports {
+        for m in reports {
             if !combined_report.is_empty() {
                 combined_report.push_str("\n\n");
             }

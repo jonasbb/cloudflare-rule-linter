@@ -110,34 +110,34 @@ mod test {
 
     #[test]
     fn test_single_regex_replace() {
-        assert_no_lint_message(&LINTER, r#"regex_replace(http.host, r"www\.", "") eq """#);
+        assert_value_no_lint_message(&LINTER, r#"regex_replace(http.host, r"www\.", "")"#);
     }
 
     #[test]
     fn test_single_wildcard_replace() {
-        assert_no_lint_message(&LINTER, r#"wildcard_replace(http.host, "*.", "") eq """#);
+        assert_value_no_lint_message(&LINTER, r#"wildcard_replace(http.host, "*.", "")"#);
     }
 
     #[test]
     fn test_single_regex_plus_wildcard_replace() {
-        assert_no_lint_message(
+        assert_value_no_lint_message(
             &LINTER,
-            r#"concat(regex_replace(http.host, r"www\.", ""), wildcard_replace(http.host, "*.", "")) eq """#,
+            r#"concat(regex_replace(http.host, r"www\.", ""), wildcard_replace(http.host, "*.", ""))"#,
         );
     }
 
     #[test]
     fn test_two_regex_replace() {
-        expect_lint_message(
+        expect_value_lint_message(
             &LINTER,
-            r#"concat(regex_replace(http.host, r"www\.", ""), regex_replace(http.host, r"www\.", "")) eq """#,
+            r#"concat(regex_replace(http.host, r"www\.", ""), regex_replace(http.host, r"www\.", ""))"#,
             expect![[r#"
                 Multiple regex_replace functions are not allowed. (replace_functions_limit)
                 The function `regex_replace` is only allowed to be used once in a filter expression."#]],
         );
-        expect_lint_message(
+        expect_value_lint_message(
             &LINTER,
-            r#"regex_replace(regex_replace(http.host, r"www\.", ""), r"example\.", "") eq """#,
+            r#"regex_replace(regex_replace(http.host, r"www\.", ""), r"example\.", "")"#,
             expect![[r#"
                 Multiple regex_replace functions are not allowed. (replace_functions_limit)
                 The function `regex_replace` is only allowed to be used once in a filter expression."#]],
@@ -146,16 +146,16 @@ mod test {
 
     #[test]
     fn test_two_wildcard_replace() {
-        expect_lint_message(
+        expect_value_lint_message(
             &LINTER,
-            r#"concat(wildcard_replace(http.host, "*.", ""), wildcard_replace(http.host, "*.", "")) eq """#,
+            r#"concat(wildcard_replace(http.host, "*.", ""), wildcard_replace(http.host, "*.", ""))"#,
             expect![[r#"
                 Multiple wildcard_replace functions are not allowed. (replace_functions_limit)
                 The function `wildcard_replace` is only allowed to be used once in a filter expression."#]],
         );
-        expect_lint_message(
+        expect_value_lint_message(
             &LINTER,
-            r#"wildcard_replace(wildcard_replace(http.host, "*.", ""), "*.", "") eq """#,
+            r#"wildcard_replace(wildcard_replace(http.host, "*.", ""), "*.", "")"#,
             expect![[r#"
                 Multiple wildcard_replace functions are not allowed. (replace_functions_limit)
                 The function `wildcard_replace` is only allowed to be used once in a filter expression."#]],
@@ -164,16 +164,16 @@ mod test {
 
     #[test]
     fn test_nested_regex_and_wildcard_replace() {
-        expect_lint_message(
+        expect_value_lint_message(
             &LINTER,
-            r#"regex_replace(wildcard_replace(http.host, "*.", ""), r"www\.", "") eq """#,
+            r#"regex_replace(wildcard_replace(http.host, "*.", ""), r"www\.", "")"#,
             expect![[r#"
                 Nested wildcard_replace functions are not allowed. (replace_functions_limit)
                 The function `wildcard_replace` is not allowed to be nested inside another `regex_replace` function."#]],
         );
-        expect_lint_message(
+        expect_value_lint_message(
             &LINTER,
-            r#"wildcard_replace(regex_replace(http.host, r"www\.", ""), "*.", "") eq """#,
+            r#"wildcard_replace(regex_replace(http.host, r"www\.", ""), "*.", "")"#,
             expect![[r#"
                 Nested regex_replace functions are not allowed. (replace_functions_limit)
                 The function `regex_replace` is not allowed to be nested inside another `wildcard_replace` function."#]],
