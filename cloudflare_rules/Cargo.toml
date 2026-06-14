@@ -16,7 +16,7 @@ python = ["dep:pyo3"]
 erased-serde = "0.4.10"
 inventory = "0.3.22"
 ipnet = {version = "2.12.0", features = ["serde"]}
-pyo3 = {version = "0.28.2", features = ["anyhow"], optional = true}
+pyo3 = {version = "0.29.0", features = ["anyhow"], optional = true}
 regex-syntax = "0.8.10"
 serde = {version = "1.0.228", features = ["derive"]}
 serde_json = "1.0.145"
