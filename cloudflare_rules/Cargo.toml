@@ -14,12 +14,12 @@ python = ["dep:pyo3"]
 
 [dependencies]
 erased-serde = "0.4.10"
-inventory = "0.3.22"
+inventory = "0.3.24"
 ipnet = {version = "2.12.0", features = ["serde"]}
 pyo3 = {version = "0.29.0", features = ["anyhow"], optional = true}
-regex-syntax = "0.8.10"
+regex-syntax = "0.8.11"
 serde = {version = "1.0.228", features = ["derive"]}
-serde_json = "1.0.145"
+serde_json = "1.0.150"
 strum = {version = "0.28.0", features = ["derive"]}
 wirefilter-engine = {git = "https://github.com/jonasbb/wirefilter/", rev = "2767a6728ad4c481653833d431b583d124b800f0", features = [
     "regex",
