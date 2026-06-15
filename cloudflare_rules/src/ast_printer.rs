@@ -353,7 +353,7 @@ mod test {
 
     #[track_caller]
     pub fn ensure_roundtrip_parse_print(expression: &str) {
-        let schema = crate::scheme::build_scheme();
+        let schema = crate::scheme::build_scheme(crate::Phase::Maximum);
         let ast = schema
             .parse(expression)
             .expect("Failed to parse expression");
@@ -413,7 +413,7 @@ mod test_fuzz_results {
 
     #[track_caller]
     pub fn ensure_roundtrip_print_parse(expression: &str) {
-        let schema = crate::scheme::build_scheme();
+        let schema = crate::scheme::build_scheme(crate::Phase::Maximum);
         let ast_original = schema
             .parse(expression)
             .expect("Failed to parse expression");

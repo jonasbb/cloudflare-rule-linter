@@ -65,9 +65,9 @@ DEPRECATIONS: dict[str, str] = {}
 """Maps from old to new name"""
 
 
-def add_field_scheme() -> None:
+def get_field_scheme() -> dict[str, str]:
     """
-    Generate the field scheme from the Cloudflare docs YAML file and generates the matching wirefilter code.
+    Fetches the field scheme from the Cloudflare docs YAML file and returns it as a dictionary.
     """
 
     # Fetch and parse the YAML file from the Cloudflare docs repository
@@ -79,11 +79,7 @@ def add_field_scheme() -> None:
     # Sort entries by name
     data["entries"].sort(key=lambda x: x["name"])
 
-    # last section, prints separator
-    last_section = None
-
-    schema_field_definitions = ""
-    schema_field_definitions += "// Standard field definitions\n"
+    scheme: dict[str, str] = {}
 
     for entry in data["entries"]:
         name = entry["name"]
@@ -92,11 +88,37 @@ def add_field_scheme() -> None:
         wf_type = TYPE_TO_WIREFILTER_TYPE[ty]
         if name in TY_OVERWRITES:
             wf_type_fixed = TY_OVERWRITES[name]
-            assert (
-                wf_type != wf_type_fixed
-            ), f"Type overwrite for {name} is the same as the original type"
+            assert wf_type != wf_type_fixed, (
+                f"Type overwrite for {name} is the same as the original type"
+            )
             wf_type = wf_type_fixed
 
+        scheme[name] = wf_type
+
+        # Check for values in keywords that looks like a deprecated name
+        # We just check for anything containing a `.`
+        for kw in keywords:
+            if "." in kw:
+                scheme[kw] = wf_type
+                DEPRECATIONS[kw] = name
+
+    return scheme
+
+
+def emit_field_scheme(
+    scheme: dict[str, str], file: str, start_marker: str, end_marker: str
+) -> None:
+    """
+    Generate the field scheme from the Cloudflare docs YAML file and generates the matching wirefilter code.
+    """
+
+    # last section, prints separator
+    last_section = None
+
+    schema_field_definitions = ""
+    schema_field_definitions += "// Standard field definitions\n"
+
+    for name, wf_type in scheme.items():
         section = name.split(".")[0]
         if section != last_section:
             if last_section is not None:
@@ -108,20 +130,10 @@ def add_field_scheme() -> None:
             f'builder.add_field("{name}", {wf_type}).unwrap();\n'
         )
 
-        # Check for values in keywords that looks like a deprecated name
-        # We just check for anything containing a `.`
-        for kw in keywords:
-            if "." in kw:
-                schema_field_definitions += f"// Old name for {name}\n"
-                schema_field_definitions += (
-                    f'builder.add_field("{kw}", {wf_type}).unwrap();\n'
-                )
-                DEPRECATIONS[kw] = name
-
     replace_content(
-        "./cloudflare_rules/src/scheme.rs",
-        "// GENERATED_SCHEMA_FIELDS_START",
-        "// GENERATED_SCHEMA_FIELDS_END",
+        file,
+        start_marker,
+        end_marker,
         schema_field_definitions,
     )
 
@@ -145,9 +157,143 @@ def add_deprecation_replacements() -> None:
     )
 
 
+def get_sequence_field_list(url: str) -> set[str]:
+    """
+    Fetches the field scheme from the Cloudflare docs MD file and returns a list of fields that are of type Array.
+    """
+    md_file = requests.get(url, timeout=10)
+    md_data = md_file.text
+
+    sequence_fields = []
+
+    found_start = False
+    found_field = False
+
+    for line in md_data.splitlines():
+        # Find the separation heading
+        if line.startswith("# Available fields and functions"):
+            found_start = True
+        if found_start and line.startswith("* `"):
+            found_field = True
+        if found_field and not line.startswith("* `"):
+            # Found the end of the field list
+            break
+
+        if found_field and line.startswith("* `"):
+            field_name = line.split("`")[1].split("`")[0]
+            sequence_fields.append(field_name)
+
+    return set(sequence_fields)
+
+
 def main() -> None:
-    add_field_scheme()
+    scheme = get_field_scheme()
     add_deprecation_replacements()
+
+    bulk_redirects_fields = get_sequence_field_list(
+        "https://developers.cloudflare.com/rules/url-forwarding/bulk-redirects/reference/fields-functions/index.md"
+    )
+    request_header_transform_fields = get_sequence_field_list(
+        "https://developers.cloudflare.com/rules/transform/request-header-modification/reference/fields-functions/index.md"
+    )
+    response_header_transform_fields = get_sequence_field_list(
+        "https://developers.cloudflare.com/rules/transform/response-header-modification/reference/fields-functions/index.md"
+    )
+    url_rewrite_fields = get_sequence_field_list(
+        "https://developers.cloudflare.com/rules/transform/url-rewrite/reference/fields-functions/index.md"
+    )
+    # TODO url_rewrite target
+
+    # Compute the common set of fields between all lists
+    common_fields = (
+        set(url_rewrite_fields)
+        .intersection(set(bulk_redirects_fields))
+        .intersection(set(request_header_transform_fields))
+        .intersection(set(response_header_transform_fields))
+    )
+
+    # Emit the common fields as a separate section in the scheme
+    emit_field_scheme(
+        {
+            name: wf_type
+            for name, wf_type in scheme.items()
+            if name_in_wildcard_set(name, common_fields)
+        },
+        "./cloudflare_rules/src/scheme.rs",
+        "// GENERATED_SCHEMA_FIELDS_COMMON_START",
+        "// GENERATED_SCHEMA_FIELDS_COMMON_END",
+    )
+    emit_field_scheme(
+        {
+            name: wf_type
+            for name, wf_type in scheme.items()
+            if name_in_wildcard_set(name, bulk_redirects_fields)
+            and not name_in_wildcard_set(name, common_fields)
+        },
+        "./cloudflare_rules/src/scheme.rs",
+        "// GENERATED_SCHEMA_FIELDS_BULK_REDIRECTS_START",
+        "// GENERATED_SCHEMA_FIELDS_BULK_REDIRECTS_END",
+    )
+    emit_field_scheme(
+        {
+            name: wf_type
+            for name, wf_type in scheme.items()
+            if name_in_wildcard_set(name, request_header_transform_fields)
+            and not name_in_wildcard_set(name, common_fields)
+        },
+        "./cloudflare_rules/src/scheme.rs",
+        "// GENERATED_SCHEMA_FIELDS_REQUEST_HEADER_START",
+        "// GENERATED_SCHEMA_FIELDS_REQUEST_HEADER_END",
+    )
+    emit_field_scheme(
+        {
+            name: wf_type
+            for name, wf_type in scheme.items()
+            if name_in_wildcard_set(name, response_header_transform_fields)
+            and not name_in_wildcard_set(name, common_fields)
+        },
+        "./cloudflare_rules/src/scheme.rs",
+        "// GENERATED_SCHEMA_FIELDS_RESPONSE_HEADER_START",
+        "// GENERATED_SCHEMA_FIELDS_RESPONSE_HEADER_END",
+    )
+    emit_field_scheme(
+        {
+            name: wf_type
+            for name, wf_type in scheme.items()
+            if name_in_wildcard_set(name, url_rewrite_fields)
+            and not name_in_wildcard_set(name, common_fields)
+        },
+        "./cloudflare_rules/src/scheme.rs",
+        "// GENERATED_SCHEMA_FIELDS_URL_REWRITE_START",
+        "// GENERATED_SCHEMA_FIELDS_URL_REWRITE_END",
+    )
+
+    # Add a section with all fields
+    emit_field_scheme(
+        {
+            name: wf_type
+            for name, wf_type in scheme.items()
+            if not name_in_wildcard_set(name, common_fields)
+        },
+        "./cloudflare_rules/src/scheme.rs",
+        "// GENERATED_SCHEMA_FIELDS_START",
+        "// GENERATED_SCHEMA_FIELDS_END",
+    )
+
+
+def name_in_wildcard_set(name: str, wildcard_set: set[str]) -> bool:
+    """
+    Checks if the given name matches any of the wildcard patterns in the set.
+    The wildcard patterns can contain a `*` at the end, which matches any suffix.
+    """
+    for pattern in wildcard_set:
+        if pattern.endswith("*"):
+            prefix = pattern[:-1]
+            if name.startswith(prefix):
+                return True
+        elif name == pattern:
+            return True
+    return False
 
 
 if __name__ == "__main__":

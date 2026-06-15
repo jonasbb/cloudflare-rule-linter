@@ -15,6 +15,22 @@
 </head>
 
 <body class="container-lg">
+    <label for="cloudflare-rules-phase">Choose a Cloudflare Phase:</label>
+    <select name="cloudflare-rules-phase" id="cloudflare-rules-phase">
+        <option value="maximum" selected>Combined Ruleset with all Fields and Functions</option>
+        <option value="api_jwt_validation">API JWT Validation</option>
+        <option value="bulk_redirects_filter">Bulk Redirects Rules</option>
+        <option value="custom_error">Custom Error Rules</option>
+        <option value="custom_rules">Custom Rules</option>
+        <option value="header_request">HTTP Header Request Rules</option>
+        <option value="header_response">HTTP Header Response Rules</option>
+        <option value="rate_limit">Rate Limit Rules</option>
+        <option value="url_redirect_filter">URL Redirect Rule</option>
+        <option value="url_redirect_target">URL Redirect Target Expression</option>
+        <option value="url_rewrite_filter">URL Rewrite Rule</option>
+        <option value="url_rewrite_target">URL Rewrite Target Expression</option>
+    </select>
+
     <textarea id="cloudflare-rules-input" class="form-control" rows="5"
         placeholder="Enter a Cloudflare firewall rule expression..."></textarea>
     <br>

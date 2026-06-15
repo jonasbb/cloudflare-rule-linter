@@ -111,8 +111,9 @@ impl Linter {
         Self { config }
     }
 
+    #[allow(dead_code)]
     pub fn lint(&self, ast: &mut FilterAst, expr: &str) -> Vec<LintReport> {
-        self.lint_with_phase(ast, expr, Phase::Unknown)
+        self.lint_with_phase(ast, expr, Phase::Maximum)
     }
 
     /// Lint the provided AST using an explicit `rule_phase` for this invocation.
@@ -133,8 +134,9 @@ impl Linter {
         results
     }
 
+    #[allow(dead_code)]
     pub fn lint_value(&self, ast: &mut FilterValueAst, expr: &str) -> Vec<LintReport> {
-        self.lint_value_with_phase(ast, expr, Phase::Unknown)
+        self.lint_value_with_phase(ast, expr, Phase::Maximum)
     }
 
     /// Lint the provided AST using an explicit `rule_phase` for this invocation.
@@ -250,7 +252,7 @@ pub(super) mod test {
 
     #[track_caller]
     pub(super) fn expect_lint_message(linter: &Linter, expr: &str, expected: Expect) {
-        expect_lint_message_phase(linter, Phase::Unknown, expr, expected);
+        expect_lint_message_phase(linter, Phase::Maximum, expr, expected);
     }
 
     #[track_caller]
@@ -271,7 +273,7 @@ pub(super) mod test {
 
     #[track_caller]
     pub(super) fn expect_value_lint_message(linter: &Linter, expr: &str, expected: Expect) {
-        expect_value_lint_message_phase(linter, Phase::Unknown, expr, expected);
+        expect_value_lint_message_phase(linter, Phase::Maximum, expr, expected);
     }
 
     #[track_caller]
@@ -308,7 +310,7 @@ pub(super) mod test {
 
     #[track_caller]
     pub(super) fn assert_no_lint_message(linter: &Linter, expr: &str) {
-        assert_no_lint_message_phase(linter, Phase::Unknown, expr);
+        assert_no_lint_message_phase(linter, Phase::Maximum, expr);
     }
 
     #[track_caller]
@@ -324,7 +326,7 @@ pub(super) mod test {
 
     #[track_caller]
     pub(super) fn assert_value_no_lint_message(linter: &Linter, expr: &str) {
-        assert_value_no_lint_message_phase(linter, Phase::Unknown, expr);
+        assert_value_no_lint_message_phase(linter, Phase::Maximum, expr);
     }
 
     #[track_caller]
@@ -356,7 +358,7 @@ pub(super) mod test {
 
     #[track_caller]
     pub(super) fn assert_simplify_ast(expr: &str, expected: Expect) {
-        assert_simplify_ast_phase(Phase::Unknown, expr, expected);
+        assert_simplify_ast_phase(Phase::Maximum, expr, expected);
     }
 
     #[track_caller]

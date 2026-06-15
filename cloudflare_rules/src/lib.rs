@@ -4,19 +4,17 @@ pub use self::linter::{LintReport, Span};
 pub use crate::ast_printer::AstPrintVisitor;
 pub use crate::config::{LintConfig, LintSettings, LinterConfig};
 pub use crate::phase::Phase;
+pub use crate::scheme::SCHEMES;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
+use std::str::FromStr;
+use strum::IntoEnumIterator;
 
 mod ast_printer;
 mod config;
 mod linter;
 mod phase;
 mod scheme;
-
-/// Default scheme matching the one Cloudflare uses
-///
-/// This includes fields, functions, and lists.
-pub use crate::scheme::SCHEMES;
 
 /// A Python module implemented in Rust.
 #[cfg(feature = "python")]
@@ -39,7 +37,7 @@ pub fn parse_and_lint_expression(expr: &str) -> Vec<LintReport> {
 
 /// Take a [`wirefilter`] expression and a string and run the linter on it.
 pub fn parse_and_lint_expression_with_config(config: LinterConfig, expr: &str) -> Vec<LintReport> {
-    parse_and_lint_expression_with_config_and_phase(config, expr, Phase::Unknown)
+    parse_and_lint_expression_with_config_and_phase(config, expr, Phase::Maximum)
 }
 
 /// Parse and lint an expression with an explicit `rule_phase` for this call.
@@ -93,7 +91,7 @@ pub fn parse_and_lint_value_expression_with_config(
     config: LinterConfig,
     expr: &str,
 ) -> Vec<LintReport> {
-    parse_and_lint_value_expression_with_config_and_phase(config, expr, Phase::Unknown)
+    parse_and_lint_value_expression_with_config_and_phase(config, expr, Phase::Maximum)
 }
 
 /// Parse and lint a value expression with an explicit `rule_phase` for this call.
@@ -145,4 +143,14 @@ pub fn parse_and_lint_value_expression_with_config_and_phase(
 /// Provides an iterator over all available lints. This can be used to discover lints and their metadata.
 pub fn lint_iter() -> impl Iterator<Item = &'static linter::Lint> {
     inventory::iter::<linter::Lint>.into_iter()
+}
+
+/// Provides an iterator over all available phases. This can be used to discover phases and their metadata.
+pub fn phase_iter() -> impl Iterator<Item = Phase> {
+    Phase::iter()
+}
+
+/// Convert a string into a matching [`Phase`]
+pub fn phase_name_to_phase(phase_name: &str) -> Option<Phase> {
+    Phase::from_str(phase_name).ok()
 }
