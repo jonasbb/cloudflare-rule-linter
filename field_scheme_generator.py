@@ -9,8 +9,24 @@
 Generates Wirefilter field scheme code and HTML documentation from Cloudflare's field definitions.
 """
 
-import yaml
+import dataclasses
+
 import requests
+import yaml
+
+
+@dataclasses.dataclass
+class FieldInformation:
+    """
+    Collect information about CF fields
+    """
+
+    wf_type: str
+    "Well-formed type for the field"
+    is_response: bool
+    "Mark this field as only available in the response phase"
+    deprecated_names: list[str] = dataclasses.field(default_factory=list)
+    "List of other names that are deprecated versions of this"
 
 
 def replace_content(
@@ -65,7 +81,7 @@ DEPRECATIONS: dict[str, str] = {}
 """Maps from old to new name"""
 
 
-def get_field_scheme() -> dict[str, str]:
+def get_field_scheme() -> dict[str, FieldInformation]:
     """
     Fetches the field scheme from the Cloudflare docs YAML file and returns it as a dictionary.
     """
@@ -79,7 +95,7 @@ def get_field_scheme() -> dict[str, str]:
     # Sort entries by name
     data["entries"].sort(key=lambda x: x["name"])
 
-    scheme: dict[str, str] = {}
+    scheme: dict[str, FieldInformation] = {}
 
     for entry in data["entries"]:
         name = entry["name"]
@@ -93,20 +109,22 @@ def get_field_scheme() -> dict[str, str]:
             )
             wf_type = wf_type_fixed
 
-        scheme[name] = wf_type
+        is_response = "Response" in entry["categories"]
+
+        scheme[name] = FieldInformation(wf_type, is_response)
 
         # Check for values in keywords that looks like a deprecated name
         # We just check for anything containing a `.`
         for kw in keywords:
             if "." in kw:
-                scheme[kw] = wf_type
+                scheme[name].deprecated_names.append(kw)
                 DEPRECATIONS[kw] = name
 
     return scheme
 
 
 def emit_field_scheme(
-    scheme: dict[str, str], file: str, start_marker: str, end_marker: str
+    scheme: dict[str, FieldInformation], file: str, start_marker: str, end_marker: str
 ) -> None:
     """
     Generate the field scheme from the Cloudflare docs YAML file and generates the matching wirefilter code.
@@ -118,7 +136,7 @@ def emit_field_scheme(
     schema_field_definitions = ""
     schema_field_definitions += "// Standard field definitions\n"
 
-    for name, wf_type in scheme.items():
+    for name, info in scheme.items():
         section = name.split(".")[0]
         if section != last_section:
             if last_section is not None:
@@ -126,9 +144,28 @@ def emit_field_scheme(
             last_section = section
             # print section header
             schema_field_definitions += f"// {section.capitalize()} Fields\n"
-        schema_field_definitions += (
-            f'builder.add_field("{name}", {wf_type}).unwrap();\n'
-        )
+        if info.is_response:
+            schema_field_definitions += (
+                "if is_response {"
+                f'builder.add_field("{name}", {info.wf_type}).unwrap();\n'
+                "}"
+            )
+        else:
+            schema_field_definitions += (
+                f'builder.add_field("{name}", {info.wf_type}).unwrap();\n'
+            )
+        for old_name in info.deprecated_names:
+            schema_field_definitions += f"// Deprecated alias for {name}\n"
+            if info.is_response:
+                schema_field_definitions += (
+                    "if is_response {"
+                    f'builder.add_field("{old_name}", {info.wf_type}).unwrap();\n'
+                    "}"
+                )
+            else:
+                schema_field_definitions += (
+                    f'builder.add_field("{old_name}", {info.wf_type}).unwrap();\n'
+                )
 
     replace_content(
         file,
@@ -188,7 +225,6 @@ def get_sequence_field_list(url: str) -> set[str]:
 
 def main() -> None:
     scheme = get_field_scheme()
-    add_deprecation_replacements()
 
     bulk_redirects_fields = get_sequence_field_list(
         "https://developers.cloudflare.com/rules/url-forwarding/bulk-redirects/reference/fields-functions/index.md"
@@ -211,6 +247,26 @@ def main() -> None:
         .intersection(set(request_header_transform_fields))
         .intersection(set(response_header_transform_fields))
     )
+
+    # Fixup some information that are not correct in the YAML file
+    # This indicates that some fields are actually response phase
+    # https://github.com/cloudflare/cloudflare-docs/blob/3d99ea1499816fb085af9e22d629c96a85a43ecd/src/content/partials/rules/transform/header-modification-fields.mdx
+    scheme["cf.timings.edge_msec"].is_response = True
+    scheme["cf.timings.origin_ttfb_msec"].is_response = True
+    scheme["cf.timings.worker_msec"].is_response = True
+
+    # Add extra fields that are not mentioned in the official docs
+    scheme["true"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Boolean"], False)
+    common_fields.add("true")
+    # raw.http.request.headers is listed in some "Available fields and functions", but not in the scheme
+    scheme["raw.http.request.headers"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Map<Array<String>>"], False)
+    common_fields.add("raw.http.request.headers")
+    scheme["raw.http.request.headers.names"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
+    common_fields.add("raw.http.request.headers.names")
+    scheme["raw.http.request.headers.values"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
+    common_fields.add("raw.http.request.headers.values")
+
+    add_deprecation_replacements()
 
     # Emit the common fields as a separate section in the scheme
     emit_field_scheme(

@@ -267,32 +267,51 @@ pub(crate) fn build_scheme(phase: Phase) -> Scheme {
             .unwrap();
     }
 
-    add_common_fields(&mut builder);
     match phase {
-        Phase::BulkRedirectsFilter => add_bulk_redirect_fields(&mut builder),
-        Phase::HeaderRequest => add_request_header_fields(&mut builder),
-        Phase::HeaderResponse => add_response_header_fields(&mut builder),
-        Phase::UrlRewriteFilter => add_url_rewrite_fields(&mut builder),
+        Phase::BulkRedirectsFilter => {
+            add_common_fields(&mut builder, false);
+            add_bulk_redirect_fields(&mut builder, false);
+        }
+        Phase::HeaderRequest => {
+            add_common_fields(&mut builder, false);
+            add_request_header_fields(&mut builder, false);
+        }
+        Phase::HeaderResponse => {
+            add_common_fields(&mut builder, true);
+            add_response_header_fields(&mut builder, true);
+        }
+        Phase::UrlRewriteFilter => {
+            add_common_fields(&mut builder, false);
+            add_url_rewrite_fields(&mut builder, false);
+        }
         // TODO use better specialized fields here
-        Phase::UrlRewriteTarget => add_url_rewrite_fields(&mut builder),
+        Phase::UrlRewriteTarget => {
+            add_common_fields(&mut builder, false);
+            add_url_rewrite_fields(&mut builder, false);
+        }
 
-        Phase::Maximum => add_all_fields(&mut builder),
+        // Approximate the fields, but exclude everything that is guaranteed to be unavailable, i.e., response fields
+        Phase::CustomRules => {
+            add_common_fields(&mut builder, false);
+            add_all_fields(&mut builder, false);
+        }
+        Phase::Maximum => {
+            add_common_fields(&mut builder, true);
+            add_all_fields(&mut builder, true);
+        }
 
-        Phase::UrlRedirectFilter
-        | Phase::UrlRedirectTarget
-        | Phase::CustomRules
-        | Phase::RateLimit
-        | Phase::ApiJwtValidation
-        | Phase::CustomError => {
-            //These only have common fields
+        // Request phases
+        Phase::UrlRedirectFilter | Phase::UrlRedirectTarget | Phase::ApiJwtValidation => {
+            add_common_fields(&mut builder, false);
+        }
+        // Custom errors and rate limits have access to response fields
+        // https://developers.cloudflare.com/ruleset-engine/reference/phases-list/
+        Phase::CustomError | Phase::RateLimit => {
+            add_common_fields(&mut builder, true);
         }
     }
 
     // Undocumented fields
-
-    // Matches all incoming traffic
-    builder.add_field("true", Type::Bool).unwrap();
-
     builder
         .add_field(
             "cf.api_gateway.tokens.valid",
@@ -336,7 +355,7 @@ pub(crate) fn build_scheme(phase: Phase) -> Scheme {
     builder.build()
 }
 
-fn add_common_fields(builder: &mut wirefilter::SchemeBuilder) {
+fn add_common_fields(builder: &mut wirefilter::SchemeBuilder, is_response: bool) {
     // GENERATED_SCHEMA_FIELDS_COMMON_START
     // Standard field definitions
     // Cf Fields
@@ -529,12 +548,32 @@ fn add_common_fields(builder: &mut wirefilter::SchemeBuilder) {
     // Ip Fields
     builder.add_field("ip.src", Type::Ip).unwrap();
     builder.add_field("ip.src.asnum", Type::Int).unwrap();
+    // Deprecated alias for ip.src.asnum
+    if is_response {
+        builder.add_field("ip.geoip.asnum", Type::Int).unwrap();
+    }
     builder.add_field("ip.src.city", Type::Bytes).unwrap();
     builder.add_field("ip.src.continent", Type::Bytes).unwrap();
+    // Deprecated alias for ip.src.continent
+    if is_response {
+        builder
+            .add_field("ip.geoip.continent", Type::Bytes)
+            .unwrap();
+    }
     builder.add_field("ip.src.country", Type::Bytes).unwrap();
+    // Deprecated alias for ip.src.country
+    if is_response {
+        builder.add_field("ip.geoip.country", Type::Bytes).unwrap();
+    }
     builder
         .add_field("ip.src.is_in_european_union", Type::Bool)
         .unwrap();
+    // Deprecated alias for ip.src.is_in_european_union
+    if is_response {
+        builder
+            .add_field("ip.geoip.is_in_european_union", Type::Bool)
+            .unwrap();
+    }
     builder.add_field("ip.src.lat", Type::Bytes).unwrap();
     builder.add_field("ip.src.lon", Type::Bytes).unwrap();
     builder.add_field("ip.src.metro_code", Type::Bytes).unwrap();
@@ -548,10 +587,21 @@ fn add_common_fields(builder: &mut wirefilter::SchemeBuilder) {
     builder
         .add_field("ip.src.subdivision_1_iso_code", Type::Bytes)
         .unwrap();
+    // Deprecated alias for ip.src.subdivision_1_iso_code
+    if is_response {
+        builder
+            .add_field("ip.geoip.subdivision_1_iso_code", Type::Bytes)
+            .unwrap();
+    }
     builder
         .add_field("ip.src.subdivision_2_iso_code", Type::Bytes)
         .unwrap();
-
+    // Deprecated alias for ip.src.subdivision_2_iso_code
+    if is_response {
+        builder
+            .add_field("ip.geoip.subdivision_2_iso_code", Type::Bytes)
+            .unwrap();
+    }
     // Raw Fields
     builder
         .add_field("raw.http.request.full_uri", Type::Bytes)
@@ -593,14 +643,20 @@ fn add_common_fields(builder: &mut wirefilter::SchemeBuilder) {
     // GENERATED_SCHEMA_FIELDS_COMMON_END
 }
 
-fn add_bulk_redirect_fields(#[allow(unused)] builder: &mut wirefilter::SchemeBuilder) {
+fn add_bulk_redirect_fields(
+    #[allow(unused)] builder: &mut wirefilter::SchemeBuilder,
+    #[allow(unused)] is_response: bool,
+) {
     // GENERATED_SCHEMA_FIELDS_BULK_REDIRECTS_START
     // Standard field definitions
 
     // GENERATED_SCHEMA_FIELDS_BULK_REDIRECTS_END
 }
 
-fn add_request_header_fields(#[allow(unused)] builder: &mut wirefilter::SchemeBuilder) {
+fn add_request_header_fields(
+    #[allow(unused)] builder: &mut wirefilter::SchemeBuilder,
+    #[allow(unused)] is_response: bool,
+) {
     // GENERATED_SCHEMA_FIELDS_REQUEST_HEADER_START
     // Standard field definitions
     // Cf Fields
@@ -849,7 +905,10 @@ fn add_request_header_fields(#[allow(unused)] builder: &mut wirefilter::SchemeBu
     // GENERATED_SCHEMA_FIELDS_REQUEST_HEADER_END
 }
 
-fn add_response_header_fields(#[allow(unused)] builder: &mut wirefilter::SchemeBuilder) {
+fn add_response_header_fields(
+    #[allow(unused)] builder: &mut wirefilter::SchemeBuilder,
+    #[allow(unused)] is_response: bool,
+) {
     // GENERATED_SCHEMA_FIELDS_RESPONSE_HEADER_START
     // Standard field definitions
     // Cf Fields
@@ -884,21 +943,31 @@ fn add_response_header_fields(#[allow(unused)] builder: &mut wirefilter::SchemeB
         .add_field("cf.bot_management.verified_bot", Type::Bool)
         .unwrap();
     builder.add_field("cf.client.bot", Type::Bool).unwrap();
-    builder
-        .add_field("cf.response.1xxx_code", Type::Int)
-        .unwrap();
-    builder
-        .add_field("cf.response.error_type", Type::Bytes)
-        .unwrap();
-    builder
-        .add_field("cf.timings.edge_msec", Type::Int)
-        .unwrap();
-    builder
-        .add_field("cf.timings.origin_ttfb_msec", Type::Int)
-        .unwrap();
-    builder
-        .add_field("cf.timings.worker_msec", Type::Int)
-        .unwrap();
+    if is_response {
+        builder
+            .add_field("cf.response.1xxx_code", Type::Int)
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field("cf.response.error_type", Type::Bytes)
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field("cf.timings.edge_msec", Type::Int)
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field("cf.timings.origin_ttfb_msec", Type::Int)
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field("cf.timings.worker_msec", Type::Int)
+            .unwrap();
+    }
     builder
         .add_field("cf.verified_bot_category", Type::Bytes)
         .unwrap();
@@ -973,60 +1042,80 @@ fn add_response_header_fields(#[allow(unused)] builder: &mut wirefilter::SchemeB
     builder
         .add_field("http.request.body.truncated", Type::Bool)
         .unwrap();
-    builder.add_field("http.response.code", Type::Int).unwrap();
-    builder
-        .add_field("http.response.content_type.media_type", Type::Bytes)
-        .unwrap();
-    builder
-        .add_field(
-            "http.response.headers",
-            Type::Map(Type::Array(Type::Bytes.into()).into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "http.response.headers.names",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "http.response.headers.values",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-
+    if is_response {
+        builder.add_field("http.response.code", Type::Int).unwrap();
+    }
+    if is_response {
+        builder
+            .add_field("http.response.content_type.media_type", Type::Bytes)
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field(
+                "http.response.headers",
+                Type::Map(Type::Array(Type::Bytes.into()).into()),
+            )
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field(
+                "http.response.headers.names",
+                Type::Array(Type::Bytes.into()),
+            )
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field(
+                "http.response.headers.values",
+                Type::Array(Type::Bytes.into()),
+            )
+            .unwrap();
+    }
     // Raw Fields
-    builder
-        .add_field(
-            "raw.http.response.headers",
-            Type::Map(Type::Array(Type::Bytes.into()).into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "raw.http.response.headers.names",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "raw.http.response.headers.values",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-
+    if is_response {
+        builder
+            .add_field(
+                "raw.http.response.headers",
+                Type::Map(Type::Array(Type::Bytes.into()).into()),
+            )
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field(
+                "raw.http.response.headers.names",
+                Type::Array(Type::Bytes.into()),
+            )
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field(
+                "raw.http.response.headers.values",
+                Type::Array(Type::Bytes.into()),
+            )
+            .unwrap();
+    }
     // GENERATED_SCHEMA_FIELDS_RESPONSE_HEADER_END
 }
 
-fn add_url_rewrite_fields(#[allow(unused)] builder: &mut wirefilter::SchemeBuilder) {
+fn add_url_rewrite_fields(
+    #[allow(unused)] builder: &mut wirefilter::SchemeBuilder,
+    #[allow(unused)] is_response: bool,
+) {
     // GENERATED_SCHEMA_FIELDS_URL_REWRITE_START
     // Standard field definitions
 
     // GENERATED_SCHEMA_FIELDS_URL_REWRITE_END
 }
 
-fn add_all_fields(#[allow(unused)] builder: &mut wirefilter::SchemeBuilder) {
+fn add_all_fields(
+    #[allow(unused)] builder: &mut wirefilter::SchemeBuilder,
+    #[allow(unused)] is_response: bool,
+) {
     // GENERATED_SCHEMA_FIELDS_START
     // Standard field definitions
     // Cf Fields
@@ -1103,22 +1192,32 @@ fn add_all_fields(#[allow(unused)] builder: &mut wirefilter::SchemeBuilder) {
     builder
         .add_field("cf.llm.prompt.unsafe_topic_detected", Type::Bool)
         .unwrap();
-    builder
-        .add_field("cf.response.1xxx_code", Type::Int)
-        .unwrap();
-    builder
-        .add_field("cf.response.error_type", Type::Bytes)
-        .unwrap();
+    if is_response {
+        builder
+            .add_field("cf.response.1xxx_code", Type::Int)
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field("cf.response.error_type", Type::Bytes)
+            .unwrap();
+    }
     builder.add_field("cf.threat_score", Type::Int).unwrap();
-    builder
-        .add_field("cf.timings.edge_msec", Type::Int)
-        .unwrap();
-    builder
-        .add_field("cf.timings.origin_ttfb_msec", Type::Int)
-        .unwrap();
-    builder
-        .add_field("cf.timings.worker_msec", Type::Int)
-        .unwrap();
+    if is_response {
+        builder
+            .add_field("cf.timings.edge_msec", Type::Int)
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field("cf.timings.origin_ttfb_msec", Type::Int)
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field("cf.timings.worker_msec", Type::Int)
+            .unwrap();
+    }
     builder
         .add_field("cf.tls_ciphers_sha1", Type::Bytes)
         .unwrap();
@@ -1368,67 +1467,70 @@ fn add_all_fields(#[allow(unused)] builder: &mut wirefilter::SchemeBuilder) {
             Type::Array(Type::Bytes.into()),
         )
         .unwrap();
-    builder.add_field("http.response.code", Type::Int).unwrap();
-    builder
-        .add_field("http.response.content_type.media_type", Type::Bytes)
-        .unwrap();
-    builder
-        .add_field(
-            "http.response.headers",
-            Type::Map(Type::Array(Type::Bytes.into()).into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "http.response.headers.names",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "http.response.headers.values",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-
+    if is_response {
+        builder.add_field("http.response.code", Type::Int).unwrap();
+    }
+    if is_response {
+        builder
+            .add_field("http.response.content_type.media_type", Type::Bytes)
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field(
+                "http.response.headers",
+                Type::Map(Type::Array(Type::Bytes.into()).into()),
+            )
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field(
+                "http.response.headers.names",
+                Type::Array(Type::Bytes.into()),
+            )
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field(
+                "http.response.headers.values",
+                Type::Array(Type::Bytes.into()),
+            )
+            .unwrap();
+    }
     // Ip Fields
-    builder.add_field("ip.geoip.asnum", Type::Int).unwrap();
-    builder
-        .add_field("ip.geoip.continent", Type::Bytes)
-        .unwrap();
-    builder.add_field("ip.geoip.country", Type::Bytes).unwrap();
-    builder
-        .add_field("ip.geoip.is_in_european_union", Type::Bool)
-        .unwrap();
-    builder
-        .add_field("ip.geoip.subdivision_1_iso_code", Type::Bytes)
-        .unwrap();
-    builder
-        .add_field("ip.geoip.subdivision_2_iso_code", Type::Bytes)
-        .unwrap();
     builder
         .add_field("ip.src.timezone.name", Type::Bytes)
         .unwrap();
 
     // Raw Fields
-    builder
-        .add_field(
-            "raw.http.response.headers",
-            Type::Map(Type::Array(Type::Bytes.into()).into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "raw.http.response.headers.names",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "raw.http.response.headers.values",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
+    if is_response {
+        builder
+            .add_field(
+                "raw.http.response.headers",
+                Type::Map(Type::Array(Type::Bytes.into()).into()),
+            )
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field(
+                "raw.http.response.headers.names",
+                Type::Array(Type::Bytes.into()),
+            )
+            .unwrap();
+    }
+    if is_response {
+        builder
+            .add_field(
+                "raw.http.response.headers.values",
+                Type::Array(Type::Bytes.into()),
+            )
+            .unwrap();
+    }
+    // True Fields
+    builder.add_field("true", Type::Bool).unwrap();
 
     // GENERATED_SCHEMA_FIELDS_END
 }
