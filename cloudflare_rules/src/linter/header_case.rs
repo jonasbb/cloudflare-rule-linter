@@ -4,10 +4,12 @@ use wirefilter::{
     ComparisonOpExpr, FieldIndex, IdentifierExpr, OrderingOp, RhsValue, RhsValues, Visitor,
 };
 
+/// Uses normalized header values, all lowercase
 static HEADER_MAP_FIELDS: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
     vec![
         "http.request.headers",
         "http.response.headers",
+        "raw.http.request.headers",
         "raw.http.response.headers",
     ]
 });
@@ -15,6 +17,7 @@ static HEADER_FIELDS: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
     vec![
         "http.request.headers.names",
         "http.response.headers.names",
+        "raw.http.request.headers.names",
         "raw.http.response.headers.names",
     ]
 });
@@ -24,7 +27,7 @@ static LINT_NAME: &str = "header_case";
 inventory::submit! {
     Lint {
         name: LINT_NAME,
-        description: "Checks for header names that are not all lowercase.",
+        description: "Checks for comparisons with header names that are lowercase or unspecified.",
         category: Category::Correctness,
         lint_fn: lint,
         lint_value_fn: lint_value,
@@ -62,21 +65,15 @@ impl Visitor<'_> for MapKeyCaseVisitor {
                     if let (OrderingOp::Equal | OrderingOp::NotEqual, RhsValue::Bytes(bytes)) =
                         (op, rhs)
                         && let Ok(header) = std::str::from_utf8(&bytes.data)
-                        && header.chars().any(|c| c.is_ascii_uppercase())
                     {
                         self.result.push(LintReport {
                             id: LINT_NAME.into(),
                             url: Some(create_url(LINT_NAME)),
-                            title: format!(
-                                "Found uppercase characters in header name `{}`",
-                                header
-                            ),
-                            message: format!(
-                                "Header names must always be all lowercase but `{}` contains \
-                                 uppercase characters. It should be lowercase (e.g., \
-                                 \"content-type\").",
-                                header
-                            ),
+                            title: format!("Found exact comparison with header `{}`", header),
+                            message: "These header fields are not normalized, thus an exact match \
+                                      can lead to the rule not working. Consider using lower() to \
+                                      normalize the header name."
+                                .to_string(),
                             span: Span::ReverseByte(node.reverse_span.clone()),
                         });
                     }
@@ -84,26 +81,31 @@ impl Visitor<'_> for MapKeyCaseVisitor {
                 ComparisonOpExpr::OneOf(RhsValues::Bytes(items)) => {
                     // The ".names" fields are lists that need to be indexed into
                     for b in items.iter() {
-                        if let Ok(header) = std::str::from_utf8(&b.data)
-                            && header.chars().any(|c| c.is_ascii_uppercase())
-                        {
+                        if let Ok(header) = std::str::from_utf8(&b.data) {
                             self.result.push(LintReport {
                                 id: LINT_NAME.into(),
                                 url: Some(create_url(LINT_NAME)),
-                                title: format!(
-                                    "Found uppercase characters in header name `{}`",
-                                    header
-                                ),
-                                message: format!(
-                                    "Header names must always be all lowercase but `{}` contains \
-                                     uppercase characters. It should be lowercase (e.g., \
-                                     \"content-type\").",
-                                    header
-                                ),
+                                title: format!("Found exact comparison with header `{}`", header),
+                                message: "These header fields are not normalized, thus an exact \
+                                          match can lead to the rule not working. Consider using \
+                                          lower() to normalize the header name."
+                                    .to_string(),
                                 span: Span::ReverseByte(node.reverse_span.clone()),
                             });
                         }
                     }
+                }
+                ComparisonOpExpr::StrictWildcard(_) => {
+                    self.result.push(LintReport {
+                        id: LINT_NAME.into(),
+                        url: Some(create_url(LINT_NAME)),
+                        title: "Found a strict wildcard comparison with header".to_string(),
+                        message: "These header fields are not normalized, thus an exact match can \
+                                  lead to the rule not working. Consider `wildcard` instead of \
+                                  `strict wildcard`."
+                            .to_string(),
+                        span: Span::ReverseByte(node.reverse_span.clone()),
+                    });
                 }
                 _ => {}
             }
@@ -198,43 +200,70 @@ mod test {
     }
 
     #[test]
-    fn test_header_name_uppercase_warns() {
+    fn test_header_name_warns() {
         expect_lint_message(
             &LINTER,
             r#"any(http.request.headers.names[*] eq "Authorization")"#,
             expect![[r#"
-                Found uppercase characters in header name `Authorization` (header_case)
-                Header names must always be all lowercase but `Authorization` contains uppercase characters. It should be lowercase (e.g., "content-type")."#]],
+                Found exact comparison with header `Authorization` (header_case)
+                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"any(http.response.headers.names[*] eq "Authorization")"#,
             expect![[r#"
-                Found uppercase characters in header name `Authorization` (header_case)
-                Header names must always be all lowercase but `Authorization` contains uppercase characters. It should be lowercase (e.g., "content-type")."#]],
+                Found exact comparison with header `Authorization` (header_case)
+                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"any(raw.http.response.headers.names[*] eq "Authorization")"#,
             expect![[r#"
-                Found uppercase characters in header name `Authorization` (header_case)
-                Header names must always be all lowercase but `Authorization` contains uppercase characters. It should be lowercase (e.g., "content-type")."#]],
+                Found exact comparison with header `Authorization` (header_case)
+                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name."#]],
+        );
+
+        // Case doesn't matter as long as it is an exact match
+        expect_lint_message(
+            &LINTER,
+            r#"any(http.response.headers.names[*] eq "content-type")"#,
+            expect![[r#"
+                Found exact comparison with header `content-type` (header_case)
+                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name."#]],
+        );
+        expect_lint_message(
+            &LINTER,
+            r#"any(http.response.headers.names[*] ne "content-type")"#,
+            expect![[r#"
+                Found exact comparison with header `content-type` (header_case)
+                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name."#]],
+        );
+        expect_lint_message(
+            &LINTER,
+            r#"any(http.response.headers.names[*] in { "content-type" })"#,
+            expect![[r#"
+                Found exact comparison with header `content-type` (header_case)
+                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name."#]],
+        );
+        expect_lint_message(
+            &LINTER,
+            r#"any(http.response.headers.names[*] strict wildcard "content-type" )"#,
+            expect![[r#"
+                Found a strict wildcard comparison with header (header_case)
+                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider `wildcard` instead of `strict wildcard`."#]],
         );
     }
 
     #[test]
-    fn test_header_name_uppercase_ok() {
+    fn test_header_name_ok() {
         assert_no_lint_message(
             &LINTER,
-            r#"any(http.request.headers.names[*] eq "content-type")"#,
+            r#"any(lower(http.response.headers.names[*])[*] eq "content-type")"#,
         );
+        // Wildcard is automatically case insensitive
         assert_no_lint_message(
             &LINTER,
-            r#"any(http.response.headers.names[*] eq "content-type")"#,
-        );
-        assert_no_lint_message(
-            &LINTER,
-            r#"any(raw.http.response.headers.names[*] eq "content-type")"#,
+            r#"any(raw.http.response.headers.names[*] wildcard "content-type")"#,
         );
     }
 
