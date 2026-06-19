@@ -1,6 +1,8 @@
 use super::*;
-use crate::ast_printer::AstPrintVisitor;
-use wirefilter::{ComparisonOpExpr, LogicalExpr, OrderingOp, UnaryOp, Visitor};
+use wirefilter::{
+    ComparisonExpr, ComparisonOpExpr, FunctionCallArgExpr, IdentifierExpr, IndexExpr, LogicalExpr,
+    OrderingOp, UnaryOp, Visitor,
+};
 
 static LINT_NAME: &str = "negated_comparison";
 
@@ -14,24 +16,75 @@ inventory::submit! {
     }
 }
 
-fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
-    let mut visitor = NegatedComparisonVisitor::default();
+fn lint(_config: &LinterConfig, ast: &FilterAst, expr: &str) -> Vec<LintReport> {
+    let mut visitor = NegatedComparisonVisitor::new(expr);
     ast.walk(&mut visitor);
     visitor.result
 }
 
-fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<LintReport> {
-    let mut visitor = NegatedComparisonVisitor::default();
+fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, expr: &str) -> Vec<LintReport> {
+    let mut visitor = NegatedComparisonVisitor::new(expr);
     ast.walk(&mut visitor);
     visitor.result
 }
 
 #[derive(Default)]
-struct NegatedComparisonVisitor {
+struct NegatedComparisonVisitor<'a> {
     result: Vec<LintReport>,
+    expr: &'a str,
 }
 
-impl Visitor<'_> for NegatedComparisonVisitor {
+impl<'a> NegatedComparisonVisitor<'a> {
+    fn new(expr: &'a str) -> Self {
+        Self {
+            result: Vec::new(),
+            expr,
+        }
+    }
+
+    fn handle_comparison_suggestion(
+        &self,
+        comp: &ComparisonExpr,
+        op: &OrderingOp,
+    ) -> (&'a str, String) {
+        let start = self.expr.len().saturating_sub(comp.reverse_span.start);
+        let end = self.expr.len().saturating_sub(comp.reverse_span.end);
+
+        // Reconstruct a ComparisonExpr string with the suggested op
+        // We reuse the AST printer on the original and then replace the operator
+        // let inner = AstPrintVisitor::comparison_expr_to_string(comp);
+        let inner = &self.expr[start..end];
+
+        // Only handle ordering comparisons (eq, ne, lt, le, gt, ge)
+        let sugg_str = match op {
+            OrderingOp::Equal => " ne ",
+            OrderingOp::NotEqual => " eq ",
+            OrderingOp::LessThan => " ge ",
+            OrderingOp::LessThanEqual => " gt ",
+            OrderingOp::GreaterThan => " le ",
+            OrderingOp::GreaterThanEqual => " lt ",
+        };
+
+        // Split on known operator tokens to replace
+        let suggested_expr = inner
+            .replace(" eq ", sugg_str)
+            .replace(" == ", sugg_str)
+            .replace(" ne ", sugg_str)
+            .replace(" != ", sugg_str)
+            .replace(" gt ", sugg_str)
+            .replace(" > ", sugg_str)
+            .replace(" lt ", sugg_str)
+            .replace(" < ", sugg_str)
+            .replace(" ge ", sugg_str)
+            .replace(" >= ", sugg_str)
+            .replace(" le ", sugg_str)
+            .replace(" <= ", sugg_str);
+
+        (inner, suggested_expr)
+    }
+}
+
+impl<'a> Visitor<'_> for NegatedComparisonVisitor<'a> {
     fn visit_logical_expr(&mut self, node: &'_ LogicalExpr) {
         if let LogicalExpr::Unary {
             op: UnaryOp::Not,
@@ -39,58 +92,54 @@ impl Visitor<'_> for NegatedComparisonVisitor {
             reverse_span,
         } = node
             && let LogicalExpr::Comparison(comp) = &**arg
+            && let ComparisonOpExpr::Ordering { op, .. } = &comp.op
         {
-            // Only handle ordering comparisons (eq, ne, lt, le, gt, ge)
-            if let ComparisonOpExpr::Ordering { op, .. } = &comp.op {
-                use OrderingOp;
-                let suggestion_op = match op {
-                    OrderingOp::Equal => Some(OrderingOp::NotEqual),
-                    OrderingOp::NotEqual => Some(OrderingOp::Equal),
-                    OrderingOp::LessThan => Some(OrderingOp::GreaterThanEqual),
-                    OrderingOp::LessThanEqual => Some(OrderingOp::GreaterThan),
-                    OrderingOp::GreaterThan => Some(OrderingOp::LessThanEqual),
-                    OrderingOp::GreaterThanEqual => Some(OrderingOp::LessThan),
-                };
+            let (old_expr, suggested_expr) = self.handle_comparison_suggestion(comp, op);
 
-                if let Some(sugg) = suggestion_op {
-                    let inner = AstPrintVisitor::comparison_expr_to_string(comp);
-                    // Reconstruct a ComparisonExpr string with the suggested op
-                    // We reuse the AST printer on the original and then replace the operator
-                    let sugg_str = match sugg {
-                        OrderingOp::Equal => " eq ",
-                        OrderingOp::NotEqual => " ne ",
-                        OrderingOp::GreaterThanEqual => " ge ",
-                        OrderingOp::LessThanEqual => " le ",
-                        OrderingOp::GreaterThan => " gt ",
-                        OrderingOp::LessThan => " lt ",
-                    };
+            self.result.push(LintReport {
+                id: LINT_NAME.into(),
+                url: Some(create_url(LINT_NAME)),
+                title: "Found negated comparison".into(),
+                message: format!(
+                    "Consider simplifying from `not {old_expr}` to `{suggested_expr}`",
+                ),
+                span: Span::ReverseByte(reverse_span.clone()),
+            });
+        } else if let LogicalExpr::Unary {
+            op: UnaryOp::Not,
+            arg,
+            reverse_span: _,
+        } = node
+            && let LogicalExpr::Comparison(ComparisonExpr {
+                lhs,
+                op: ComparisonOpExpr::IsTrue,
+                reverse_span,
+            }) = &**arg
+            && let IndexExpr {
+                identifier: IdentifierExpr::FunctionCallExpr(call_expr),
+                indexes,
+                reverse_span: _,
+            } = lhs
+            && indexes.is_empty()
+            && let fname = call_expr.function().name()
+            && (fname == "all" || fname == "any")
+            && let [FunctionCallArgExpr::Logical(expr)] = call_expr.args()
+            && let LogicalExpr::Comparison(comp) = &expr
+            && let ComparisonOpExpr::Ordering { op, .. } = &comp.op
+        {
+            let sugg_fn = if fname == "all" { "any" } else { "all" };
+            let (old_expr, suggested_expr) = self.handle_comparison_suggestion(comp, op);
 
-                    // Split on known operator tokens to replace
-                    let suggested_expr = inner
-                        .replace(" eq ", sugg_str)
-                        .replace(" == ", sugg_str)
-                        .replace(" ne ", sugg_str)
-                        .replace(" != ", sugg_str)
-                        .replace(" gt ", sugg_str)
-                        .replace(" > ", sugg_str)
-                        .replace(" lt ", sugg_str)
-                        .replace(" < ", sugg_str)
-                        .replace(" ge ", sugg_str)
-                        .replace(" >= ", sugg_str)
-                        .replace(" le ", sugg_str)
-                        .replace(" <= ", sugg_str);
-
-                    self.result.push(LintReport {
-                        id: LINT_NAME.into(),
-                        url: Some(create_url(LINT_NAME)),
-                        title: "Found negated comparison".into(),
-                        message: format!(
-                            "Consider simplifying from `not {inner}` to `{suggested_expr}`",
-                        ),
-                        span: Span::ReverseByte(reverse_span.clone()),
-                    });
-                }
-            }
+            self.result.push(LintReport {
+                id: LINT_NAME.into(),
+                url: Some(create_url(LINT_NAME)),
+                title: "Found negated comparison".into(),
+                message: format!(
+                    "Consider simplifying from `not {fname}({old_expr})` to \
+                     `{sugg_fn}({suggested_expr})`",
+                ),
+                span: Span::ReverseByte(reverse_span.clone()),
+            });
         }
 
         self.visit_expr(node);
@@ -172,6 +221,24 @@ mod test {
             expect![[r#"
                 Found negated comparison (negated_comparison)
                 Consider simplifying from `not http.host eq "example.com"` to `http.host ne "example.com"`"#]],
+        );
+    }
+
+    #[test]
+    fn test_simplify_negated_any() {
+        expect_lint_message(
+            &LINTER,
+            r#"not any(http.request.headers.names[*] eq "abc")"#,
+            expect![[r#"
+                Found negated comparison (negated_comparison)
+                Consider simplifying from `not any(http.request.headers.names[*] eq "abc")` to `all(http.request.headers.names[*] ne "abc")`"#]],
+        );
+        expect_lint_message(
+            &LINTER,
+            r#"not all(http.request.headers.names[*] <= "abc")"#,
+            expect![[r#"
+                Found negated comparison (negated_comparison)
+                Consider simplifying from `not all(http.request.headers.names[*] <= "abc")` to `any(http.request.headers.names[*] gt "abc")`"#]],
         );
     }
 }

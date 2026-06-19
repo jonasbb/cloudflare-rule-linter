@@ -28,6 +28,7 @@ impl AstPrintVisitor {
         visitor.into_string()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn comparison_expr_to_string(expr: &wirefilter::ComparisonExpr) -> String {
         let mut visitor = AstPrintVisitor::new();
         visitor.visit_comparison_expr(expr);
