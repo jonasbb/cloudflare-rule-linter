@@ -51,8 +51,6 @@ impl<'a> NegatedComparisonVisitor<'a> {
         let end = self.expr.len().saturating_sub(comp.reverse_span.end);
 
         // Reconstruct a ComparisonExpr string with the suggested op
-        // We reuse the AST printer on the original and then replace the operator
-        // let inner = AstPrintVisitor::comparison_expr_to_string(comp);
         let inner = &self.expr[start..end];
 
         // Only handle ordering comparisons (eq, ne, lt, le, gt, ge)

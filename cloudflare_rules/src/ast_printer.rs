@@ -35,6 +35,7 @@ impl AstPrintVisitor {
         visitor.into_string()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn value_expr_to_string(expr: &impl ValueExpr) -> String {
         let mut visitor = AstPrintVisitor::new();
         expr.walk(&mut visitor);

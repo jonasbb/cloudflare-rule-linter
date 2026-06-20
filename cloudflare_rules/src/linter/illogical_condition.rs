@@ -1,5 +1,4 @@
 use super::*;
-use crate::ast_printer::AstPrintVisitor;
 use wirefilter::{
     ComparisonExpr, ComparisonOpExpr, LogicalExpr, LogicalOp, OrderingOp, UnaryOp, Visitor,
 };
@@ -16,14 +15,14 @@ inventory::submit! {
     }
 }
 
-fn lint(_config: &LinterConfig, ast: &FilterAst, _expr: &str) -> Vec<LintReport> {
-    let mut visitor = IllogicalConditionsVisitor::default();
+fn lint(_config: &LinterConfig, ast: &FilterAst, expr: &str) -> Vec<LintReport> {
+    let mut visitor = IllogicalConditionsVisitor::new(expr);
     ast.walk(&mut visitor);
     visitor.result
 }
 
-fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<LintReport> {
-    let mut visitor = IllogicalConditionsVisitor::default();
+fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, expr: &str) -> Vec<LintReport> {
+    let mut visitor = IllogicalConditionsVisitor::new(expr);
     ast.walk(&mut visitor);
     visitor.result
 }
@@ -44,11 +43,27 @@ fn lint_value(_config: &LinterConfig, ast: &FilterValueAst, _expr: &str) -> Vec<
 /// Possible extensions for strings
 /// If regex or wildcard matches do not use any placeholders, they could be considered as equal matches
 #[derive(Default)]
-struct IllogicalConditionsVisitor {
+struct IllogicalConditionsVisitor<'a> {
     result: Vec<LintReport>,
+    expr: &'a str,
 }
 
-impl Visitor<'_> for IllogicalConditionsVisitor {
+impl<'a> IllogicalConditionsVisitor<'a> {
+    fn new(expr: &'a str) -> Self {
+        Self {
+            result: Vec::new(),
+            expr,
+        }
+    }
+
+    fn get_expr_slice(&self, reverse_span: &Range<usize>) -> &'a str {
+        let start = self.expr.len().saturating_sub(reverse_span.start);
+        let end = self.expr.len().saturating_sub(reverse_span.end);
+        &self.expr[start..end]
+    }
+}
+
+impl<'a> Visitor<'_> for IllogicalConditionsVisitor<'a> {
     fn visit_logical_expr(&mut self, node: &'_ LogicalExpr) {
         // Check for illogical conditions here
         if let LogicalExpr::Combining {
@@ -80,7 +95,7 @@ impl Visitor<'_> for IllogicalConditionsVisitor {
                             if found_lhs.contains(&lhs) {
                                 // Found duplicate equality comparison on same field
                                 // This is always false
-                                let lhs_str = AstPrintVisitor::value_expr_to_string(lhs);
+                                let lhs_str = self.get_expr_slice(&lhs.reverse_span);
                                 self.result.push(LintReport {
                                     id: LINT_NAME.into(),
                                     url: Some(create_url(LINT_NAME)),
@@ -117,7 +132,7 @@ impl Visitor<'_> for IllogicalConditionsVisitor {
                                 if found_lhs.contains(&lhs) {
                                     // Found duplicate equality comparison on same field
                                     // This is always false
-                                    let lhs_str = AstPrintVisitor::value_expr_to_string(lhs);
+                                    let lhs_str = self.get_expr_slice(&lhs.reverse_span);
                                     self.result.push(LintReport {
                                         id: LINT_NAME.into(),
                                         url: Some(create_url(LINT_NAME)),
@@ -152,7 +167,7 @@ impl Visitor<'_> for IllogicalConditionsVisitor {
                                     if found_lhs.contains(&lhs) {
                                         // Found duplicate equality comparison on same field
                                         // This is always false
-                                        let lhs_str = AstPrintVisitor::value_expr_to_string(lhs);
+                                        let lhs_str = self.get_expr_slice(&lhs.reverse_span);
                                         self.result.push(LintReport {
                                             id: LINT_NAME.into(),
                                             url: Some(create_url(LINT_NAME)),
