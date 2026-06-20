@@ -355,7 +355,7 @@ pub(crate) fn build_scheme(phase: Phase) -> Scheme {
     builder.build()
 }
 
-fn add_common_fields(builder: &mut wirefilter::SchemeBuilder, is_response: bool) {
+fn add_common_fields(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_response: bool) {
     // GENERATED_SCHEMA_FIELDS_COMMON_START
     // Standard field definitions
     // Cf Fields
@@ -549,31 +549,23 @@ fn add_common_fields(builder: &mut wirefilter::SchemeBuilder, is_response: bool)
     builder.add_field("ip.src", Type::Ip).unwrap();
     builder.add_field("ip.src.asnum", Type::Int).unwrap();
     // Deprecated alias for ip.src.asnum
-    if is_response {
-        builder.add_field("ip.geoip.asnum", Type::Int).unwrap();
-    }
+    builder.add_field("ip.geoip.asnum", Type::Int).unwrap();
     builder.add_field("ip.src.city", Type::Bytes).unwrap();
     builder.add_field("ip.src.continent", Type::Bytes).unwrap();
     // Deprecated alias for ip.src.continent
-    if is_response {
-        builder
-            .add_field("ip.geoip.continent", Type::Bytes)
-            .unwrap();
-    }
+    builder
+        .add_field("ip.geoip.continent", Type::Bytes)
+        .unwrap();
     builder.add_field("ip.src.country", Type::Bytes).unwrap();
     // Deprecated alias for ip.src.country
-    if is_response {
-        builder.add_field("ip.geoip.country", Type::Bytes).unwrap();
-    }
+    builder.add_field("ip.geoip.country", Type::Bytes).unwrap();
     builder
         .add_field("ip.src.is_in_european_union", Type::Bool)
         .unwrap();
     // Deprecated alias for ip.src.is_in_european_union
-    if is_response {
-        builder
-            .add_field("ip.geoip.is_in_european_union", Type::Bool)
-            .unwrap();
-    }
+    builder
+        .add_field("ip.geoip.is_in_european_union", Type::Bool)
+        .unwrap();
     builder.add_field("ip.src.lat", Type::Bytes).unwrap();
     builder.add_field("ip.src.lon", Type::Bytes).unwrap();
     builder.add_field("ip.src.metro_code", Type::Bytes).unwrap();
@@ -588,20 +580,17 @@ fn add_common_fields(builder: &mut wirefilter::SchemeBuilder, is_response: bool)
         .add_field("ip.src.subdivision_1_iso_code", Type::Bytes)
         .unwrap();
     // Deprecated alias for ip.src.subdivision_1_iso_code
-    if is_response {
-        builder
-            .add_field("ip.geoip.subdivision_1_iso_code", Type::Bytes)
-            .unwrap();
-    }
+    builder
+        .add_field("ip.geoip.subdivision_1_iso_code", Type::Bytes)
+        .unwrap();
     builder
         .add_field("ip.src.subdivision_2_iso_code", Type::Bytes)
         .unwrap();
     // Deprecated alias for ip.src.subdivision_2_iso_code
-    if is_response {
-        builder
-            .add_field("ip.geoip.subdivision_2_iso_code", Type::Bytes)
-            .unwrap();
-    }
+    builder
+        .add_field("ip.geoip.subdivision_2_iso_code", Type::Bytes)
+        .unwrap();
+
     // Raw Fields
     builder
         .add_field("raw.http.request.full_uri", Type::Bytes)
@@ -639,6 +628,29 @@ fn add_common_fields(builder: &mut wirefilter::SchemeBuilder, is_response: bool)
 
     // Ssl Fields
     builder.add_field("ssl", Type::Bool).unwrap();
+
+    // True Fields
+    builder.add_field("true", Type::Bool).unwrap();
+
+    // Raw Fields
+    builder
+        .add_field(
+            "raw.http.request.headers",
+            Type::Map(Type::Array(Type::Bytes.into()).into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "raw.http.request.headers.names",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "raw.http.request.headers.values",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
 
     // GENERATED_SCHEMA_FIELDS_COMMON_END
 }
@@ -1529,9 +1541,6 @@ fn add_all_fields(
             )
             .unwrap();
     }
-    // True Fields
-    builder.add_field("true", Type::Bool).unwrap();
-
     // GENERATED_SCHEMA_FIELDS_END
 }
 
