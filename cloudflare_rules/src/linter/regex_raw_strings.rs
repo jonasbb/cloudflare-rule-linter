@@ -1,5 +1,7 @@
 use super::*;
-use wirefilter::{ComparisonExpr, ComparisonOpExpr, RegexFormat, Visitor};
+use wirefilter::{
+    ComparisonExpr, ComparisonOpExpr, IdentifierExpr, RegexFormat, RhsValue, Visitor,
+};
 
 static LINT_NAME: &str = "regex_raw_strings";
 
@@ -50,6 +52,34 @@ impl Visitor<'_> for RegexRawStringsVisitor {
         }
 
         self.visit_expr(node);
+    }
+
+    fn visit_index_expr(&mut self, node: &'_ wirefilter::IndexExpr) {
+        // Could be written with visit_function_call_expr but that doesn't have access to a reverse_span
+
+        // Only lint if any escaping is necessary
+        if let IdentifierExpr::FunctionCallExpr(func) = node.identifier()
+            && func.function().name() == "regex_replace"
+            && let [
+                _field,
+                wirefilter::FunctionCallArgExpr::Literal(RhsValue::Bytes(regex)),
+                _replacement,
+            ] = func.args()
+            && !matches!(regex.format(), wirefilter::BytesFormat::Raw(_))
+            && regex.contains(&b'\\')
+        {
+            self.result.push(LintReport {
+                id: LINT_NAME.into(),
+                url: Some(create_url(LINT_NAME)),
+                title: "Found regex match with non-raw string".into(),
+                message: "Regex matches must use raw string literals (e.g., r\"...\" or \
+                          r#\"...\"#) when using the `matches` operator."
+                    .to_string(),
+                span: Span::ReverseByte(node.reverse_span.clone()),
+            });
+        }
+
+        self.visit_value_expr(node);
     }
 }
 
