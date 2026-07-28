@@ -55,6 +55,8 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
         (
             "cf.response.error_type",
             Domain::List(vec![
+                // Empty is the default value
+                "",
                 "1xxx",
                 "5xx",
                 "always_online",
