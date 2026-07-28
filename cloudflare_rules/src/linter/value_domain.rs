@@ -130,7 +130,7 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
         ),
         (
             "http.request.version",
-            Domain::List(vec!["HTTP/1.0", "HTTP/1.1", "HTTP/2", "HTTP/3"]),
+            Domain::List(vec!["HTTP/0.9", "HTTP/1.0", "HTTP/1.1", "HTTP/2", "HTTP/3"]),
         ),
         (
             "http.response.content_type.media_type",
@@ -243,7 +243,12 @@ impl Visitor<'_> for ValueDomainVisitor {
                                              values are: {}.",
                                             s,
                                             field.name(),
-                                            valids.join(", ")
+                                            valids
+                                                .iter()
+                                                // Ensure empty strings are displayed as `""` in the message
+                                                .map(|s| format!("`{}`", s))
+                                                .collect::<Vec<String>>()
+                                                .join(", ")
                                         ),
                                         span: Span::ReverseByte(node.reverse_span.clone()),
                                     });
@@ -434,7 +439,12 @@ impl Visitor<'_> for ValueDomainVisitor {
                                 "The value(s) `{}` are not valid for `{}`. Valid values are: {}.",
                                 invalids.join(" "),
                                 field.name(),
-                                valids.join(", ")
+                                valids
+                                    .iter()
+                                    // Ensure empty strings are displayed as `""` in the message
+                                    .map(|s| format!("`{}`", s))
+                                    .collect::<Vec<String>>()
+                                    .join(", ")
                             ),
                             Domain::Validate(_func, desc) => format!(
                                 "The value(s) `{}` are not valid for `{}`. Values must {}.",
@@ -560,14 +570,14 @@ mod test {
             r#"ip.src.continent eq "XX""#,
             expect![[r#"
                 Found invalid value for ip.src.continent (value_domain)
-                The value `XX` is not a valid value for `ip.src.continent`. Valid values are: AF, AN, AS, EU, NA, OC, SA, T1."#]],
+                The value `XX` is not a valid value for `ip.src.continent`. Valid values are: `AF`, `AN`, `AS`, `EU`, `NA`, `OC`, `SA`, `T1`."#]],
         );
         expect_lint_message(
             &LINTER,
             r#"ip.src.continent in {"EU" "XX" "NA"}"#,
             expect![[r#"
                 Found invalid value(s) for ip.src.continent (value_domain)
-                The value(s) `XX` are not valid for `ip.src.continent`. Valid values are: AF, AN, AS, EU, NA, OC, SA, T1."#]],
+                The value(s) `XX` are not valid for `ip.src.continent`. Valid values are: `AF`, `AN`, `AS`, `EU`, `NA`, `OC`, `SA`, `T1`."#]],
         );
 
         assert_no_lint_message(&LINTER, r#"ip.src.continent eq "EU""#);
@@ -582,7 +592,7 @@ mod test {
             r#"http.request.method eq "get""#,
             expect![[r#"
                 Found invalid value for http.request.method (value_domain)
-                The value `get` is not a valid value for `http.request.method`. Values must consist only of uppercase characters (e.g., "GET")."#]],
+                The value `get` is not a valid value for `http.request.method`. Valid values are: `GET`, `POST`, `PUT`, `HEAD`, `OPTIONS`, `DELETE`, `CONNECT`, `TRACE`, `PATCH`, `QUERY`."#]],
         );
 
         // mixed list should flag the lowercase entry
@@ -591,7 +601,7 @@ mod test {
             r#"http.request.method in {"GET" "post"}"#,
             expect![[r#"
                 Found invalid value(s) for http.request.method (value_domain)
-                The value(s) `post` are not valid for `http.request.method`. Values must consist only of uppercase characters (e.g., "GET")."#]],
+                The value(s) `post` are not valid for `http.request.method`. Valid values are: `GET`, `POST`, `PUT`, `HEAD`, `OPTIONS`, `DELETE`, `CONNECT`, `TRACE`, `PATCH`, `QUERY`."#]],
         );
 
         // valid cases shouldn't trigger
@@ -736,7 +746,7 @@ mod test {
             r#"cf.response.error_type eq "sbfm""#,
             expect![[r#"
                 Found invalid value for cf.response.error_type (value_domain)
-                The value `sbfm` is not a valid value for `cf.response.error_type`. Valid values are: 1xxx, 5xx, always_online, country_challenge, ip_ban, iuam, legacy_challenge, managed_challenge, ratelimit, waf."#]],
+                The value `sbfm` is not a valid value for `cf.response.error_type`. Valid values are: ``, `1xxx`, `5xx`, `always_online`, `country_challenge`, `ip_ban`, `iuam`, `legacy_challenge`, `managed_challenge`, `ratelimit`, `waf`."#]],
         );
 
         assert_no_lint_message(&LINTER, r#"cf.response.error_type eq "waf""#);
@@ -749,7 +759,7 @@ mod test {
             r#"cf.waf.score.class eq "bot""#,
             expect![[r#"
                 Found invalid value for cf.waf.score.class (value_domain)
-                The value `bot` is not a valid value for `cf.waf.score.class`. Valid values are: attack, likely_attack, likely_clean, clean."#]],
+                The value `bot` is not a valid value for `cf.waf.score.class`. Valid values are: `attack`, `likely_attack`, `likely_clean`, `clean`."#]],
         );
 
         assert_no_lint_message(&LINTER, r#"cf.waf.score.class eq "clean""#);
@@ -806,7 +816,7 @@ mod test {
             r#"http.request.version eq "3""#,
             expect![[r#"
                 Found invalid value for http.request.version (value_domain)
-                The value `3` is not a valid value for `http.request.version`. Values must start with "HTTP/"."#]],
+                The value `3` is not a valid value for `http.request.version`. Valid values are: `HTTP/0.9`, `HTTP/1.0`, `HTTP/1.1`, `HTTP/2`, `HTTP/3`."#]],
         );
 
         assert_no_lint_message(
