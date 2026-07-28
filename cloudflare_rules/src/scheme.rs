@@ -632,6 +632,9 @@ fn add_common_fields(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] i
     // True Fields
     builder.add_field("true", Type::Bool).unwrap();
 
+    // Cf Fields
+    builder.add_field("cf.zone.plan", Type::Bytes).unwrap();
+
     // Raw Fields
     builder
         .add_field(

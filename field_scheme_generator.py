@@ -258,6 +258,12 @@ def main() -> None:
     # Add extra fields that are not mentioned in the official docs
     scheme["true"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Boolean"], False)
     common_fields.add("true")
+    # Used for account level rulesets
+    # https://developers.cloudflare.com/ruleset-engine/managed-rulesets/deploy-managed-ruleset/#deploy-a-managed-ruleset-to-a-phase-at-the-account-level
+    # Potentially limited to PRO/BIZ/ENT
+    # https://github.com/doctena-org/octorules-cloudflare/blob/b02cb8a841fb8b230c36535932ff5188c7b40863/tests/test_linter/test_action_validator.py#L221
+    scheme["cf.zone.plan"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["String"], False)
+    common_fields.add("cf.zone.plan")
     # raw.http.request.headers is listed in some "Available fields and functions", but not in the scheme
     scheme["raw.http.request.headers"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Map<Array<String>>"], False)
     common_fields.add("raw.http.request.headers")
