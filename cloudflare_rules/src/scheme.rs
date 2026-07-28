@@ -1541,6 +1541,35 @@ fn add_all_fields(
             )
             .unwrap();
     }
+    // Cf Fields
+    builder
+        .add_field("cf.intel.ip.datasets", Type::Array(Type::Bytes.into()))
+        .unwrap();
+    builder
+        .add_field(
+            "cf.intel.ip.target_industries",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.intel.ip.attacker_names",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.intel.ip.attacker_countries",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.intel.ip.target_countries",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+
     // GENERATED_SCHEMA_FIELDS_END
 }
 

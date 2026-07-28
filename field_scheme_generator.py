@@ -266,6 +266,20 @@ def main() -> None:
     scheme["raw.http.request.headers.values"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
     common_fields.add("raw.http.request.headers.values")
 
+    # Threat intelligence fields
+    # https://developers.cloudflare.com/waf/detections/threat-intelligence/fields/
+    # Dataset that flagged the IP address. Values: ddos, waf.
+    scheme["cf.intel.ip.datasets"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
+    # Industries this IP address has targeted. Refer to target industries for valid values.
+    scheme["cf.intel.ip.target_industries"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
+    # Threat actor names associated with this IP address (for example, CONVOLUTEDKRILL).
+    scheme["cf.intel.ip.attacker_names"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
+    # Source countries of the threat activity, as ISO 3166-1 Alpha 2 ↗ codes.
+    scheme["cf.intel.ip.attacker_countries"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
+    # Countries this IP address has targeted, as ISO 3166-1 Alpha 2 ↗ codes.
+    scheme["cf.intel.ip.target_countries"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
+
+
     add_deprecation_replacements()
 
     # Emit the common fields as a separate section in the scheme
