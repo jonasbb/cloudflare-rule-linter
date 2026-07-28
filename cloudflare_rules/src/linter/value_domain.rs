@@ -5,6 +5,8 @@ use wirefilter::{
     ComparisonExpr, ComparisonOpExpr, IdentifierExpr, OrderingOp, RhsValue, RhsValues, Visitor,
 };
 
+// Some other useful checks
+// https://github.com/doctena-org/octorules-cloudflare/blob/ac57450/docs/lint/stage2-per-rule.md#cf532--invalid-value-for-field-domain
 enum Domain {
     List(Vec<&'static str>),
     /// Validation function and error message. The error message must complete the sentence "Values must ..."
@@ -13,9 +15,6 @@ enum Domain {
 }
 
 static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|| {
-    fn ascii_uppercase(s: &str) -> bool {
-        !s.is_empty() && s.chars().all(|c| c.is_ascii_uppercase())
-    }
     fn is_file_extension(s: &str) -> bool {
         s.chars().all(|c| !c.is_uppercase() && c != '.' && c != '/')
     }
@@ -69,6 +68,10 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
                 "waf",
             ]),
         ),
+        (
+            "cf.tls_version",
+            Domain::List(vec!["", "TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"]),
+        ),
         ("cf.waf.score", Domain::IntRange(1, 100)),
         (
             "cf.waf.score.class",
@@ -99,11 +102,14 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
             ),
         ),
         (
+            // https://www.iana.org/assignments/http-methods/http-methods.xhtml
             "http.request.method",
-            Domain::Validate(
-                ascii_uppercase,
-                "consist only of uppercase characters (e.g., \"GET\")",
-            ),
+            Domain::List(vec![
+                // The standard HTTP methods as listed on https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods
+                "GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE", "CONNECT", "TRACE", "PATCH",
+                // New RFC 10008 method https://datatracker.ietf.org/doc/rfc10008/
+                "QUERY",
+            ]),
         ),
         ("http.request.timestamp.msec", Domain::IntRange(0, 999)),
         (
@@ -124,7 +130,7 @@ static VALUE_DOMAINS: LazyLock<BTreeMap<&'static str, Domain>> = LazyLock::new(|
         ),
         (
             "http.request.version",
-            Domain::Validate(|s: &str| s.starts_with("HTTP/"), "start with \"HTTP/\""),
+            Domain::List(vec!["HTTP/1.0", "HTTP/1.1", "HTTP/2", "HTTP/3"]),
         ),
         (
             "http.response.content_type.media_type",
