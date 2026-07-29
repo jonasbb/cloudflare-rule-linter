@@ -9,6 +9,7 @@ mod deprecated_field;
 mod duplicate_list_entries;
 mod empty_list;
 mod header_case;
+mod hostname_suffix;
 mod illogical_condition;
 mod invalid_list_name;
 mod negated_comparison;
