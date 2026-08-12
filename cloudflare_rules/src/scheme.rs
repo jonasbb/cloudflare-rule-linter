@@ -192,7 +192,8 @@ pub(crate) fn build_scheme(phase: Phase) -> Scheme {
             .unwrap();
         if matches!(
             phase,
-            Phase::HttpRequestTransform
+            Phase::HttpRequestDynamicRedirect
+                | Phase::HttpRequestTransform
                 | Phase::HttpRequestLateTransform
                 | Phase::HttpResponseHeadersTransform
                 | Phase::Maximum
@@ -261,7 +262,8 @@ pub(crate) fn build_scheme(phase: Phase) -> Scheme {
         }
         if matches!(
             phase,
-            Phase::HttpRequestTransform
+            Phase::HttpRequestDynamicRedirect
+                | Phase::HttpRequestTransform
                 | Phase::HttpRequestLateTransform
                 | Phase::HttpResponseHeadersTransform
                 | Phase::Maximum
@@ -302,13 +304,15 @@ pub(crate) fn build_scheme(phase: Phase) -> Scheme {
         Phase::HttpRatelimit
         | Phase::HttpRequestApiGatewayLate
         | Phase::HttpRequestFirewallManaged
-        | Phase::HttpRequestSbfm => {
+        | Phase::HttpRequestSbfm
+        // Has access to body and waf fields
+        // Technically comes after `Phase::HttpRequestRedirect`
+        | Phase::HttpRequestLateTransform => {
             requests_early(&mut builder, false);
             requests_mid(&mut builder, false);
             requests_late(&mut builder, false);
         }
         Phase::HttpRequestRedirect
-        | Phase::HttpRequestLateTransform
         | Phase::HttpRequestCacheSettings
         | Phase::HttpRequestSnippets
         | Phase::HttpRequestCloudConnector => {
