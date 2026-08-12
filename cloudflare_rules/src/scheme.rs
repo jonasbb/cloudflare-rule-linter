@@ -325,7 +325,12 @@ pub(crate) fn build_scheme(phase: Phase) -> Scheme {
             requests_late(&mut builder, false);
             response(&mut builder, true);
         }
-        Phase::HttpRatelimitCountingExpression => todo!(),
+        Phase::HttpRatelimitCountingExpression => {
+            requests_early(&mut builder, false);
+            requests_mid(&mut builder, false);
+            requests_late(&mut builder, false);
+            response(&mut builder, true);
+        }
     }
 
     // Undocumented fields
