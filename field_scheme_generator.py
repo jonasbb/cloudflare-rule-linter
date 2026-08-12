@@ -226,28 +226,6 @@ def get_sequence_field_list(url: str) -> set[str]:
 def main() -> None:
     scheme = get_field_scheme()
 
-    bulk_redirects_fields = get_sequence_field_list(
-        "https://developers.cloudflare.com/rules/url-forwarding/bulk-redirects/reference/fields-functions/index.md"
-    )
-    request_header_transform_fields = get_sequence_field_list(
-        "https://developers.cloudflare.com/rules/transform/request-header-modification/reference/fields-functions/index.md"
-    )
-    response_header_transform_fields = get_sequence_field_list(
-        "https://developers.cloudflare.com/rules/transform/response-header-modification/reference/fields-functions/index.md"
-    )
-    url_rewrite_fields = get_sequence_field_list(
-        "https://developers.cloudflare.com/rules/transform/url-rewrite/reference/fields-functions/index.md"
-    )
-    # TODO url_rewrite target
-
-    # Compute the common set of fields between all lists
-    common_fields = (
-        set(url_rewrite_fields)
-        .intersection(set(bulk_redirects_fields))
-        .intersection(set(request_header_transform_fields))
-        .intersection(set(response_header_transform_fields))
-    )
-
     # Fixup some information that are not correct in the YAML file
     # This indicates that some fields are actually response phase
     # https://github.com/cloudflare/cloudflare-docs/blob/3d99ea1499816fb085af9e22d629c96a85a43ecd/src/content/partials/rules/transform/header-modification-fields.mdx
@@ -257,103 +235,137 @@ def main() -> None:
 
     # Add extra fields that are not mentioned in the official docs
     scheme["true"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Boolean"], False)
-    common_fields.add("true")
     # Used for account level rulesets
     # https://developers.cloudflare.com/ruleset-engine/managed-rulesets/deploy-managed-ruleset/#deploy-a-managed-ruleset-to-a-phase-at-the-account-level
     # Potentially limited to PRO/BIZ/ENT
     # https://github.com/doctena-org/octorules-cloudflare/blob/b02cb8a841fb8b230c36535932ff5188c7b40863/tests/test_linter/test_action_validator.py#L221
     scheme["cf.zone.plan"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["String"], False)
-    common_fields.add("cf.zone.plan")
     # raw.http.request.headers is listed in some "Available fields and functions", but not in the scheme
-    scheme["raw.http.request.headers"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Map<Array<String>>"], False)
-    common_fields.add("raw.http.request.headers")
-    scheme["raw.http.request.headers.names"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
-    common_fields.add("raw.http.request.headers.names")
-    scheme["raw.http.request.headers.values"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
-    common_fields.add("raw.http.request.headers.values")
+    scheme["raw.http.request.headers"] = FieldInformation(
+        TYPE_TO_WIREFILTER_TYPE["Map<Array<String>>"], False
+    )
+    scheme["raw.http.request.headers.names"] = FieldInformation(
+        TYPE_TO_WIREFILTER_TYPE["Array<String>"], False
+    )
+    scheme["raw.http.request.headers.values"] = FieldInformation(
+        TYPE_TO_WIREFILTER_TYPE["Array<String>"], False
+    )
 
     # Threat intelligence fields
     # https://developers.cloudflare.com/waf/detections/threat-intelligence/fields/
     # Dataset that flagged the IP address. Values: ddos, waf.
-    scheme["cf.intel.ip.datasets"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
+    scheme["cf.intel.ip.datasets"] = FieldInformation(
+        TYPE_TO_WIREFILTER_TYPE["Array<String>"], False
+    )
     # Industries this IP address has targeted. Refer to target industries for valid values.
-    scheme["cf.intel.ip.target_industries"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
+    scheme["cf.intel.ip.target_industries"] = FieldInformation(
+        TYPE_TO_WIREFILTER_TYPE["Array<String>"], False
+    )
     # Threat actor names associated with this IP address (for example, CONVOLUTEDKRILL).
-    scheme["cf.intel.ip.attacker_names"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
+    scheme["cf.intel.ip.attacker_names"] = FieldInformation(
+        TYPE_TO_WIREFILTER_TYPE["Array<String>"], False
+    )
     # Source countries of the threat activity, as ISO 3166-1 Alpha 2 ↗ codes.
-    scheme["cf.intel.ip.attacker_countries"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
+    scheme["cf.intel.ip.attacker_countries"] = FieldInformation(
+        TYPE_TO_WIREFILTER_TYPE["Array<String>"], False
+    )
     # Countries this IP address has targeted, as ISO 3166-1 Alpha 2 ↗ codes.
-    scheme["cf.intel.ip.target_countries"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False)
-
+    scheme["cf.intel.ip.target_countries"] = FieldInformation(
+        TYPE_TO_WIREFILTER_TYPE["Array<String>"], False
+    )
 
     add_deprecation_replacements()
 
-    # Emit the common fields as a separate section in the scheme
-    emit_field_scheme(
-        {
-            name: wf_type
-            for name, wf_type in scheme.items()
-            if name_in_wildcard_set(name, common_fields)
-        },
-        "./cloudflare_rules/src/scheme.rs",
-        "// GENERATED_SCHEMA_FIELDS_COMMON_START",
-        "// GENERATED_SCHEMA_FIELDS_COMMON_END",
-    )
-    emit_field_scheme(
-        {
-            name: wf_type
-            for name, wf_type in scheme.items()
-            if name_in_wildcard_set(name, bulk_redirects_fields)
-            and not name_in_wildcard_set(name, common_fields)
-        },
-        "./cloudflare_rules/src/scheme.rs",
-        "// GENERATED_SCHEMA_FIELDS_BULK_REDIRECTS_START",
-        "// GENERATED_SCHEMA_FIELDS_BULK_REDIRECTS_END",
-    )
-    emit_field_scheme(
-        {
-            name: wf_type
-            for name, wf_type in scheme.items()
-            if name_in_wildcard_set(name, request_header_transform_fields)
-            and not name_in_wildcard_set(name, common_fields)
-        },
-        "./cloudflare_rules/src/scheme.rs",
-        "// GENERATED_SCHEMA_FIELDS_REQUEST_HEADER_START",
-        "// GENERATED_SCHEMA_FIELDS_REQUEST_HEADER_END",
-    )
-    emit_field_scheme(
-        {
-            name: wf_type
-            for name, wf_type in scheme.items()
-            if name_in_wildcard_set(name, response_header_transform_fields)
-            and not name_in_wildcard_set(name, common_fields)
-        },
-        "./cloudflare_rules/src/scheme.rs",
-        "// GENERATED_SCHEMA_FIELDS_RESPONSE_HEADER_START",
-        "// GENERATED_SCHEMA_FIELDS_RESPONSE_HEADER_END",
-    )
-    emit_field_scheme(
-        {
-            name: wf_type
-            for name, wf_type in scheme.items()
-            if name_in_wildcard_set(name, url_rewrite_fields)
-            and not name_in_wildcard_set(name, common_fields)
-        },
-        "./cloudflare_rules/src/scheme.rs",
-        "// GENERATED_SCHEMA_FIELDS_URL_REWRITE_START",
-        "// GENERATED_SCHEMA_FIELDS_URL_REWRITE_END",
-    )
-
     # Add a section with all fields
     emit_field_scheme(
-        {
-            name: wf_type
-            for name, wf_type in scheme.items()
-            if not name_in_wildcard_set(name, common_fields)
-        },
+        {name: wf_type for name, wf_type in scheme.items()},
         "./cloudflare_rules/src/scheme.rs",
         "// GENERATED_SCHEMA_FIELDS_START",
         "// GENERATED_SCHEMA_FIELDS_END",
+    )
+
+    request_mid_fields = {
+        "http.request.body.*",
+        "cf.waf.*",
+    }
+    emit_field_scheme(
+        {
+            name: wf_type
+            for name, wf_type in scheme.items()
+            if name_in_wildcard_set(name, request_mid_fields)
+        },
+        "./cloudflare_rules/src/scheme.rs",
+        "// GENERATED_SCHEMA_FIELDS_REQUESTS_MID_START",
+        "// GENERATED_SCHEMA_FIELDS_REQUESTS_MID_END",
+    )
+
+    phase_custom_rules = {
+        "cf.api_gateway.*",
+        "cf.fraud.*",
+        "http.request.jwt.*",
+    }
+    emit_field_scheme(
+        {
+            name: wf_type
+            for name, wf_type in scheme.items()
+            if name_in_wildcard_set(name, phase_custom_rules)
+        },
+        "./cloudflare_rules/src/scheme.rs",
+        "// GENERATED_SCHEMA_FIELDS_PHASE_CUSTOM_RULES_START",
+        "// GENERATED_SCHEMA_FIELDS_PHASE_CUSTOM_RULES_END",
+    )
+
+    request_late_fields = {
+        "cf.verified_bot_category",
+        "cf.bot_management.*",
+        # Not verified
+        "cf.intel.*",
+        # Not verified
+        "cf.llm.*",
+    }
+    emit_field_scheme(
+        {
+            name: wf_type
+            for name, wf_type in scheme.items()
+            if name_in_wildcard_set(name, request_late_fields)
+        },
+        "./cloudflare_rules/src/scheme.rs",
+        "// GENERATED_SCHEMA_FIELDS_REQUESTS_LATE_START",
+        "// GENERATED_SCHEMA_FIELDS_REQUESTS_LATE_END",
+    )
+
+    response_fields = {
+        "cf.timings.edge_msec",
+        "cf.timings.origin_ttfb_msec",
+        "cf.timings.worker_msec",
+        "cf.response.*",
+        "http.response.*",
+        "raw.http.response.*",
+    }
+    emit_field_scheme(
+        {
+            name: wf_type
+            for name, wf_type in scheme.items()
+            if name_in_wildcard_set(name, response_fields)
+        },
+        "./cloudflare_rules/src/scheme.rs",
+        "// GENERATED_SCHEMA_FIELDS_RESPONSE_START",
+        "// GENERATED_SCHEMA_FIELDS_RESPONSE_END",
+    )
+
+    # Emit the rest as early phase
+    emit_field_scheme(
+        {
+            name: wf_type
+            for name, wf_type in scheme.items()
+            if not name_in_wildcard_set(name, request_mid_fields)
+            and not name_in_wildcard_set(name, phase_custom_rules)
+            if not name_in_wildcard_set(name, request_late_fields)
+            and not name_in_wildcard_set(name, response_fields)
+        },
+        "./cloudflare_rules/src/scheme.rs",
+        "// GENERATED_SCHEMA_FIELDS_REQUESTS_EARLY_START",
+        "// GENERATED_SCHEMA_FIELDS_REQUESTS_EARLY_END",
     )
 
 

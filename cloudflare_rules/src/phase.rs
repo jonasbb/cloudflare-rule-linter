@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-/// Phase in which a rule is evaluated. This is used by the linter
-/// to gate lints and (eventually) to select a phase-specific Scheme.
+/// Phase in which a rule is evaluated
+///
+/// This is used by the linter to gate lints and (eventually) to select a phase-specific Scheme.
+///
+/// <https://developers.cloudflare.com/ruleset-engine/reference/phases-list>
 #[derive(
     Default,
     Debug,
@@ -18,6 +21,7 @@ use serde::{Deserialize, Serialize};
     strum::EnumIter,
 )]
 #[strum(serialize_all = "snake_case")]
+#[non_exhaustive]
 pub enum Phase {
     /// This is a superset of all phases, used for lints that apply to all phases.
     ///
@@ -27,47 +31,131 @@ pub enum Phase {
     #[default]
     #[strum(ascii_case_insensitive)]
     Maximum,
-    /// API JWT Validation rules
-    #[strum(ascii_case_insensitive)]
-    ApiJwtValidation,
-    /// Bulk Redirects filter `http_request_redirect`
+
+    /*
+    HTTP Request Phases
+    */
+    /// Single Redirects
     ///
-    /// <https://developers.cloudflare.com/rules/url-forwarding/bulk-redirects/reference/fields-functions/>
-    #[strum(ascii_case_insensitive)]
-    BulkRedirectsFilter,
-    /// Custom Error rules
-    #[strum(ascii_case_insensitive)]
-    CustomError,
-    /// Custom WAF rules `http_request_firewall_custom`
-    #[strum(ascii_case_insensitive)]
-    CustomRules,
-    /// Request Header Transform rules
+    /// <https://developers.cloudflare.com/rules/url-forwarding/single-redirects/>
+    #[strum(ascii_case_insensitive, to_string = "Single Redirects")]
+    HttpRequestDynamicRedirect,
+    /// URL normalization
     ///
-    /// <https://developers.cloudflare.com/rules/transform/request-header-modification/reference/fields-functions/>
-    #[strum(ascii_case_insensitive)]
-    HeaderRequest,
-    /// Response Header Transform rules `http_request_late_transform`
+    /// <https://developers.cloudflare.com/rules/normalization/>
+    #[strum(ascii_case_insensitive, to_string = "URL normalization")]
+    HttpRequestSanitize,
+    /// URL Rewrite Rules
     ///
-    /// <https://developers.cloudflare.com/rules/transform/response-header-modification/reference/fields-functions/>
-    #[strum(ascii_case_insensitive)]
-    HeaderResponse,
-    /// Rate Limiting rules `http_request_ratelimit`
-    #[strum(ascii_case_insensitive)]
-    RateLimit,
-    /// The filter expression for URL Redirect
-    #[strum(ascii_case_insensitive)]
-    UrlRedirectFilter,
-    /// The dynamic target for URL Redirect rules
-    #[strum(ascii_case_insensitive)]
-    UrlRedirectTarget,
-    /// The filter expression for URL Rewrite rules
+    /// <https://developers.cloudflare.com/rules/transform/url-rewrite/>
+    #[strum(ascii_case_insensitive, to_string = "URL Rewrite Rules")]
+    HttpRequestTransform,
+    /// API Shield (Early)
     ///
-    /// <https://developers.cloudflare.com/rules/transform/url-rewrite/reference/fields-functions/>
-    #[strum(ascii_case_insensitive)]
-    UrlRewriteFilter,
-    /// The target expression for URL Rewrite rules
+    /// <https://developers.cloudflare.com/api-shield/>
+    #[strum(ascii_case_insensitive, to_string = "API Shield")]
+    HttpRequestApiGatewayEarly,
+    /// Configuration Rules
     ///
-    /// <https://developers.cloudflare.com/rules/transform/url-rewrite/reference/fields-functions/>
-    #[strum(ascii_case_insensitive)]
-    UrlRewriteTarget,
+    /// <https://developers.cloudflare.com/rules/configuration-rules/>
+    #[strum(ascii_case_insensitive, to_string = "Configuration Rules")]
+    HttpConfigSettings,
+    /// Origin Rules
+    ///
+    /// <https://developers.cloudflare.com/rules/origin-rules/>
+    #[strum(ascii_case_insensitive, to_string = "Origin Rules")]
+    HttpRequestOrigin,
+    /// Custom rules (Web Application Firewall)
+    ///
+    /// <https://developers.cloudflare.com/waf/custom-rules/>
+    #[strum(
+        ascii_case_insensitive,
+        to_string = "Custom rules (Web Application Firewall)"
+    )]
+    HttpRequestFirewallCustom,
+    /// Rate limiting rules (WAF)
+    ///
+    /// <https://developers.cloudflare.com/waf/rate-limiting-rules/>
+    #[strum(ascii_case_insensitive, to_string = "Rate limiting rules (WAF)")]
+    HttpRatelimit,
+    /// API Shield (Late)
+    ///
+    /// <https://developers.cloudflare.com/api-shield/>
+    #[strum(ascii_case_insensitive, to_string = "API Shield")]
+    HttpRequestApiGatewayLate,
+    /// WAF Managed Rules
+    ///
+    /// <https://developers.cloudflare.com/waf/managed-rules/>
+    #[strum(ascii_case_insensitive, to_string = "WAF Managed Rules")]
+    HttpRequestFirewallManaged,
+    /// Super Bot Fight Mode
+    ///
+    /// <https://developers.cloudflare.com/bots/get-started/super-bot-fight-mode/>
+    #[strum(ascii_case_insensitive, to_string = "Super Bot Fight Mode")]
+    HttpRequestSbfm,
+    /// Bulk Redirects
+    ///
+    /// <https://developers.cloudflare.com/rules/url-forwarding/bulk-redirects/>
+    #[strum(ascii_case_insensitive, to_string = "Bulk Redirects")]
+    HttpRequestRedirect,
+    /// Request Header Transform Rules
+    ///
+    /// <https://developers.cloudflare.com/rules/transform/request-header-modification/>
+    #[strum(ascii_case_insensitive, to_string = "Request Header Transform Rules")]
+    HttpRequestLateTransform,
+    /// Cache Rules
+    ///
+    /// <https://developers.cloudflare.com/cache/how-to/cache-rules/>
+    #[strum(ascii_case_insensitive, to_string = "Cache Rules")]
+    HttpRequestCacheSettings,
+    /// Snippets
+    ///
+    /// <https://developers.cloudflare.com/rules/snippets/>
+    #[strum(ascii_case_insensitive, to_string = "Snippets")]
+    HttpRequestSnippets,
+    /// Cloud Connector
+    ///
+    /// <https://developers.cloudflare.com/rules/cloud-connector/>
+    #[strum(ascii_case_insensitive, to_string = "Cloud Connector")]
+    HttpRequestCloudConnector,
+
+    /*
+    HTTP Response Phases
+    */
+    /// Custom Errors
+    ///
+    /// <https://developers.cloudflare.com/rules/custom-errors/>
+    #[strum(ascii_case_insensitive, to_string = "Custom Errors")]
+    HttpCustomErrors,
+    /// Response Header Transform Rules
+    ///
+    /// <https://developers.cloudflare.com/rules/transform/response-header-modification/>
+    #[strum(ascii_case_insensitive, to_string = "Response Header Transform Rules")]
+    HttpResponseHeadersTransform,
+    /// Rate limiting rules (when they use response information)
+    ///
+    /// <https://developers.cloudflare.com/waf/rate-limiting-rules/>
+    #[strum(
+        ascii_case_insensitive,
+        to_string = "Rate limiting rules Counting Expression"
+    )]
+    HttpRatelimitCountingExpression,
+    /// Compression Rules
+    ///
+    /// <https://developers.cloudflare.com/rules/compression-rules/>
+    #[strum(ascii_case_insensitive, to_string = "Compression Rules")]
+    HttpResponseCompression,
+    /// Cloudflare Sensitive Data Detection
+    ///
+    /// <https://developers.cloudflare.com/waf/managed-rules/>
+    #[strum(
+        ascii_case_insensitive,
+        to_string = "Cloudflare Sensitive Data Detection"
+    )]
+    HttpResponseFirewallManaged,
+    /// Logpush custom fields
+    ///
+    /// <https://developers.cloudflare.com/logs/logpush/logpush-job/custom-fields/>
+    #[strum(ascii_case_insensitive, to_string = "Logpush custom fields")]
+    HttpLogCustomFields,
 }
