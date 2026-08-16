@@ -18,17 +18,30 @@
     <label for="cloudflare-rules-phase">Choose a Cloudflare Phase:</label>
     <select name="cloudflare-rules-phase" id="cloudflare-rules-phase">
         <option value="maximum" selected>Combined Ruleset with all Fields and Functions</option>
-        <option value="api_jwt_validation">API JWT Validation</option>
-        <option value="bulk_redirects_filter">Bulk Redirects Rules</option>
-        <option value="custom_error">Custom Error Rules</option>
-        <option value="custom_rules">Custom Rules</option>
-        <option value="header_request">HTTP Header Request Rules</option>
-        <option value="header_response">HTTP Header Response Rules</option>
-        <option value="rate_limit">Rate Limit Rules</option>
-        <option value="url_redirect_filter">URL Redirect Rule</option>
-        <option value="url_redirect_target">URL Redirect Target Expression</option>
-        <option value="url_rewrite_filter">URL Rewrite Rule</option>
-        <option value="url_rewrite_target">URL Rewrite Target Expression</option>
+        <option disabled>---Request Phases---</option>
+        <option value="http_request_dynamic_redirect">Single Redirects</option>
+        <option value="http_request_sanitize">URL normalization</option>
+        <option value="http_request_transform">URL Rewrite Rules</option>
+        <option value="http_request_api_gateway_early">API Shield</option>
+        <option value="http_config_settings">Configuration Rules</option>
+        <option value="http_request_origin">Origin Rules</option>
+        <option value="http_request_firewall_custom">Custom rules (Web Application Firewall)</option>
+        <option value="http_ratelimit">Rate limiting rules (WAF)</option>
+        <option value="http_request_api_gateway_late">API Shield</option>
+        <option value="http_request_firewall_managed">WAF Managed Rules</option>
+        <option value="http_request_sbfm">Super Bot Fight Mode</option>
+        <option value="http_request_redirect">Bulk Redirects</option>
+        <option value="http_request_late_transform">Request Header Transform Rules</option>
+        <option value="http_request_cache_settings">Cache Rules</option>
+        <option value="http_request_snippets">Snippets</option>
+        <option value="http_request_cloud_connector">Cloud Connector</option>
+        <option disabled>---Response Phases---</option>
+        <option value="http_custom_errors">Custom Errors</option>
+        <option value="http_response_headers_transform">Response Header Transform Rules</option>
+        <option value="http_ratelimit_counting_expression">Rate limiting rules Counting Expression</option>
+        <option value="http_response_compression">Compression Rules</option>
+        <option value="http_response_firewall_managed">Cloudflare Sensitive Data Detection</option>
+        <option value="http_log_custom_fields">Logpush custom fields</option>
     </select>
 
     <textarea id="cloudflare-rules-input" class="form-control" rows="5"
