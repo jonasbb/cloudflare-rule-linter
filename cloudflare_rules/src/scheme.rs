@@ -399,6 +399,84 @@ fn requests_early(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_r
         .unwrap();
     builder.add_field("cf.random_seed", Type::Bytes).unwrap();
     builder.add_field("cf.ray_id", Type::Bytes).unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.learned.body.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.learned.cookies.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.learned.headers.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.learned.path.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.learned.query.undeclared_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.learned.query.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field("cf.schema_validation.learned.violated", Type::Bool)
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.uploaded.body.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.uploaded.cookies.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.uploaded.headers.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.uploaded.path.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.uploaded.query.undeclared_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.uploaded.query.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field("cf.schema_validation.uploaded.violated", Type::Bool)
+        .unwrap();
     builder.add_field("cf.threat_score", Type::Int).unwrap();
     builder
         .add_field("cf.timings.client_quic_rtt_msec", Type::Int)
@@ -489,6 +567,9 @@ fn requests_early(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_r
         .add_field("cf.tls_client_random", Type::Bytes)
         .unwrap();
     builder.add_field("cf.tls_version", Type::Bytes).unwrap();
+    builder
+        .add_field("cf.web_asset.labels", Type::Array(Type::Bytes.into()))
+        .unwrap();
     builder
         .add_field("cf.worker.upstream_zone", Type::Bytes)
         .unwrap();
@@ -736,6 +817,9 @@ fn requests_mid(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_res
         )
         .unwrap();
     builder
+        .add_field("cf.waf.content_scan.truncated", Type::Bool)
+        .unwrap();
+    builder
         .add_field("cf.waf.credential_check.password_leaked", Type::Bool)
         .unwrap();
     builder
@@ -760,6 +844,24 @@ fn requests_mid(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_res
     builder.add_field("cf.waf.score.rce", Type::Int).unwrap();
     builder.add_field("cf.waf.score.sqli", Type::Int).unwrap();
     builder.add_field("cf.waf.score.xss", Type::Int).unwrap();
+    builder
+        .add_field(
+            "cf.waf.signature.request.categories",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.waf.signature.request.confidence",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.waf.signature.request.refs",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
 
     // Http Fields
     builder
@@ -869,6 +971,9 @@ fn requests_late(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_re
         .unwrap();
     builder
         .add_field("cf.bot_management.static_resource", Type::Bool)
+        .unwrap();
+    builder
+        .add_field("cf.bot_management.tags", Type::Array(Type::Bytes.into()))
         .unwrap();
     builder
         .add_field("cf.bot_management.verified_bot", Type::Bool)
@@ -1042,9 +1147,6 @@ fn phase_custom_rules(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] 
     builder
         .add_field("cf.api_gateway.fallthrough_detected", Type::Bool)
         .unwrap();
-    builder
-        .add_field("cf.api_gateway.request_violates_schema", Type::Bool)
-        .unwrap();
 
     // Http Fields
     builder
@@ -1173,9 +1275,6 @@ fn add_all_fields(
         .add_field("cf.api_gateway.fallthrough_detected", Type::Bool)
         .unwrap();
     builder
-        .add_field("cf.api_gateway.request_violates_schema", Type::Bool)
-        .unwrap();
-    builder
         .add_field("cf.bot_management.corporate_proxy", Type::Bool)
         .unwrap();
     builder
@@ -1201,6 +1300,9 @@ fn add_all_fields(
         .unwrap();
     builder
         .add_field("cf.bot_management.static_resource", Type::Bool)
+        .unwrap();
+    builder
+        .add_field("cf.bot_management.tags", Type::Array(Type::Bytes.into()))
         .unwrap();
     builder
         .add_field("cf.bot_management.verified_bot", Type::Bool)
@@ -1260,6 +1362,84 @@ fn add_all_fields(
             .add_field("cf.response.error_type", Type::Bytes)
             .unwrap();
     }
+    builder
+        .add_field(
+            "cf.schema_validation.learned.body.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.learned.cookies.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.learned.headers.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.learned.path.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.learned.query.undeclared_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.learned.query.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field("cf.schema_validation.learned.violated", Type::Bool)
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.uploaded.body.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.uploaded.cookies.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.uploaded.headers.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.uploaded.path.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.uploaded.query.undeclared_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.schema_validation.uploaded.query.violated_parameters",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field("cf.schema_validation.uploaded.violated", Type::Bool)
+        .unwrap();
     builder.add_field("cf.threat_score", Type::Int).unwrap();
     builder
         .add_field("cf.timings.client_quic_rtt_msec", Type::Int)
@@ -1405,6 +1585,9 @@ fn add_all_fields(
         )
         .unwrap();
     builder
+        .add_field("cf.waf.content_scan.truncated", Type::Bool)
+        .unwrap();
+    builder
         .add_field("cf.waf.credential_check.password_leaked", Type::Bool)
         .unwrap();
     builder
@@ -1429,6 +1612,27 @@ fn add_all_fields(
     builder.add_field("cf.waf.score.rce", Type::Int).unwrap();
     builder.add_field("cf.waf.score.sqli", Type::Int).unwrap();
     builder.add_field("cf.waf.score.xss", Type::Int).unwrap();
+    builder
+        .add_field(
+            "cf.waf.signature.request.categories",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.waf.signature.request.confidence",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.waf.signature.request.refs",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field("cf.web_asset.labels", Type::Array(Type::Bytes.into()))
+        .unwrap();
     builder
         .add_field("cf.worker.upstream_zone", Type::Bytes)
         .unwrap();
