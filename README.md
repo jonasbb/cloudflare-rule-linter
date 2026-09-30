@@ -88,6 +88,10 @@ If you notice any discrepancies between the scheme as implemented here compared 
     This contains the base framework, but the exact details of available fields and functions is not included.
 * <https://github.com/gen0sec/wirefilter>
     Fork of the Cloudflare wirefilter with more functions pre-defined.
+* <https://github.com/doctena-org/octorules-wirefilter>
+    Another fork of the Cloudflare wirefilter repository.
+* <https://github.com/doctena-org/octorules-cloudflare>
+    Cloudflare linting logic for octorules.
 * <https://github.com/jmreicha/wirechecker>
     Simple WebUI that simulates the Cloudflare Rules Language, parses it and reports errors.
     This is based on the wirefilter crate.
