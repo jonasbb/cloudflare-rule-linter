@@ -1,14 +1,14 @@
 use super::*;
 use regex_syntax::Parser;
 use regex_syntax::hir::{Hir, HirKind, Look};
-use wirefilter::{ComparisonExpr, ComparisonOpExpr, Visitor};
+use wirefilter::{ComparisonExpr, ComparisonOpExpr, IdentifierExpr, Visitor};
 
 static LINT_NAME: &str = "unnecessary_patterns";
 
 inventory::submit! {
     Lint {
         name: LINT_NAME,
-        description: "Detect regex and wildcard patterns that can be simplified to `eq` or `contains` expressions.",
+        description: "Detect regex and wildcard patterns that can be simplified and unnecessary `lower()` calls.",
         category: Category::Style,
         lint_fn: lint,
         lint_value_fn: lint_value,
@@ -81,6 +81,21 @@ struct RegexRawStringsVisitor {
 
 impl Visitor<'_> for RegexRawStringsVisitor {
     fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
+        if matches!(node.op, ComparisonOpExpr::Wildcard(_))
+            && let IdentifierExpr::FunctionCallExpr(call) = &node.lhs.identifier
+            && call.function().name() == "lower"
+        {
+            self.result.push(LintReport {
+                id: LINT_NAME.into(),
+                url: Some(create_url(LINT_NAME)),
+                title: "Found unnecessary lower() with wildcard".into(),
+                message: "The `wildcard` operator is case-insensitive, so `lower()` is \
+                          unnecessary and can be removed."
+                    .to_string(),
+                span: Span::ReverseByte(node.reverse_span.clone()),
+            });
+        }
+
         if let ComparisonOpExpr::Matches(regex) = &node.op {
             let hir = Parser::new()
                 .parse(regex.as_str())
@@ -165,6 +180,26 @@ mod test {
     #[test]
     fn test_strict_wildcard_with_wildcards() {
         assert_no_lint_message(&LINTER, r#"http.host strict wildcard "example*""#);
+    }
+
+    #[test]
+    fn test_lower_with_wildcard() {
+        expect_lint_message(
+            &LINTER,
+            r#"lower(http.request.uri.path) wildcard "/foo/bar/*""#,
+            expect![[r#"
+                Found unnecessary lower() with wildcard (unnecessary_patterns)
+                The `wildcard` operator is case-insensitive, so `lower()` is unnecessary and can be removed."#]],
+        );
+    }
+
+    #[test]
+    fn test_lower_without_wildcard_operator() {
+        assert_no_lint_message(
+            &LINTER,
+            r#"lower(http.request.uri.path) strict wildcard "/foo/*""#,
+        );
+        assert_no_lint_message(&LINTER, r#"http.request.uri.path wildcard "/foo/*""#);
     }
 
     #[test]

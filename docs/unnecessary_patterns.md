@@ -1,7 +1,10 @@
 # Lint `unnecessary_patterns`
 
-Detect regex and wildcard patterns that can be simplified to `eq` or `contains` expressions.
+Detect regex and wildcard patterns that can be simplified and unnecessary `lower()` calls.
 Using wildcard and regex patterns indicates a level of complexity that is not present and thus can be confusing.
+
+The `wildcard` operator is case-insensitive, so applying `lower()` to the value being matched is unnecessary.
+`lower(http.request.uri.path) wildcard "/foo/bar/*"` can be simplified to `http.request.uri.path wildcard "/foo/bar/*"`.
 
 Strict wildcard matches preserve case, thus they can be rewritten.
 `http.host strict wildcard "example"` can be simplified to `http.host strict eq "example"`.
