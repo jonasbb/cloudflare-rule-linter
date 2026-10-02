@@ -12,6 +12,7 @@ mod header_case;
 mod hostname_suffix;
 mod illogical_condition;
 mod invalid_list_name;
+mod lower_wildcard;
 mod negated_comparison;
 mod operator_style;
 mod overly_permissive_pattern;

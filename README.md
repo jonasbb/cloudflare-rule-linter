@@ -67,6 +67,7 @@ If you notice any discrepancies between the scheme as implemented here compared 
 | [hostname_suffix](./docs/hostname_suffix.md) | correctness | Check for values that are outside of the valid domain for certain fields, such as invalid HTTP methods or invalid continents. |
 | [illogical_condition](./docs/illogical_condition.md) | style | Detect illogical conditions, such as comparing the same field for equality multiple times in an AND expression, or for inequality multiple times in an OR expression. |
 | [invalid_list_name](./docs/invalid_list_name.md) | correctness | Check for invalid managed list names and optionally invalid custom list names. |
+| [lower_wildcard](./docs/lower_wildcard.md) | style | Detect unnecessary `lower()` calls before case-insensitive wildcard comparisons. |
 | [negated_comparison](./docs/negated_comparison.md) | style | Detect comparisons that are negated and suggest using the opposite comparison operator instead. |
 | [operator_style](./docs/operator_style.md) | style | Enforce a consistent operator notation (english vs C-like). |
 | [overly_permissive_pattern](./docs/overly_permissive_pattern.md) | correctness | Check for regex and wildcard patterns that are overly permissive. |
