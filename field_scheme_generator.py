@@ -10,6 +10,10 @@ Generates Wirefilter field scheme code and HTML documentation from Cloudflare's 
 """
 
 import dataclasses
+import os
+import stat
+import tempfile
+from pathlib import Path
 
 import requests
 import yaml
@@ -36,25 +40,40 @@ def replace_content(
     Replaces the content between start_marker and end_marker in the specified file with new_content.
     """
 
-    with open(file, "r") as f:
+    path = Path(file)
+    with path.open("r", encoding="utf-8") as f:
         content = f.read()
+
+    if content.count(start_marker) != 1 or content.count(end_marker) != 1:
+        raise ValueError("Start and end markers must each appear exactly once.")
 
     start_index = content.find(start_marker)
     end_index = content.find(end_marker)
-
-    if start_index == -1 or end_index == -1:
-        raise ValueError("Start or end marker not found in the file.")
+    content_start = start_index + len(start_marker)
+    if end_index < content_start:
+        raise ValueError("End marker must appear after the start marker.")
 
     new_content_full = (
-        content[: start_index + len(start_marker)]
+        content[:content_start]
         + "\n"
         + new_content
         + "\n"
         + content[end_index:]
     )
 
-    with open(file, "w") as f:
-        f.write(new_content_full)
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent, delete=False
+        ) as temporary_file:
+            temporary_file.write(new_content_full)
+            temporary_path = Path(temporary_file.name)
+
+        os.chmod(temporary_path, stat.S_IMODE(path.stat().st_mode))
+        os.replace(temporary_path, path)
+    finally:
+        if temporary_path is not None and temporary_path.exists():
+            temporary_path.unlink()
 
 
 TYPE_TO_WIREFILTER_TYPE = {
@@ -77,13 +96,9 @@ TYPE_TO_WIREFILTER_TYPE = {
 TY_OVERWRITES: dict[str, str] = {}
 """Maps from field name to Wirefilter type, for fields that have a different type than the one loaded from the YAML file"""
 
-DEPRECATIONS: dict[str, str] = {}
-"""Maps from old to new name"""
-
-
-def get_field_scheme() -> dict[str, FieldInformation]:
+def get_field_scheme() -> tuple[dict[str, FieldInformation], dict[str, str]]:
     """
-    Fetches the field scheme from the Cloudflare docs YAML file and returns it as a dictionary.
+    Fetches the Cloudflare field scheme and deprecated-name replacements.
     """
 
     # Fetch and parse the YAML file from the Cloudflare docs repository
@@ -91,36 +106,82 @@ def get_field_scheme() -> dict[str, FieldInformation]:
         "https://raw.githubusercontent.com/cloudflare/cloudflare-docs/HEAD/src/content/fields/index.yaml",
         timeout=10,
     )
+    yaml_file.raise_for_status()
     data = yaml.safe_load(yaml_file.text)
-    # Sort entries by name
-    data["entries"].sort(key=lambda x: x["name"])
+    if not isinstance(data, dict) or not isinstance(data.get("entries"), list):
+        raise TypeError("Cloudflare field YAML must contain an entries list.")
 
     scheme: dict[str, FieldInformation] = {}
+    deprecations: dict[str, str] = {}
 
-    for entry in data["entries"]:
+    for index, entry in enumerate(data["entries"]):
+        if not isinstance(entry, dict):
+            raise TypeError(f"Field entry {index} must be a mapping.")
+        required_fields = ("name", "data_type", "keywords", "categories")
+        if any(field not in entry for field in required_fields):
+            raise ValueError(f"Field entry {index} is missing a required property.")
+
         name = entry["name"]
         ty = entry["data_type"]
         keywords = entry["keywords"]
-        wf_type = TYPE_TO_WIREFILTER_TYPE[ty]
+        categories = entry["categories"]
+        if (
+            not isinstance(name, str)
+            or not isinstance(ty, str)
+            or not isinstance(keywords, list)
+            or not all(isinstance(keyword, str) for keyword in keywords)
+            or not isinstance(categories, list)
+        ):
+            raise TypeError(f"Field entry {index} has invalid property types.")
+
+        try:
+            wf_type = TYPE_TO_WIREFILTER_TYPE[ty]
+        except KeyError as error:
+            raise ValueError(
+                f"Unsupported data type {ty!r} for field {name!r}."
+            ) from error
         if name in TY_OVERWRITES:
             wf_type_fixed = TY_OVERWRITES[name]
-            assert wf_type != wf_type_fixed, (
-                f"Type overwrite for {name} is the same as the original type"
-            )
+            if wf_type == wf_type_fixed:
+                raise ValueError(f"Type overwrite for {name!r} matches its source type.")
             wf_type = wf_type_fixed
 
-        is_response = "Response" in entry["categories"]
-
-        scheme[name] = FieldInformation(wf_type, is_response)
+        add_field(scheme, name, FieldInformation(wf_type, "Response" in categories))
 
         # Check for values in keywords that looks like a deprecated name
         # We just check for anything containing a `.`
         for kw in keywords:
             if "." in kw:
-                scheme[name].deprecated_names.append(kw)
-                DEPRECATIONS[kw] = name
+                previous_name = deprecations.get(kw)
+                if previous_name is not None and previous_name != name:
+                    raise ValueError(
+                        f"Deprecated field name {kw!r} maps to both "
+                        f"{previous_name!r} and {name!r}."
+                    )
+                if previous_name is None:
+                    scheme[name].deprecated_names.append(kw)
+                    deprecations[kw] = name
 
-    return scheme
+    validate_deprecation_names(scheme, deprecations)
+    return scheme, deprecations
+
+
+def add_field(
+    scheme: dict[str, FieldInformation], name: str, info: FieldInformation
+) -> None:
+    if name in scheme:
+        raise ValueError(f"Duplicate field name: {name!r}.")
+    scheme[name] = info
+
+
+def validate_deprecation_names(
+    scheme: dict[str, FieldInformation], deprecations: dict[str, str]
+) -> None:
+    collisions = sorted(scheme.keys() & deprecations.keys())
+    if collisions:
+        raise ValueError(
+            f"Deprecated field names conflict with current fields: {collisions!r}."
+        )
 
 
 def emit_field_scheme(
@@ -136,7 +197,7 @@ def emit_field_scheme(
     schema_field_definitions = ""
     schema_field_definitions += "// Standard field definitions\n"
 
-    for name, info in scheme.items():
+    for name, info in sorted(scheme.items()):
         section = name.split(".")[0]
         if section != last_section:
             if last_section is not None:
@@ -175,14 +236,14 @@ def emit_field_scheme(
     )
 
 
-def add_deprecation_replacements() -> None:
+def add_deprecation_replacements(deprecations: dict[str, str]) -> None:
     """
     Generate the deprecation replacement list.
     """
     deprecation_replacements = ""
 
     deprecation_replacements += "BTreeMap::from([\n"
-    for old, new in DEPRECATIONS.items():
+    for old, new in sorted(deprecations.items()):
         deprecation_replacements += f"""    ("{old}", "{new}"),\n"""
     deprecation_replacements += "])"
 
@@ -194,37 +255,8 @@ def add_deprecation_replacements() -> None:
     )
 
 
-def get_sequence_field_list(url: str) -> set[str]:
-    """
-    Fetches the field scheme from the Cloudflare docs MD file and returns a list of fields that are of type Array.
-    """
-    md_file = requests.get(url, timeout=10)
-    md_data = md_file.text
-
-    sequence_fields = []
-
-    found_start = False
-    found_field = False
-
-    for line in md_data.splitlines():
-        # Find the separation heading
-        if line.startswith("# Available fields and functions"):
-            found_start = True
-        if found_start and line.startswith("* `"):
-            found_field = True
-        if found_field and not line.startswith("* `"):
-            # Found the end of the field list
-            break
-
-        if found_field and line.startswith("* `"):
-            field_name = line.split("`")[1].split("`")[0]
-            sequence_fields.append(field_name)
-
-    return set(sequence_fields)
-
-
 def main() -> None:
-    scheme = get_field_scheme()
+    scheme, deprecations = get_field_scheme()
 
     # Fixup some information that are not correct in the YAML file
     # This indicates that some fields are actually response phase
@@ -234,47 +266,115 @@ def main() -> None:
     scheme["cf.timings.worker_msec"].is_response = True
 
     # Add extra fields that are not mentioned in the official docs
-    scheme["true"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["Boolean"], False)
+    add_field(
+        scheme,
+        "true",
+        FieldInformation(TYPE_TO_WIREFILTER_TYPE["Boolean"], False),
+    )
     # Used for account level rulesets
     # https://developers.cloudflare.com/ruleset-engine/managed-rulesets/deploy-managed-ruleset/#deploy-a-managed-ruleset-to-a-phase-at-the-account-level
     # Potentially limited to PRO/BIZ/ENT
     # https://github.com/doctena-org/octorules-cloudflare/blob/b02cb8a841fb8b230c36535932ff5188c7b40863/tests/test_linter/test_action_validator.py#L221
-    scheme["cf.zone.plan"] = FieldInformation(TYPE_TO_WIREFILTER_TYPE["String"], False)
+    add_field(
+        scheme,
+        "cf.zone.plan",
+        FieldInformation(TYPE_TO_WIREFILTER_TYPE["String"], False),
+    )
     # raw.http.request.headers is listed in some "Available fields and functions", but not in the scheme
-    scheme["raw.http.request.headers"] = FieldInformation(
-        TYPE_TO_WIREFILTER_TYPE["Map<Array<String>>"], False
+    add_field(
+        scheme,
+        "raw.http.request.headers",
+        FieldInformation(TYPE_TO_WIREFILTER_TYPE["Map<Array<String>>"], False),
     )
-    scheme["raw.http.request.headers.names"] = FieldInformation(
-        TYPE_TO_WIREFILTER_TYPE["Array<String>"], False
+    add_field(
+        scheme,
+        "raw.http.request.headers.names",
+        FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False),
     )
-    scheme["raw.http.request.headers.values"] = FieldInformation(
-        TYPE_TO_WIREFILTER_TYPE["Array<String>"], False
+    add_field(
+        scheme,
+        "raw.http.request.headers.values",
+        FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False),
     )
 
     # Threat intelligence fields
     # https://developers.cloudflare.com/waf/detections/threat-intelligence/fields/
     # Dataset that flagged the IP address. Values: ddos, waf.
-    scheme["cf.intel.ip.datasets"] = FieldInformation(
-        TYPE_TO_WIREFILTER_TYPE["Array<String>"], False
+    add_field(
+        scheme,
+        "cf.intel.ip.datasets",
+        FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False),
     )
     # Industries this IP address has targeted. Refer to target industries for valid values.
-    scheme["cf.intel.ip.target_industries"] = FieldInformation(
-        TYPE_TO_WIREFILTER_TYPE["Array<String>"], False
+    add_field(
+        scheme,
+        "cf.intel.ip.target_industries",
+        FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False),
     )
     # Threat actor names associated with this IP address (for example, CONVOLUTEDKRILL).
-    scheme["cf.intel.ip.attacker_names"] = FieldInformation(
-        TYPE_TO_WIREFILTER_TYPE["Array<String>"], False
+    add_field(
+        scheme,
+        "cf.intel.ip.attacker_names",
+        FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False),
     )
     # Source countries of the threat activity, as ISO 3166-1 Alpha 2 ↗ codes.
-    scheme["cf.intel.ip.attacker_countries"] = FieldInformation(
-        TYPE_TO_WIREFILTER_TYPE["Array<String>"], False
+    add_field(
+        scheme,
+        "cf.intel.ip.attacker_countries",
+        FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False),
     )
     # Countries this IP address has targeted, as ISO 3166-1 Alpha 2 ↗ codes.
-    scheme["cf.intel.ip.target_countries"] = FieldInformation(
-        TYPE_TO_WIREFILTER_TYPE["Array<String>"], False
+    add_field(
+        scheme,
+        "cf.intel.ip.target_countries",
+        FieldInformation(TYPE_TO_WIREFILTER_TYPE["Array<String>"], False),
     )
 
-    add_deprecation_replacements()
+    validate_deprecation_names(scheme, deprecations)
+
+    request_mid_fields = {
+        "http.request.body.*",
+        "cf.waf.*",
+    }
+    phase_custom_rules = {
+        "cf.api_gateway.*",
+        "cf.fraud.*",
+        "http.request.jwt.*",
+    }
+    request_late_fields = {
+        "cf.verified_bot_category",
+        "cf.bot_management.*",
+        # Not verified
+        "cf.intel.*",
+        # Not verified
+        "cf.llm.*",
+    }
+    response_fields = {
+        "cf.timings.edge_msec",
+        "cf.timings.origin_ttfb_msec",
+        "cf.timings.worker_msec",
+        "cf.response.*",
+        "http.response.*",
+        "raw.http.response.*",
+    }
+    phase_field_sets = {
+        "requests mid": request_mid_fields,
+        "phase custom rules": phase_custom_rules,
+        "requests late": request_late_fields,
+        "response": response_fields,
+    }
+    for name in scheme:
+        matching_phases = [
+            phase
+            for phase, patterns in phase_field_sets.items()
+            if name_in_wildcard_set(name, patterns)
+        ]
+        if len(matching_phases) > 1:
+            raise ValueError(
+                f"Field {name!r} matches multiple phase groups: {matching_phases!r}."
+            )
+
+    add_deprecation_replacements(deprecations)
 
     # Add a section with all fields
     emit_field_scheme(
@@ -284,10 +384,6 @@ def main() -> None:
         "// GENERATED_SCHEMA_FIELDS_END",
     )
 
-    request_mid_fields = {
-        "http.request.body.*",
-        "cf.waf.*",
-    }
     emit_field_scheme(
         {
             name: wf_type
@@ -299,11 +395,6 @@ def main() -> None:
         "// GENERATED_SCHEMA_FIELDS_REQUESTS_MID_END",
     )
 
-    phase_custom_rules = {
-        "cf.api_gateway.*",
-        "cf.fraud.*",
-        "http.request.jwt.*",
-    }
     emit_field_scheme(
         {
             name: wf_type
@@ -315,14 +406,6 @@ def main() -> None:
         "// GENERATED_SCHEMA_FIELDS_PHASE_CUSTOM_RULES_END",
     )
 
-    request_late_fields = {
-        "cf.verified_bot_category",
-        "cf.bot_management.*",
-        # Not verified
-        "cf.intel.*",
-        # Not verified
-        "cf.llm.*",
-    }
     emit_field_scheme(
         {
             name: wf_type
@@ -334,14 +417,6 @@ def main() -> None:
         "// GENERATED_SCHEMA_FIELDS_REQUESTS_LATE_END",
     )
 
-    response_fields = {
-        "cf.timings.edge_msec",
-        "cf.timings.origin_ttfb_msec",
-        "cf.timings.worker_msec",
-        "cf.response.*",
-        "http.response.*",
-        "raw.http.response.*",
-    }
     emit_field_scheme(
         {
             name: wf_type

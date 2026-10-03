@@ -573,6 +573,7 @@ fn requests_early(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_r
     builder
         .add_field("cf.worker.upstream_zone", Type::Bytes)
         .unwrap();
+    builder.add_field("cf.zone.plan", Type::Bytes).unwrap();
 
     // Http Fields
     builder.add_field("http.cookie", Type::Bytes).unwrap();
@@ -713,6 +714,24 @@ fn requests_early(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_r
         .add_field("raw.http.request.full_uri", Type::Bytes)
         .unwrap();
     builder
+        .add_field(
+            "raw.http.request.headers",
+            Type::Map(Type::Array(Type::Bytes.into()).into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "raw.http.request.headers.names",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "raw.http.request.headers.values",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
         .add_field("raw.http.request.uri", Type::Bytes)
         .unwrap();
     builder
@@ -748,29 +767,6 @@ fn requests_early(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_r
 
     // True Fields
     builder.add_field("true", Type::Bool).unwrap();
-
-    // Cf Fields
-    builder.add_field("cf.zone.plan", Type::Bytes).unwrap();
-
-    // Raw Fields
-    builder
-        .add_field(
-            "raw.http.request.headers",
-            Type::Map(Type::Array(Type::Bytes.into()).into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "raw.http.request.headers.names",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "raw.http.request.headers.values",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
 
     // GENERATED_SCHEMA_FIELDS_REQUESTS_EARLY_END
 }
@@ -980,6 +976,33 @@ fn requests_late(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_re
         .unwrap();
     builder
         .add_field(
+            "cf.intel.ip.attacker_countries",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.intel.ip.attacker_names",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field("cf.intel.ip.datasets", Type::Array(Type::Bytes.into()))
+        .unwrap();
+    builder
+        .add_field(
+            "cf.intel.ip.target_countries",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.intel.ip.target_industries",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
             "cf.llm.prompt.custom_topic_categories",
             Type::Map(Type::Int.into()),
         )
@@ -1013,33 +1036,6 @@ fn requests_late(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_re
         .unwrap();
     builder
         .add_field("cf.verified_bot_category", Type::Bytes)
-        .unwrap();
-    builder
-        .add_field("cf.intel.ip.datasets", Type::Array(Type::Bytes.into()))
-        .unwrap();
-    builder
-        .add_field(
-            "cf.intel.ip.target_industries",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "cf.intel.ip.attacker_names",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "cf.intel.ip.attacker_countries",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "cf.intel.ip.target_countries",
-            Type::Array(Type::Bytes.into()),
-        )
         .unwrap();
 
     // GENERATED_SCHEMA_FIELDS_REQUESTS_LATE_END
@@ -1316,6 +1312,33 @@ fn add_all_fields(
     builder.add_field("cf.edge.server_port", Type::Int).unwrap();
     builder
         .add_field("cf.hostname.metadata", Type::Bytes)
+        .unwrap();
+    builder
+        .add_field(
+            "cf.intel.ip.attacker_countries",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.intel.ip.attacker_names",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field("cf.intel.ip.datasets", Type::Array(Type::Bytes.into()))
+        .unwrap();
+    builder
+        .add_field(
+            "cf.intel.ip.target_countries",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "cf.intel.ip.target_industries",
+            Type::Array(Type::Bytes.into()),
+        )
         .unwrap();
     builder
         .add_field(
@@ -1636,6 +1659,7 @@ fn add_all_fields(
     builder
         .add_field("cf.worker.upstream_zone", Type::Bytes)
         .unwrap();
+    builder.add_field("cf.zone.plan", Type::Bytes).unwrap();
 
     // Http Fields
     builder.add_field("http.cookie", Type::Bytes).unwrap();
@@ -1988,6 +2012,24 @@ fn add_all_fields(
         .add_field("raw.http.request.full_uri", Type::Bytes)
         .unwrap();
     builder
+        .add_field(
+            "raw.http.request.headers",
+            Type::Map(Type::Array(Type::Bytes.into()).into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "raw.http.request.headers.names",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
+        .add_field(
+            "raw.http.request.headers.values",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
         .add_field("raw.http.request.uri", Type::Bytes)
         .unwrap();
     builder
@@ -2046,58 +2088,6 @@ fn add_all_fields(
 
     // True Fields
     builder.add_field("true", Type::Bool).unwrap();
-
-    // Cf Fields
-    builder.add_field("cf.zone.plan", Type::Bytes).unwrap();
-
-    // Raw Fields
-    builder
-        .add_field(
-            "raw.http.request.headers",
-            Type::Map(Type::Array(Type::Bytes.into()).into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "raw.http.request.headers.names",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "raw.http.request.headers.values",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-
-    // Cf Fields
-    builder
-        .add_field("cf.intel.ip.datasets", Type::Array(Type::Bytes.into()))
-        .unwrap();
-    builder
-        .add_field(
-            "cf.intel.ip.target_industries",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "cf.intel.ip.attacker_names",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "cf.intel.ip.attacker_countries",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
-    builder
-        .add_field(
-            "cf.intel.ip.target_countries",
-            Type::Array(Type::Bytes.into()),
-        )
-        .unwrap();
 
     // GENERATED_SCHEMA_FIELDS_END
 }
