@@ -18,6 +18,7 @@ mod operator_style;
 mod overly_permissive_pattern;
 mod regex_limit;
 mod regex_raw_strings;
+mod regex_string_literal;
 mod replace_functions_limit;
 mod reserved_ip_space;
 mod suspicious_regex;

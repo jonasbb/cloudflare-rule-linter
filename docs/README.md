@@ -16,6 +16,7 @@
 | [overly_permissive_pattern](./overly_permissive_pattern.md) | correctness | Check for regex and wildcard patterns that are overly permissive. |
 | [regex_limit](./regex_limit.md) | unskippable | Check that a rule does not exceed the maximum number of regular expressions. |
 | [regex_raw_strings](./regex_raw_strings.md) | style | Ensure regex matches use raw string literals (r"...") instead of normal quoted strings. |
+| [regex_string_literal](./regex_string_literal.md) | correctness | Detect regex-looking string literals used with non-regex comparison operators. |
 | [replace_functions_limit](./replace_functions_limit.md) | correctness | regex_ and wildcard_replace functions are only allowed once and not nested. |
 | [reserved_ip_space](./reserved_ip_space.md) | correctness | Check for usage of reserved IP ranges that are unlikely to be useful in rules. |
 | [suspicious_regex](./suspicious_regex.md) | suspicious | Detect regexes that look like they should be wildcard matches or contain unescaped literal special characters. |
