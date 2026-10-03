@@ -21,6 +21,7 @@ mod regex_raw_strings;
 mod regex_string_literal;
 mod replace_functions_limit;
 mod reserved_ip_space;
+mod substring_index_order;
 mod suspicious_regex;
 mod timestamp_bounds;
 mod unnecessary_patterns;

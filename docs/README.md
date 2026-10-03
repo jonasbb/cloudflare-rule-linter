@@ -19,6 +19,7 @@
 | [regex_string_literal](./regex_string_literal.md) | correctness | Detect regex-looking string literals used with non-regex comparison operators. |
 | [replace_functions_limit](./replace_functions_limit.md) | correctness | regex_ and wildcard_replace functions are only allowed once and not nested. |
 | [reserved_ip_space](./reserved_ip_space.md) | correctness | Check for usage of reserved IP ranges that are unlikely to be useful in rules. |
+| [substring_index_order](./substring_index_order.md) | correctness | Detect `substring()` calls with non-negative end indices below their start indices. |
 | [suspicious_regex](./suspicious_regex.md) | suspicious | Detect regexes that look like they should be wildcard matches or contain unescaped literal special characters. |
 | [timestamp_comparisons](./timestamp_comparisons.md) | correctness | Detect comparisons against http.request.timestamp.sec that use values outside of reasonable bounds. |
 | [unnecessary_patterns](./unnecessary_patterns.md) | style | Detect regex and wildcard patterns that can be simplified to `eq` or `contains` expressions. |
