@@ -116,7 +116,7 @@ jobs:
                   toolchain: ${{ matrix.rust }}
                   target: wasm32-unknown-unknown
 
-            - uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3 # v2.87.16
+            - uses: taiki-e/install-action@4cef1412cce204788f482e778a0b9187f9626a29 # v2.87.21
               with:
                   tool: wasm-bindgen,wasm-pack
 
