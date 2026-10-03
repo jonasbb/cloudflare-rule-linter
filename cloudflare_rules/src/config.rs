@@ -97,6 +97,8 @@ pub struct LintSettings {
     pub invalid_list_name_custom_lists: Option<Vec<Box<str>>>,
     /// Operator style configuration for the `operator_style` lint.
     pub operator_style_mode: OperatorStyleMode,
+    /// Maximum number of regular expressions allowed in one rule.
+    pub regex_expression_limit: usize,
     /// If Some, a suffix that is required for all zone names. If None, all zone names are allowed.
     ///
     /// This is used to check fields such as `http.host` for plausibility.
@@ -112,6 +114,7 @@ impl Default for LintSettings {
             timestamp_bounds_future_delta: 5 * 366 * 24 * 60 * 60,
             invalid_list_name_custom_lists: None,
             operator_style_mode: OperatorStyleMode::default(),
+            regex_expression_limit: 64,
             zone_suffix: None,
         }
     }

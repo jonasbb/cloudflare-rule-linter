@@ -16,6 +16,7 @@ mod lower_wildcard;
 mod negated_comparison;
 mod operator_style;
 mod overly_permissive_pattern;
+mod regex_limit;
 mod regex_raw_strings;
 mod replace_functions_limit;
 mod reserved_ip_space;
@@ -60,6 +61,7 @@ fn create_url(name: &str) -> String {
 pub enum Category {
     Correctness,
     Deprecated,
+    Unskippable,
     Suspicious,
     Style,
 }
