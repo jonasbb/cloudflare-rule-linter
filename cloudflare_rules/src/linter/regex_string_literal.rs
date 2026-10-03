@@ -36,12 +36,12 @@ impl Visitor<'_> for RegexStringLiteralVisitor {
             ComparisonOpExpr::Ordering {
                 op: OrderingOp::Equal | OrderingOp::NotEqual,
                 rhs: RhsValue::Bytes(bytes),
-            } => string_looks_like_regex(&bytes.data),
-            ComparisonOpExpr::Contains(bytes) => string_looks_like_regex(&bytes.data),
+            } => string_looks_like_regex(bytes),
+            ComparisonOpExpr::Contains(bytes) => string_looks_like_regex(bytes),
             ComparisonOpExpr::Wildcard(pattern) => string_looks_like_regex(pattern.pattern()),
             ComparisonOpExpr::StrictWildcard(pattern) => string_looks_like_regex(pattern.pattern()),
             ComparisonOpExpr::OneOf(RhsValues::Bytes(items)) => {
-                items.iter().any(|item| string_looks_like_regex(&item.data))
+                items.iter().any(|item| string_looks_like_regex(item))
             }
             _ => false,
         };

@@ -62,7 +62,7 @@ impl Visitor<'_> for HostnameSuffixVisitor<'_> {
                         if let IdentifierExpr::Field(field) = &node.lhs.identifier
                             && node.lhs.indexes.is_empty()
                             && field.name() == "http.host"
-                            && let Ok(host_literal) = std::str::from_utf8(&bytes.data)
+                            && let Ok(host_literal) = std::str::from_utf8(bytes)
                             && !(host_literal == hostname_suffix
                                 || host_literal.ends_with(&dotted_suffix))
                         {
@@ -89,7 +89,7 @@ impl Visitor<'_> for HostnameSuffixVisitor<'_> {
 
                         if let RhsValues::Bytes(items) = values {
                             for b in items.iter() {
-                                if let Ok(host_literal) = std::str::from_utf8(&b.data)
+                                if let Ok(host_literal) = std::str::from_utf8(b)
                                     && !(host_literal == hostname_suffix
                                         || host_literal.ends_with(&dotted_suffix))
                                 {

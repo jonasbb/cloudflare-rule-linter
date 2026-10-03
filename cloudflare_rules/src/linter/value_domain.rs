@@ -230,7 +230,7 @@ impl Visitor<'_> for ValueDomainVisitor {
                         if let IdentifierExpr::Field(field) = &node.lhs.identifier
                             && node.lhs.indexes.is_empty()
                             && let Some(domain) = VALUE_DOMAINS.get(field.name())
-                            && let Ok(s) = std::str::from_utf8(&bytes.data)
+                            && let Ok(s) = std::str::from_utf8(bytes)
                         {
                             match domain {
                                 Domain::List(valids) if !valids.contains(&s) => {
@@ -273,7 +273,7 @@ impl Visitor<'_> for ValueDomainVisitor {
                         }
                         // Function call checks (lower/upper)
                         else if let IdentifierExpr::FunctionCallExpr(call) = &node.lhs.identifier
-                            && let Ok(s) = std::str::from_utf8(&bytes.data)
+                            && let Ok(s) = std::str::from_utf8(bytes)
                         {
                             let name = call.function().name();
                             let fname_lbl = format!("{}(...)", name);
@@ -402,7 +402,7 @@ impl Visitor<'_> for ValueDomainVisitor {
                     match values {
                         RhsValues::Bytes(items) => {
                             for b in items.iter() {
-                                if let Ok(s) = std::str::from_utf8(&b.data) {
+                                if let Ok(s) = std::str::from_utf8(b) {
                                     match domain {
                                         Domain::List(valids) if !valids.contains(&s) => {
                                             invalids.push(s.to_string());
@@ -476,7 +476,7 @@ impl Visitor<'_> for ValueDomainVisitor {
                             let name = call.function().name();
                             let mut invalids = Vec::new();
                             for b in items.iter() {
-                                if let Ok(s) = std::str::from_utf8(&b.data)
+                                if let Ok(s) = std::str::from_utf8(b)
                                     && ((name == "lower"
                                         && s.chars().any(|c| c.is_ascii_uppercase()))
                                         || (name == "upper"

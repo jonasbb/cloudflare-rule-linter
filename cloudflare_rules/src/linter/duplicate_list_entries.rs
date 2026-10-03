@@ -101,9 +101,8 @@ impl Visitor<'_> for DuplicateListEntriesVisitor {
                 }
                 RhsValues::Bytes(items) => {
                     for idx in 0..items.len() {
-                        let item_i = &items[idx].data;
+                        let item_i = &items[idx];
                         for item_j in &items[idx + 1..] {
-                            let item_j = &item_j.data;
                             if item_i == item_j {
                                 let item_str = AstPrintVisitor::escape_bytes(item_i);
                                 self.result.push(LintReport {

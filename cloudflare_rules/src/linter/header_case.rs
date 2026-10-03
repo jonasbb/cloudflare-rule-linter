@@ -64,7 +64,7 @@ impl Visitor<'_> for MapKeyCaseVisitor {
                     // The ".names" fields are lists that need to be indexed into
                     if let (OrderingOp::Equal | OrderingOp::NotEqual, RhsValue::Bytes(bytes)) =
                         (op, rhs)
-                        && let Ok(header) = std::str::from_utf8(&bytes.data)
+                        && let Ok(header) = std::str::from_utf8(bytes)
                     {
                         self.result.push(LintReport {
                             id: LINT_NAME.into(),
@@ -81,7 +81,7 @@ impl Visitor<'_> for MapKeyCaseVisitor {
                 ComparisonOpExpr::OneOf(RhsValues::Bytes(items)) => {
                     // The ".names" fields are lists that need to be indexed into
                     for b in items.iter() {
-                        if let Ok(header) = std::str::from_utf8(&b.data) {
+                        if let Ok(header) = std::str::from_utf8(b) {
                             self.result.push(LintReport {
                                 id: LINT_NAME.into(),
                                 url: Some(create_url(LINT_NAME)),
