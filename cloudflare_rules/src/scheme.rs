@@ -115,6 +115,9 @@ pub(crate) fn build_scheme(phase: Phase) -> Scheme {
                 .unwrap();
         }
         builder
+            .add_function("coalesce", wirefilter::functions::CoalesceFunction {})
+            .unwrap();
+        builder
             .add_function("concat", wirefilter::ConcatFunction {})
             .unwrap();
         if matches!(
@@ -165,6 +168,12 @@ pub(crate) fn build_scheme(phase: Phase) -> Scheme {
             .unwrap();
         builder
             .add_function("has_value", wirefilter::functions::HasValueFunction {})
+            .unwrap();
+        builder
+            .add_function(
+                "hash_in_range",
+                wirefilter::functions::HashInRangeFunction {},
+            )
             .unwrap();
         builder
             .add_function("len", wirefilter::functions::LenFunction {})
