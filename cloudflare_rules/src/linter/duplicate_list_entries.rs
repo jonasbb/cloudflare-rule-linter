@@ -1,7 +1,7 @@
 use super::*;
 use crate::ast_printer::AstPrintVisitor;
 use std::ops::RangeInclusive;
-use wirefilter::{ComparisonExpr, ComparisonOpExpr, ExplicitIpRange, RhsValues, Visitor};
+use wirefilter::{ComparisonExpr, ComparisonOpExpr, ExplicitIpRange, LiteralSet, Visitor};
 
 static LINT_NAME: &str = "duplicate_list_entries";
 
@@ -39,7 +39,7 @@ impl Visitor<'_> for DuplicateListEntriesVisitor {
     fn visit_comparison_expr(&mut self, node: &'_ ComparisonExpr) {
         if let ComparisonOpExpr::OneOf(values) = &node.op {
             match values {
-                RhsValues::Int(int_ranges) => {
+                LiteralSet::Int(int_ranges) => {
                     for idx in 0..int_ranges.len() {
                         let range_i: RangeInclusive<i64> = int_ranges[idx].clone().into();
                         for range_j in &int_ranges[idx + 1..] {
@@ -64,7 +64,7 @@ impl Visitor<'_> for DuplicateListEntriesVisitor {
                         }
                     }
                 }
-                RhsValues::Ip(ip_ranges) => {
+                LiteralSet::Ip(ip_ranges) => {
                     for idx in 0..ip_ranges.len() {
                         let range_i = &ip_ranges[idx];
                         for range_j in &ip_ranges[idx + 1..] {
@@ -99,7 +99,7 @@ impl Visitor<'_> for DuplicateListEntriesVisitor {
                         }
                     }
                 }
-                RhsValues::Bytes(items) => {
+                LiteralSet::Bytes(items) => {
                     for idx in 0..items.len() {
                         let item_i = &items[idx];
                         for item_j in &items[idx + 1..] {
@@ -120,7 +120,7 @@ impl Visitor<'_> for DuplicateListEntriesVisitor {
                     }
                 }
                 // Unreachable branches due to uninhabited types
-                RhsValues::Array(..) | RhsValues::Bool(..) | RhsValues::Map(..) => {
+                LiteralSet::Array(..) | LiteralSet::Bool(..) | LiteralSet::Map(..) => {
                     unreachable!()
                 }
             }

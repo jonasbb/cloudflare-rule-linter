@@ -1,5 +1,5 @@
 use super::*;
-use wirefilter::{FunctionCallArgExpr, RhsValue, Visitor};
+use wirefilter::{FunctionCallArgExpr, LiteralValue, Visitor};
 
 static LINT_NAME: &str = "substring_index_order";
 
@@ -35,8 +35,8 @@ impl Visitor<'_> for SubstringIndexOrderVisitor {
         if node.function().name() == "substring"
             && let [
                 _,
-                FunctionCallArgExpr::Literal(RhsValue::Int(start)),
-                FunctionCallArgExpr::Literal(RhsValue::Int(end)),
+                FunctionCallArgExpr::Literal(LiteralValue::Int(start)),
+                FunctionCallArgExpr::Literal(LiteralValue::Int(end)),
             ] = node.args()
             && *start >= 0
             && *end >= 0

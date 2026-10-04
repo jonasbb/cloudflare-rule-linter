@@ -103,12 +103,6 @@ pub(crate) fn build_scheme(phase: Phase) -> Scheme {
         builder.add_list(Type::Ip, IpList {}).unwrap();
 
         // Add standard functions
-        builder
-            .add_function("any", wirefilter::AnyFunction {})
-            .unwrap();
-        builder
-            .add_function("all", wirefilter::AllFunction {})
-            .unwrap();
         if matches!(
             phase,
             Phase::HttpCustomErrors | Phase::HttpRatelimit | Phase::Maximum

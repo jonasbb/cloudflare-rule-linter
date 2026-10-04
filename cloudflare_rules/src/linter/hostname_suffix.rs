@@ -1,6 +1,6 @@
 use super::*;
 use wirefilter::{
-    ComparisonExpr, ComparisonOpExpr, IdentifierExpr, OrderingOp, RhsValue, RhsValues, Visitor,
+    ComparisonExpr, ComparisonOpExpr, ComparisonRhs, IdentifierExpr, LiteralSet, LiteralValue, OrderingOp, Visitor,
 };
 
 static LINT_NAME: &str = "hostname_suffix";
@@ -55,8 +55,10 @@ impl Visitor<'_> for HostnameSuffixVisitor<'_> {
             match &node.op {
                 ComparisonOpExpr::Ordering { op, rhs } => {
                     // Only consider equality/inequality and pertinent ordering comparisons
-                    if let (OrderingOp::Equal | OrderingOp::NotEqual, RhsValue::Bytes(bytes)) =
-                        (op, rhs)
+                    if let (
+                        OrderingOp::Equal | OrderingOp::NotEqual,
+                        ComparisonRhs::Literal(LiteralValue::Bytes(bytes)),
+                    ) = (op, rhs)
                     {
                         // Field equality checks (existing domain checks)
                         if let IdentifierExpr::Field(field) = &node.lhs.identifier
@@ -87,7 +89,7 @@ impl Visitor<'_> for HostnameSuffixVisitor<'_> {
                     {
                         let mut invalids = Vec::new();
 
-                        if let RhsValues::Bytes(items) = values {
+                        if let LiteralSet::Bytes(items) = values {
                             for b in items.iter() {
                                 if let Ok(host_literal) = std::str::from_utf8(b)
                                     && !(host_literal == hostname_suffix

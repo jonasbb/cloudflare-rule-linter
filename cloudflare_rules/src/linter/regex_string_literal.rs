@@ -1,5 +1,7 @@
 use super::*;
-use wirefilter::{ComparisonExpr, ComparisonOpExpr, OrderingOp, RhsValue, RhsValues, Visitor};
+use wirefilter::{
+    ComparisonExpr, ComparisonOpExpr, ComparisonRhs, LiteralSet, LiteralValue, OrderingOp, Visitor,
+};
 
 static LINT_NAME: &str = "regex_string_literal";
 
@@ -35,12 +37,12 @@ impl Visitor<'_> for RegexStringLiteralVisitor {
         let has_regex_literal = match &node.op {
             ComparisonOpExpr::Ordering {
                 op: OrderingOp::Equal | OrderingOp::NotEqual,
-                rhs: RhsValue::Bytes(bytes),
+                rhs: ComparisonRhs::Literal(LiteralValue::Bytes(bytes)),
             } => string_looks_like_regex(bytes),
             ComparisonOpExpr::Contains(bytes) => string_looks_like_regex(bytes),
             ComparisonOpExpr::Wildcard(pattern) => string_looks_like_regex(pattern.pattern()),
             ComparisonOpExpr::StrictWildcard(pattern) => string_looks_like_regex(pattern.pattern()),
-            ComparisonOpExpr::OneOf(RhsValues::Bytes(items)) => {
+            ComparisonOpExpr::OneOf(LiteralSet::Bytes(items)) => {
                 items.iter().any(|item| string_looks_like_regex(item))
             }
             _ => false,

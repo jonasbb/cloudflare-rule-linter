@@ -3,7 +3,9 @@ use super::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(target_arch = "wasm32")]
 use web_time::{SystemTime, UNIX_EPOCH};
-use wirefilter::{ComparisonOpExpr, IdentifierExpr, RhsValue, RhsValues, Visitor};
+use wirefilter::{
+    ComparisonOpExpr, ComparisonRhs, IdentifierExpr, LiteralSet, LiteralValue, Visitor,
+};
 
 static LINT_NAME: &str = "timestamp_comparisons";
 
@@ -57,7 +59,7 @@ impl Visitor<'_> for TimestampVisitor {
             // Get basically the right-hand side values depending on the op variant
             match node.operator() {
                 ComparisonOpExpr::Ordering {
-                    rhs: RhsValue::Int(val),
+                    rhs: ComparisonRhs::Literal(LiteralValue::Int(val)),
                     ..
                 } => {
                     if *val < self.min_time {
@@ -88,7 +90,7 @@ impl Visitor<'_> for TimestampVisitor {
                         });
                     }
                 }
-                ComparisonOpExpr::OneOf(RhsValues::Int(vs)) => {
+                ComparisonOpExpr::OneOf(LiteralSet::Int(vs)) => {
                     for v in vs {
                         // v is an IntRange
                         let range: std::ops::RangeInclusive<i64> = v.clone().into();

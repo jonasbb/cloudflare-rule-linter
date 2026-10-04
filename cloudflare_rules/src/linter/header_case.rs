@@ -1,7 +1,7 @@
 use super::*;
 use std::sync::LazyLock;
 use wirefilter::{
-    ComparisonOpExpr, FieldIndex, IdentifierExpr, OrderingOp, RhsValue, RhsValues, Visitor,
+    ComparisonOpExpr, ComparisonRhs, FieldIndex, IdentifierExpr, LiteralSet, LiteralValue, OrderingOp, Visitor,
 };
 
 /// Uses normalized header values, all lowercase
@@ -62,7 +62,7 @@ impl Visitor<'_> for MapKeyCaseVisitor {
                 ComparisonOpExpr::Ordering { op, rhs } => {
                     // Only consider equality/inequality comparisons
                     // The ".names" fields are lists that need to be indexed into
-                    if let (OrderingOp::Equal | OrderingOp::NotEqual, RhsValue::Bytes(bytes)) =
+                    if let (OrderingOp::Equal | OrderingOp::NotEqual, ComparisonRhs::Literal(LiteralValue::Bytes(bytes))) =
                         (op, rhs)
                         && let Ok(header) = std::str::from_utf8(bytes)
                     {
@@ -78,7 +78,7 @@ impl Visitor<'_> for MapKeyCaseVisitor {
                         });
                     }
                 }
-                ComparisonOpExpr::OneOf(RhsValues::Bytes(items)) => {
+                ComparisonOpExpr::OneOf(LiteralSet::Bytes(items)) => {
                     // The ".names" fields are lists that need to be indexed into
                     for b in items.iter() {
                         if let Ok(header) = std::str::from_utf8(b) {

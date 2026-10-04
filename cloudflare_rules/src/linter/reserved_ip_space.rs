@@ -2,7 +2,7 @@ use super::*;
 use crate::ast_printer::AstPrintVisitor;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use wirefilter::{
-    ComparisonExpr, ComparisonOpExpr, ExplicitIpRange, IpRange, RhsValue, RhsValues, Visitor,
+    ComparisonExpr, ComparisonOpExpr, ComparisonRhs, ExplicitIpRange, IpRange, LiteralSet, LiteralValue, Visitor,
 };
 
 // Define reserved IPv4 ranges (from IANA / Wikipedia Reserved IP addresses)
@@ -169,7 +169,7 @@ impl Visitor<'_> for ReservedIpSpaceVisitor {
         // Check single-IP comparisons (ordering with an IP rhs)
         match &node.op {
             ComparisonOpExpr::Ordering {
-                rhs: RhsValue::Ip(ip_addr),
+                rhs: ComparisonRhs::Literal(LiteralValue::Ip(ip_addr)),
                 ..
             } => match ExplicitIpRange::from(*ip_addr) {
                 ExplicitIpRange::V4(range) => {
@@ -211,7 +211,7 @@ impl Visitor<'_> for ReservedIpSpaceVisitor {
                     }
                 }
             },
-            ComparisonOpExpr::OneOf(RhsValues::Ip(ip_ranges)) => {
+            ComparisonOpExpr::OneOf(LiteralSet::Ip(ip_ranges)) => {
                 for ip in ip_ranges {
                     let explicit = ExplicitIpRange::from(ip.clone());
                     match explicit {

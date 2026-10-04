@@ -245,6 +245,14 @@ impl wirefilter::VisitorMut<'_> for SimplifyVisitor {
             wirefilter::LogicalExpr::Comparison(comparison_expr) => {
                 self.visit_comparison_expr(comparison_expr);
             }
+            wirefilter::LogicalExpr::Quantifier { arg, .. } => match &mut **arg {
+                wirefilter::QuantifierArgExpr::IndexExpr(index_expr) => {
+                    self.visit_index_expr(index_expr);
+                }
+                wirefilter::QuantifierArgExpr::Logical(logical_expr) => {
+                    self.visit_logical_expr(logical_expr);
+                }
+            },
         }
     }
 }

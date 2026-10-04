@@ -247,6 +247,9 @@ impl<'a> Visitor<'a> for OperatorStyleVisitor<'a> {
                 let start = expr.len().saturating_sub(node.get_reverse_span().start);
                 self.check_style_for_next_operator(&expr[start..], node.get_reverse_span().start);
             }
+            LogicalExpr::Quantifier { .. } => {
+                // This has no operator to look at
+            }
         }
     }
 }

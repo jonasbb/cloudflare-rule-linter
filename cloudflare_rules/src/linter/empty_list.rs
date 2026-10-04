@@ -1,5 +1,5 @@
 use super::*;
-use wirefilter::{ComparisonExpr, ComparisonOpExpr, RhsValues, Visitor};
+use wirefilter::{ComparisonExpr, ComparisonOpExpr, LiteralSet, Visitor};
 
 static LINT_NAME: &str = "empty_list";
 
@@ -35,12 +35,12 @@ impl Visitor<'_> for EmptyListVisitor {
         // Only consider Ordering and OneOf comparisons
         if let ComparisonOpExpr::OneOf(rhs) = &node.op {
             let is_empty = match rhs {
-                RhsValues::Bool(_uninhabited_bool) => unreachable!(),
-                RhsValues::Int(ints) => ints.is_empty(),
-                RhsValues::Ip(ip_addrs) => ip_addrs.is_empty(),
-                RhsValues::Bytes(bytes) => bytes.is_empty(),
-                RhsValues::Array(_uninhabited_array) => unreachable!(),
-                RhsValues::Map(_uninhabited_map) => unreachable!(),
+                LiteralSet::Bool(_uninhabited_bool) => unreachable!(),
+                LiteralSet::Int(ints) => ints.is_empty(),
+                LiteralSet::Ip(ip_addrs) => ip_addrs.is_empty(),
+                LiteralSet::Bytes(bytes) => bytes.is_empty(),
+                LiteralSet::Array(_uninhabited_array) => unreachable!(),
+                LiteralSet::Map(_uninhabited_map) => unreachable!(),
             };
             if is_empty {
                 self.result.push(LintReport {

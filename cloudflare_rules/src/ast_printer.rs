@@ -161,14 +161,23 @@ impl AstPrintVisitor {
         self.0.push('}');
     }
 
-    fn visit_rhs_value(&mut self, rhs: &wirefilter::RhsValue) {
+    fn visit_comparison_rhs(&mut self, rhs: &wirefilter::ComparisonRhs) {
         match rhs {
-            wirefilter::RhsValue::Bool(_uninhabited_bool) => unreachable!(),
-            wirefilter::RhsValue::Int(int) => self.visit_int(int),
-            wirefilter::RhsValue::Ip(ip_addr) => self.visit_ip_addr(ip_addr),
-            wirefilter::RhsValue::Bytes(bytes) => self.visit_bytes(bytes),
-            wirefilter::RhsValue::Array(_uninhabited_array) => unreachable!(),
-            wirefilter::RhsValue::Map(_uninhabited_map) => unreachable!(),
+            wirefilter::ComparisonRhs::Literal(literal) => self.visit_literal_value(literal),
+            wirefilter::ComparisonRhs::Index(scalar_expr) => self.visit_scalar_expr(scalar_expr),
+        }
+    }
+
+    fn visit_literal_value(&mut self, rhs: &wirefilter::LiteralValue) {
+        match rhs {
+            wirefilter::LiteralValue::Bool(_uninhabited_bool) => unreachable!(),
+            wirefilter::LiteralValue::Int(int) => self.visit_int(int),
+            wirefilter::LiteralValue::Ip(ip_addr) => self.visit_ip_addr(ip_addr),
+            wirefilter::LiteralValue::Bytes(bytes) => self.visit_bytes(bytes),
+            wirefilter::LiteralValue::Array(_uninhabited_array) => unreachable!(),
+            wirefilter::LiteralValue::Map(_uninhabited_map) => {
+                unreachable!()
+            }
         }
     }
 }
@@ -207,6 +216,23 @@ impl<'a> Visitor<'a> for AstPrintVisitor {
                 }
                 self.visit_logical_expr(arg);
             }
+            wirefilter::LogicalExpr::Quantifier { op, arg, .. } => {
+                let op_str = match op {
+                    wirefilter::QuantifierOp::Any => "any",
+                    wirefilter::QuantifierOp::All => "all",
+                };
+                self.0.push_str(op_str);
+                self.0.push('(');
+                match &**arg {
+                    wirefilter::QuantifierArgExpr::IndexExpr(index_expr) => {
+                        self.visit_index_expr(index_expr);
+                    }
+                    wirefilter::QuantifierArgExpr::Logical(logical_expr) => {
+                        self.visit_logical_expr(logical_expr);
+                    }
+                }
+                self.0.push(')');
+            }
         }
     }
 
@@ -226,13 +252,18 @@ impl<'a> Visitor<'a> for AstPrintVisitor {
                     wirefilter::OrderingOp::GreaterThan => self.0.push_str(" gt "),
                     wirefilter::OrderingOp::LessThan => self.0.push_str(" lt "),
                 }
-                self.visit_rhs_value(rhs);
+                self.visit_comparison_rhs(rhs);
             }
             wirefilter::ComparisonOpExpr::Int { op, rhs } => {
                 match op {
                     wirefilter::IntOp::BitwiseAnd => self.0.push_str(" & "),
                 }
-                self.0.push_str(&rhs.to_string());
+                match rhs {
+                    wirefilter::IntRhs::Literal(lit) => self.0.push_str(&lit.to_string()),
+                    wirefilter::IntRhs::Index(scalar_int_expr) => {
+                        self.visit_scalar_int_expr(scalar_int_expr);
+                    }
+                }
             }
             wirefilter::ComparisonOpExpr::Contains(bytes) => {
                 self.0.push_str(" contains ");
@@ -251,12 +282,12 @@ impl<'a> Visitor<'a> for AstPrintVisitor {
             wirefilter::ComparisonOpExpr::OneOf(rhs_values) => {
                 self.0.push_str(" in ");
                 match rhs_values {
-                    wirefilter::RhsValues::Bool(_uninhabited_bool) => unreachable!(),
-                    wirefilter::RhsValues::Int(ints) => self.visit_int_list(ints),
-                    wirefilter::RhsValues::Ip(ip_addrs) => self.visit_ip_addr_list(ip_addrs),
-                    wirefilter::RhsValues::Bytes(bytes) => self.visit_bytes_list(bytes),
-                    wirefilter::RhsValues::Array(_uninhabited_array) => unreachable!(),
-                    wirefilter::RhsValues::Map(_uninhabited_map) => unreachable!(),
+                    wirefilter::LiteralSet::Bool(_uninhabited_bool) => unreachable!(),
+                    wirefilter::LiteralSet::Int(ints) => self.visit_int_list(ints),
+                    wirefilter::LiteralSet::Ip(ip_addrs) => self.visit_ip_addr_list(ip_addrs),
+                    wirefilter::LiteralSet::Bytes(bytes) => self.visit_bytes_list(bytes),
+                    wirefilter::LiteralSet::Array(_uninhabited_array) => unreachable!(),
+                    wirefilter::LiteralSet::Map(_uninhabited_map) => unreachable!(),
                 }
             }
             wirefilter::ComparisonOpExpr::ContainsOneOf(_items) => {
@@ -320,7 +351,7 @@ impl<'a> Visitor<'a> for AstPrintVisitor {
                         arg_visitor.visit_index_expr(index_expr);
                     }
                     wirefilter::FunctionCallArgExpr::Literal(lit) => {
-                        arg_visitor.visit_rhs_value(lit);
+                        arg_visitor.visit_literal_value(lit);
                     }
                     wirefilter::FunctionCallArgExpr::Logical(logical_expr) => {
                         arg_visitor.visit_logical_expr(logical_expr);
@@ -346,6 +377,14 @@ impl<'a> Visitor<'a> for AstPrintVisitor {
 
     fn visit_function(&mut self, _func: &'a wirefilter::Function) {
         unreachable!("Function visited outside of FunctionCallExpr");
+    }
+
+    fn visit_scalar_expr(&mut self, node: &'a wirefilter::ScalarExpr) {
+        self.visit_index_expr(node.as_index_expr());
+    }
+
+    fn visit_scalar_int_expr(&mut self, node: &'a wirefilter::ScalarIntExpr) {
+        self.visit_index_expr(node.as_index_expr());
     }
 }
 

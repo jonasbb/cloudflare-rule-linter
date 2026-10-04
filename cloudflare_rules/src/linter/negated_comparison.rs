@@ -1,7 +1,6 @@
 use super::*;
 use wirefilter::{
-    ComparisonExpr, ComparisonOpExpr, FunctionCallArgExpr, IdentifierExpr, IndexExpr, LogicalExpr,
-    OrderingOp, UnaryOp, Visitor,
+    ComparisonExpr, ComparisonOpExpr, LogicalExpr, OrderingOp, QuantifierArgExpr, UnaryOp, Visitor,
 };
 
 static LINT_NAME: &str = "negated_comparison";
@@ -108,24 +107,19 @@ impl<'a> Visitor<'_> for NegatedComparisonVisitor<'a> {
             arg,
             reverse_span: _,
         } = node
-            && let LogicalExpr::Comparison(ComparisonExpr {
-                lhs,
-                op: ComparisonOpExpr::IsTrue,
+            && let LogicalExpr::Quantifier {
+                op: quant_op,
+                arg,
                 reverse_span,
-            }) = &**arg
-            && let IndexExpr {
-                identifier: IdentifierExpr::FunctionCallExpr(call_expr),
-                indexes,
-                reverse_span: _,
-            } = lhs
-            && indexes.is_empty()
-            && let fname = call_expr.function().name()
-            && (fname == "all" || fname == "any")
-            && let [FunctionCallArgExpr::Logical(expr)] = call_expr.args()
-            && let LogicalExpr::Comparison(comp) = &expr
+            } = &**arg
+            && let QuantifierArgExpr::Logical(LogicalExpr::Comparison(comp)) = &**arg
             && let ComparisonOpExpr::Ordering { op, .. } = &comp.op
         {
-            let sugg_fn = if fname == "all" { "any" } else { "all" };
+            let (curr_fn, sugg_fn) = if quant_op == &wirefilter::QuantifierOp::All {
+                ("all", "any")
+            } else {
+                ("any", "all")
+            };
             let (old_expr, suggested_expr) = self.handle_comparison_suggestion(comp, op);
 
             self.result.push(LintReport {
@@ -133,7 +127,7 @@ impl<'a> Visitor<'_> for NegatedComparisonVisitor<'a> {
                 url: Some(create_url(LINT_NAME)),
                 title: "Found negated comparison".into(),
                 message: format!(
-                    "Consider simplifying from `not {fname}({old_expr})` to \
+                    "Consider simplifying from `not {curr_fn}({old_expr})` to \
                      `{sugg_fn}({suggested_expr})`",
                 ),
                 span: Span::ReverseByte(reverse_span.clone()),

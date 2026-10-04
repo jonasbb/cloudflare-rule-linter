@@ -2,7 +2,8 @@ use super::*;
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
 use wirefilter::{
-    ComparisonExpr, ComparisonOpExpr, IdentifierExpr, OrderingOp, RhsValue, RhsValues, Visitor,
+    ComparisonExpr, ComparisonOpExpr, ComparisonRhs, IdentifierExpr, LiteralSet, LiteralValue,
+    OrderingOp, Visitor,
 };
 
 // Some other useful checks
@@ -225,7 +226,10 @@ impl Visitor<'_> for ValueDomainVisitor {
             ComparisonOpExpr::Ordering { op, rhs } => {
                 // Only consider equality/inequality and pertinent ordering comparisons
                 match (op, rhs) {
-                    (OrderingOp::Equal | OrderingOp::NotEqual, RhsValue::Bytes(bytes)) => {
+                    (
+                        OrderingOp::Equal | OrderingOp::NotEqual,
+                        ComparisonRhs::Literal(LiteralValue::Bytes(bytes)),
+                    ) => {
                         // Field equality checks (existing domain checks)
                         if let IdentifierExpr::Field(field) = &node.lhs.identifier
                             && node.lhs.indexes.is_empty()
@@ -304,7 +308,10 @@ impl Visitor<'_> for ValueDomainVisitor {
                             }
                         }
                     }
-                    (OrderingOp::Equal | OrderingOp::NotEqual, RhsValue::Int(iv)) => {
+                    (
+                        OrderingOp::Equal | OrderingOp::NotEqual,
+                        ComparisonRhs::Literal(LiteralValue::Int(iv)),
+                    ) => {
                         if let IdentifierExpr::Field(field) = &node.lhs.identifier
                             && node.lhs.indexes.is_empty()
                             && let Some(Domain::IntRange(min, max)) =
@@ -341,7 +348,7 @@ impl Visitor<'_> for ValueDomainVisitor {
                             });
                         }
                     }
-                    (OrderingOp::LessThan, RhsValue::Int(iv)) => {
+                    (OrderingOp::LessThan, ComparisonRhs::Literal(LiteralValue::Int(iv))) => {
                         // len(...) < 0 is invalid (RHS == 0 means check for negative lengths)
                         if let IdentifierExpr::FunctionCallExpr(call) = &node.lhs.identifier
                             && call.function().name() == "len"
@@ -359,7 +366,7 @@ impl Visitor<'_> for ValueDomainVisitor {
                             });
                         }
                     }
-                    (OrderingOp::LessThanEqual, RhsValue::Int(iv)) => {
+                    (OrderingOp::LessThanEqual, ComparisonRhs::Literal(LiteralValue::Int(iv))) => {
                         // len(...) <= 0 should warn (RHS <= 0)
                         if let IdentifierExpr::FunctionCallExpr(call) = &node.lhs.identifier
                             && call.function().name() == "len"
@@ -400,7 +407,7 @@ impl Visitor<'_> for ValueDomainVisitor {
                     let mut invalids = Vec::new();
 
                     match values {
-                        RhsValues::Bytes(items) => {
+                        LiteralSet::Bytes(items) => {
                             for b in items.iter() {
                                 if let Ok(s) = std::str::from_utf8(b) {
                                     match domain {
@@ -415,7 +422,7 @@ impl Visitor<'_> for ValueDomainVisitor {
                                 }
                             }
                         }
-                        RhsValues::Int(int_ranges) => {
+                        LiteralSet::Int(int_ranges) => {
                             for r in int_ranges.iter() {
                                 let range: std::ops::RangeInclusive<i64> = r.clone().into();
                                 if let Domain::IntRange(min, max) = domain
@@ -472,7 +479,7 @@ impl Visitor<'_> for ValueDomainVisitor {
                     }
                 } else if let IdentifierExpr::FunctionCallExpr(call) = &node.lhs.identifier {
                     match values {
-                        RhsValues::Bytes(items) => {
+                        LiteralSet::Bytes(items) => {
                             let name = call.function().name();
                             let mut invalids = Vec::new();
                             for b in items.iter() {
@@ -511,7 +518,7 @@ impl Visitor<'_> for ValueDomainVisitor {
                                 });
                             }
                         }
-                        RhsValues::Int(int_ranges) if call.function().name() == "len" => {
+                        LiteralSet::Int(int_ranges) if call.function().name() == "len" => {
                             let mut invalids = Vec::new();
                             for r in int_ranges.iter() {
                                 let range: std::ops::RangeInclusive<i64> = r.clone().into();

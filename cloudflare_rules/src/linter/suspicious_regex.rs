@@ -1,7 +1,7 @@
 use super::*;
 use regex_syntax::Parser;
 use wirefilter::{
-    ComparisonExpr, ComparisonOpExpr, FunctionCallArgExpr, IdentifierExpr, RhsValue, Visitor,
+    ComparisonExpr, ComparisonOpExpr, FunctionCallArgExpr, IdentifierExpr, LiteralValue, Visitor,
 };
 
 static LINT_NAME: &str = "suspicious_regex";
@@ -131,7 +131,7 @@ impl Visitor<'_> for SuspiciousRegexVisitor {
             && func.function().name() == "regex_replace"
             && let [
                 FunctionCallArgExpr::IndexExpr(field),
-                wirefilter::FunctionCallArgExpr::Literal(RhsValue::Bytes(regex)),
+                wirefilter::FunctionCallArgExpr::Literal(LiteralValue::Bytes(regex)),
                 _replacement,
             ] = func.args()
             && let IdentifierExpr::Field(field) = &field.identifier

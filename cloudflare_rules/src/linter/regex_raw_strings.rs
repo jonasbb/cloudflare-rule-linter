@@ -1,6 +1,6 @@
 use super::*;
 use wirefilter::{
-    ComparisonExpr, ComparisonOpExpr, IdentifierExpr, RegexFormat, RhsValue, Visitor,
+    ComparisonExpr, ComparisonOpExpr, IdentifierExpr, RegexFormat, LiteralValue, Visitor,
 };
 
 static LINT_NAME: &str = "regex_raw_strings";
@@ -62,7 +62,7 @@ impl Visitor<'_> for RegexRawStringsVisitor {
             && func.function().name() == "regex_replace"
             && let [
                 _field,
-                wirefilter::FunctionCallArgExpr::Literal(RhsValue::Bytes(regex)),
+                wirefilter::FunctionCallArgExpr::Literal(LiteralValue::Bytes(regex)),
                 _replacement,
             ] = func.args()
             && !matches!(regex.format(), wirefilter::BytesFormat::Raw(_))
