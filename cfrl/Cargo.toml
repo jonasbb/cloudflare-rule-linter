@@ -7,13 +7,13 @@ version = "0.1.0"
 
 [dependencies]
 annotate-snippets = "0.12.16"
-anyhow = "1.0.102"
-clap = {version = "4.6.1", features = ["color", "derive"]}
+anyhow = "1.0.104"
+clap = {version = "4.6.7", features = ["color", "derive"]}
 cloudflare-rules = {path = "../cloudflare_rules"}
-env_logger = "0.11.10"
-hcl-edit = "0.9.6"
-log = "0.4.32"
-toml = "1.1.2"
+env_logger = "0.11.11"
+hcl-edit = "0.9.7"
+log = "0.4.34"
+toml = "1.1.6"
 
 [lints]
 workspace = true
