@@ -1,6 +1,6 @@
 use super::*;
 use wirefilter::{
-    ComparisonExpr, ComparisonOpExpr, IdentifierExpr, RegexFormat, LiteralValue, Visitor,
+    ComparisonExpr, ComparisonOpExpr, IdentifierExpr, LiteralValue, RegexFormat, Visitor,
 };
 
 static LINT_NAME: &str = "regex_raw_strings";

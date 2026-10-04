@@ -2,7 +2,8 @@ use super::*;
 use crate::ast_printer::AstPrintVisitor;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use wirefilter::{
-    ComparisonExpr, ComparisonOpExpr, ComparisonRhs, ExplicitIpRange, IpRange, LiteralSet, LiteralValue, Visitor,
+    ComparisonExpr, ComparisonOpExpr, ComparisonRhs, ExplicitIpRange, IpRange, LiteralSet,
+    LiteralValue, Visitor,
 };
 
 // Define reserved IPv4 ranges (from IANA / Wikipedia Reserved IP addresses)

@@ -1,6 +1,7 @@
 use super::*;
 use wirefilter::{
-    ComparisonExpr, ComparisonOpExpr, ComparisonRhs, IdentifierExpr, LiteralSet, LiteralValue, OrderingOp, Visitor,
+    ComparisonExpr, ComparisonOpExpr, ComparisonRhs, IdentifierExpr, LiteralSet, LiteralValue,
+    OrderingOp, Visitor,
 };
 
 static LINT_NAME: &str = "hostname_suffix";

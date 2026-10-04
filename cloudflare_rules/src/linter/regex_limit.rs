@@ -48,7 +48,8 @@ impl RegexLimitVisitor {
                 url: Some(create_url(LINT_NAME)),
                 title: "Too many regular expressions in rule".into(),
                 message: format!(
-                    "The rule contains more than {} regular expressions. Cloudflare allows at most {} per rule and will refuse to create or update it.",
+                    "The rule contains more than {} regular expressions. Cloudflare allows at \
+                     most {} per rule and will refuse to create or update it.",
                     self.limit, self.limit
                 ),
                 span: Span::ReverseByte(span),
