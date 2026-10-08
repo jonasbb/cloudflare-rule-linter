@@ -101,11 +101,15 @@ impl std::fmt::Display for LintReport {
     }
 }
 
+/// Linter scheduling individual lint passes over the Cloudflare rule ASTs
+///
+/// It contains a [`LinterConfig`] that determines which lint rules are active and how they are configured.
 pub struct Linter {
     config: LinterConfig,
 }
 
 impl Linter {
+    /// Create a new linter with the default configuration.
     #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
@@ -113,16 +117,26 @@ impl Linter {
         }
     }
 
+    /// Create a new linter with the specified configuration.
     pub fn with_config(config: LinterConfig) -> Self {
         Self { config }
     }
 
+    /// Lint the provided AST using the default `Phase::Maximum`.
+    ///
+    /// This is a convenience method that uses the maximum phase for linting.
+    ///
+    /// The provided `expr` must be identical to the processed AST it represents.
     #[allow(dead_code)]
     pub fn lint(&self, ast: &mut FilterAst, expr: &str) -> Vec<LintReport> {
         self.lint_with_phase(ast, expr, Phase::Maximum)
     }
 
     /// Lint the provided AST using an explicit `rule_phase` for this invocation.
+    ///
+    /// This allows for more fine-grained control over which phase of linting is applied.
+    ///
+    /// The provided `expr` must be identical to the processed AST it represents.
     pub fn lint_with_phase(
         &self,
         ast: &mut FilterAst,
@@ -140,12 +154,21 @@ impl Linter {
         results
     }
 
+    /// Lint the provided value AST using the default `Phase::Maximum`.
+    ///
+    /// This is a convenience method that uses the maximum phase for linting.
+    ///
+    /// The provided `expr` must be identical to the processed AST it represents.
     #[allow(dead_code)]
     pub fn lint_value(&self, ast: &mut FilterValueAst, expr: &str) -> Vec<LintReport> {
         self.lint_value_with_phase(ast, expr, Phase::Maximum)
     }
 
-    /// Lint the provided AST using an explicit `rule_phase` for this invocation.
+    /// Lint the provided value AST using an explicit `rule_phase` for this invocation.
+    ///
+    /// This allows for more fine-grained control over which phase of linting is applied.
+    ///
+    /// The provided `expr` must be identical to the processed AST it represents.
     pub fn lint_value_with_phase(
         &self,
         ast: &mut FilterValueAst,
