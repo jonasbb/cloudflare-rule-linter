@@ -46,6 +46,12 @@ pub fn parse_and_lint_expression_with_config_and_phase(
     expr: &str,
     rule_phase: Phase,
 ) -> Vec<LintReport> {
+    let mut result = Vec::new();
+
+    // Check for maximum length of the expression
+    let expression_length = expr.chars().count();
+    check_expression_length(&mut result, expression_length);
+
     // The byte offsets will be unusable if there are multiple lines.
     // To avoid this situation, replace all newlines with spaces
     let expr = expr.replace("\n", " ");
@@ -63,19 +69,14 @@ pub fn parse_and_lint_expression_with_config_and_phase(
     let mut ast = match scheme.parse(&expr) {
         Ok(ast) => ast,
         Err(err) => {
-            return vec![LintReport {
-                id: "parse_error".into(),
-                url: None,
-                title: "Failed to parse rule expression.".into(),
-                message: err.kind.to_string(),
-                span: Span::Byte(err.span_start..(err.span_start + err.span_len)),
-            }];
+            result.push(parse_error_to_lint_report(err));
+            return result;
         }
     };
     // Construct the linter (moving the config) and run it with the trimmed
     // expression so lints can inspect the original source text.
     let linter = linter::Linter::with_config(config);
-    let mut result = linter.lint_with_phase(&mut ast, expr.trim(), rule_phase);
+    result.extend(linter.lint_with_phase(&mut ast, expr.trim(), rule_phase));
     // Fixup the reverse byte spans
     for lint in &mut result {
         if let Span::ReverseByte(range) = &mut lint.span {
@@ -100,6 +101,12 @@ pub fn parse_and_lint_value_expression_with_config_and_phase(
     expr: &str,
     rule_phase: Phase,
 ) -> Vec<LintReport> {
+    let mut result = Vec::new();
+
+    // Check for maximum length of the expression
+    let expression_length = expr.chars().count();
+    check_expression_length(&mut result, expression_length);
+
     // The byte offsets will be unusable if there are multiple lines.
     // To avoid this situation, replace all newlines with spaces
     let expr = expr.replace("\n", " ");
@@ -117,19 +124,14 @@ pub fn parse_and_lint_value_expression_with_config_and_phase(
     let mut ast = match scheme.parse_value(&expr) {
         Ok(ast) => ast,
         Err(err) => {
-            return vec![LintReport {
-                id: "parse_error".into(),
-                url: None,
-                title: "Failed to parse rule expression.".into(),
-                message: err.kind.to_string(),
-                span: Span::Byte(err.span_start..(err.span_start + err.span_len)),
-            }];
+            result.push(parse_error_to_lint_report(err));
+            return result;
         }
     };
     // Construct the linter (moving the config) and run it with the trimmed
     // expression so lints can inspect the original source text.
     let linter = linter::Linter::with_config(config);
-    let mut result = linter.lint_value_with_phase(&mut ast, expr.trim(), rule_phase);
+    result.extend(linter.lint_value_with_phase(&mut ast, expr.trim(), rule_phase));
     // Fixup the reverse byte spans
     for lint in &mut result {
         if let Span::ReverseByte(range) = &mut lint.span {
@@ -153,4 +155,35 @@ pub fn phase_iter() -> impl Iterator<Item = Phase> {
 /// Convert a string into a matching [`Phase`]
 pub fn phase_name_to_phase(phase_name: &str) -> Option<Phase> {
     Phase::from_str(phase_name).ok()
+}
+
+/// Check the length of the expression and add a lint report if it exceeds the maximum allowed length.
+fn check_expression_length(result: &mut Vec<LintReport>, expression_length: usize) {
+    const EXPRESSION_LENGTH_LIMIT: usize = 4096;
+    if expression_length > EXPRESSION_LENGTH_LIMIT {
+        result.push(LintReport {
+            id: "expression_length_exceeded".into(),
+            url: None,
+            title: format!(
+                "Expression length exceeds {} characters.",
+                EXPRESSION_LENGTH_LIMIT
+            ),
+            message: format!(
+                "The expression length {} exceeded the maximum allowed of {}",
+                expression_length, EXPRESSION_LENGTH_LIMIT
+            ),
+            span: Span::Missing,
+        });
+    }
+}
+
+/// Converts a [`wirefilter::ParseError`] into a [`LintReport`].
+fn parse_error_to_lint_report(err: wirefilter::ParseError<'_>) -> LintReport {
+    LintReport {
+        id: "parse_error".into(),
+        url: None,
+        title: "Failed to parse rule expression.".into(),
+        message: err.kind.to_string(),
+        span: Span::Byte(err.span_start..(err.span_start + err.span_len)),
+    }
 }

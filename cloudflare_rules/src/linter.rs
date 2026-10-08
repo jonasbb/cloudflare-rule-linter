@@ -608,4 +608,36 @@ pub(super) mod test {
             "#]],
         );
     }
+
+    #[test]
+    fn test_overly_long_expression() {
+        let expr = "ssl".to_string() + &" ".repeat(4096);
+
+        let result = crate::parse_and_lint_expression_with_config(LinterConfig::default(), &expr);
+        assert!(
+            result.len() == 1,
+            "Expected exactly one lint report for overly long expression"
+        );
+        assert_eq!(result[0].id, "expression_length_exceeded");
+
+        let result =
+            crate::parse_and_lint_value_expression_with_config(LinterConfig::default(), &expr);
+        assert!(
+            result.len() == 1,
+            "Expected exactly one lint report for overly long expression"
+        );
+        assert_eq!(result[0].id, "expression_length_exceeded");
+
+        // Check with nonsense string
+
+        let expr = "XXX".to_string() + &" ".repeat(4096);
+
+        let result = crate::parse_and_lint_expression_with_config(LinterConfig::default(), &expr);
+        assert!(
+            result.len() == 2,
+            "Expected exactly two lint reports for overly long expression"
+        );
+        assert_eq!(result[0].id, "expression_length_exceeded");
+        assert_eq!(result[1].id, "parse_error");
+    }
 }
