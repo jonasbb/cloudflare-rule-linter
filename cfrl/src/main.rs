@@ -236,7 +236,7 @@ fn convert_internal_byterange_to_global(
     let mut global_start = 0;
     let mut global_end = 0;
     let mut escaped = false;
-    let mut char_indices = rawstring.char_indices();
+    let mut char_indices = rawstring.char_indices().peekable();
     // Skip the opening "
     char_indices.next();
     while let Some((mut idx, c)) = char_indices.next() {
@@ -271,6 +271,19 @@ fn convert_internal_byterange_to_global(
                 let c = char::from_u32(decoded_u32).expect("Invalid unicode point");
                 inner_byte_count += c.len_utf8();
                 escaped = false;
+            }
+            c if !escaped
+                && matches!(c, '$' | '%')
+                && char_indices.peek().is_some_and(|(_, next)| *next == c)
+                && char_indices
+                    .clone()
+                    .nth(1)
+                    .is_some_and(|(_, next)| next == '{') =>
+            {
+                idx = char_indices
+                    .next()
+                    .map_or(idx, |(marker_idx, _)| marker_idx);
+                inner_byte_count += c.len_utf8();
             }
             c => {
                 inner_byte_count += c.len_utf8();
@@ -347,4 +360,27 @@ fn main() -> Result<ExitCode> {
     }
 
     Ok(exit_code)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::convert_internal_byterange_to_global;
+
+    #[test]
+    fn escaped_template_markers_do_not_shift_diagnostic_spans() {
+        for (escaped_marker, decoded_marker) in [("$${", "${"), ("%%{", "%{")] {
+            let input = format!("expression = \"prefix {escaped_marker}marker suffix\"");
+            let global = input.find('"').unwrap()..input.rfind('"').unwrap() + 1;
+            let decoded = format!("prefix {decoded_marker}marker suffix");
+            let marker_start = decoded.find("marker").unwrap();
+            let internal = marker_start..marker_start + "marker".len();
+            let expected = input.find("marker").unwrap()..input.find("marker").unwrap() + 6;
+
+            assert_eq!(
+                convert_internal_byterange_to_global(&input, global, internal),
+                expected,
+                "escaped marker {escaped_marker} shifted the diagnostic span"
+            );
+        }
+    }
 }
