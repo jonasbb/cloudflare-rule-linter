@@ -58,7 +58,7 @@ pub fn parse_and_lint_expression_with_config_and_phase(
     // The string will be trimmed from whitespace.
     // This messes with the reverse span information, as they are relative to the trimmed string.
     // For restoring them, keep track of the trailing spaces
-    let trailing_whitespace = expr.chars().rev().take_while(|c| c.is_whitespace()).count();
+    let trailing_whitespace = expr.len() - expr.trim_end().len();
 
     // Select a scheme based on the provided rule_phase. If no phase is set,
     // fallback to the default `RULE_SCHEME` to preserve backwards compatibility.
@@ -113,7 +113,7 @@ pub fn parse_and_lint_value_expression_with_config_and_phase(
     // The string will be trimmed from whitespace.
     // This messes with the reverse span information, as they are relative to the trimmed string.
     // For restoring them, keep track of the trailing spaces
-    let trailing_whitespace = expr.chars().rev().take_while(|c| c.is_whitespace()).count();
+    let trailing_whitespace = expr.len() - expr.trim_end().len();
 
     // Select a scheme based on the provided rule_phase. If no phase is set,
     // fallback to the default `RULE_SCHEME` to preserve backwards compatibility.
@@ -185,5 +185,56 @@ fn parse_error_to_lint_report(err: wirefilter::ParseError<'_>) -> LintReport {
         title: "Failed to parse rule expression.".into(),
         message: err.kind.to_string(),
         span: Span::Byte(err.span_start..(err.span_start + err.span_len)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        LintReport, LinterConfig, Span, parse_and_lint_expression_with_config,
+        parse_and_lint_value_expression_with_config,
+    };
+
+    #[test]
+    fn multibyte_trailing_whitespace_preserves_lint_spans() {
+        let mut config = LinterConfig::default();
+        config.settings.zone_suffix = Some("example.com".into());
+        let expression = r#"http.host eq "example.org""#;
+        let ascii_report =
+            parse_and_lint_expression_with_config(config.clone(), &format!("{expression} "));
+        let unicode_report =
+            parse_and_lint_expression_with_config(config, &format!("{expression}\u{3000}"));
+
+        let forward_span = |reports: &[LintReport], source: &str| match &reports[0].span {
+            Span::ReverseByte(range) => source.len() - range.start..source.len() - range.end,
+            span => panic!("expected a reverse byte span, found {span:?}"),
+        };
+
+        assert_eq!(
+            forward_span(&ascii_report, &format!("{expression} ")),
+            forward_span(&unicode_report, &format!("{expression}\u{3000}")),
+        );
+    }
+
+    #[test]
+    fn multibyte_trailing_whitespace_preserves_value_lint_spans() {
+        let config = LinterConfig::default();
+        let expression =
+            r#"concat(regex_replace(http.host, r"x", ""), regex_replace(http.host, r"x", ""))"#;
+        let ascii_source = format!("{expression} ");
+        let unicode_source = format!("{expression}\u{3000}");
+        let ascii_report =
+            parse_and_lint_value_expression_with_config(config.clone(), &ascii_source);
+        let unicode_report = parse_and_lint_value_expression_with_config(config, &unicode_source);
+
+        let forward_span = |reports: &[LintReport], source: &str| match &reports[0].span {
+            Span::ReverseByte(range) => source.len() - range.start..source.len() - range.end,
+            span => panic!("expected a reverse byte span, found {span:?}"),
+        };
+
+        assert_eq!(
+            forward_span(&ascii_report, &ascii_source),
+            forward_span(&unicode_report, &unicode_source),
+        );
     }
 }
