@@ -51,6 +51,15 @@ impl Visitor<'_> for HostnameSuffixVisitor<'_> {
             // Dotted suffix if for suffix matching, e.g. ".example.com" for "example.com"
             // This ensures there is a label boundary before the suffix, so that "notexample.com" does not match "example.com"
             let dotted_suffix = format!(".{hostname_suffix}");
+            let has_valid_suffix = |host_literal: &str| {
+                let host_bytes = host_literal.as_bytes();
+                let suffix_bytes = dotted_suffix.as_bytes();
+                // case insensitive eq or ends_with
+                host_literal.eq_ignore_ascii_case(hostname_suffix)
+                    || (host_bytes.len() > suffix_bytes.len()
+                        && host_bytes[host_bytes.len() - suffix_bytes.len()..]
+                            .eq_ignore_ascii_case(suffix_bytes))
+            };
 
             // Only consider Ordering and OneOf comparisons
             match &node.op {
@@ -66,8 +75,7 @@ impl Visitor<'_> for HostnameSuffixVisitor<'_> {
                             && node.lhs.indexes.is_empty()
                             && field.name() == "http.host"
                             && let Ok(host_literal) = std::str::from_utf8(bytes)
-                            && !(host_literal == hostname_suffix
-                                || host_literal.ends_with(&dotted_suffix))
+                            && !has_valid_suffix(host_literal)
                         {
                             self.result.push(LintReport {
                                 id: LINT_NAME.into(),
@@ -93,8 +101,7 @@ impl Visitor<'_> for HostnameSuffixVisitor<'_> {
                         if let LiteralSet::Bytes(items) = values {
                             for b in items.iter() {
                                 if let Ok(host_literal) = std::str::from_utf8(b)
-                                    && !(host_literal == hostname_suffix
-                                        || host_literal.ends_with(&dotted_suffix))
+                                    && !has_valid_suffix(host_literal)
                                 {
                                     invalids.push(host_literal.to_string());
                                 }
@@ -152,6 +159,7 @@ mod test {
 
         assert_no_lint_message(&l, r#"http.host eq "example.com""#);
         assert_no_lint_message(&l, r#"http.host in { "www.example.com" }"#);
+        assert_no_lint_message(&l, r#"http.host eq "WWW.EXAMPLE.COM""#);
 
         expect_lint_message(
             &l,
