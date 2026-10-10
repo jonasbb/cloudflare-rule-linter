@@ -4,39 +4,23 @@ use crate::phase::Phase;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 use strum::IntoEnumIterator as _;
-use wirefilter::{LhsValue, Scheme, Type};
+use wirefilter::{Scheme, Type};
 
 #[derive(Debug, PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
 pub struct NumList {}
 
 impl wirefilter::ListDefinition for NumList {
     fn new_matcher(&self) -> Box<dyn wirefilter::ListMatcher> {
-        Box::new(NumList {})
+        unreachable!("Only necessary for compilation of the NumList list definition")
     }
 
     fn deserialize_matcher<'de>(
         &self,
         _: Type,
-        deserializer: &mut dyn erased_serde::Deserializer<'de>,
+        _deserializer: &mut dyn erased_serde::Deserializer<'de>,
     ) -> Result<Box<dyn wirefilter::ListMatcher>, erased_serde::Error> {
-        let matcher = erased_serde::deserialize::<NumList>(deserializer)?;
-        Ok(Box::new(matcher))
+        unreachable!("Only necessary for compilation of the NumList list definition")
     }
-}
-
-impl wirefilter::ListMatcher for NumList {
-    fn match_value(&self, list_name: &str, val: &LhsValue<'_>) -> bool {
-        match val {
-            LhsValue::Int(num) => match list_name {
-                "even" => num % 2 == 0,
-                "odd" => num % 2 != 0,
-                _ => unreachable!("Number list with unknown name: {}", list_name),
-            },
-            _ => unreachable!(), // TODO: is this unreachable?
-        }
-    }
-
-    fn clear(&mut self) {}
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
@@ -44,32 +28,16 @@ pub struct IpList {}
 
 impl wirefilter::ListDefinition for IpList {
     fn new_matcher(&self) -> Box<dyn wirefilter::ListMatcher> {
-        Box::new(IpList {})
+        unreachable!("Only necessary for compilation of the IpList list definition")
     }
 
     fn deserialize_matcher<'de>(
         &self,
         _: Type,
-        deserializer: &mut dyn erased_serde::Deserializer<'de>,
+        _deserializer: &mut dyn erased_serde::Deserializer<'de>,
     ) -> Result<Box<dyn wirefilter::ListMatcher>, erased_serde::Error> {
-        let matcher = erased_serde::deserialize::<IpList>(deserializer)?;
-        Ok(Box::new(matcher))
+        unreachable!("Only necessary for compilation of the IpList list definition")
     }
-}
-
-impl wirefilter::ListMatcher for IpList {
-    fn match_value(&self, list_name: &str, val: &LhsValue<'_>) -> bool {
-        match val {
-            LhsValue::Ip(_) => match list_name {
-                "always" => true,
-                "never" => false,
-                _ => unreachable!("Number list with unknown name: {}", list_name),
-            },
-            _ => unreachable!(), // TODO: is this unreachable?
-        }
-    }
-
-    fn clear(&mut self) {}
 }
 
 /// Generate the default scheme matching the one Cloudflare uses
