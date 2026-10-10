@@ -157,7 +157,8 @@ mod test {
             r#"not http.host eq "example.com""#,
             expect![[r#"
                 Found negated comparison (negated_comparison)
-                Consider simplifying from `not http.host eq "example.com"` to `http.host ne "example.com"`"#]],
+                Consider simplifying from `not http.host eq "example.com"` to `http.host ne "example.com"`
+                Expr: 🡆🡆not http.host eq "example.com"🡄🡄"#]],
         );
     }
 
@@ -168,7 +169,8 @@ mod test {
             r#"not http.response.code lt 400"#,
             expect![[r#"
                 Found negated comparison (negated_comparison)
-                Consider simplifying from `not http.response.code lt 400` to `http.response.code ge 400`"#]],
+                Consider simplifying from `not http.response.code lt 400` to `http.response.code ge 400`
+                Expr: 🡆🡆not http.response.code lt 400🡄🡄"#]],
         );
     }
 
@@ -179,7 +181,8 @@ mod test {
             r#"not http.response.code le 200"#,
             expect![[r#"
                 Found negated comparison (negated_comparison)
-                Consider simplifying from `not http.response.code le 200` to `http.response.code gt 200`"#]],
+                Consider simplifying from `not http.response.code le 200` to `http.response.code gt 200`
+                Expr: 🡆🡆not http.response.code le 200🡄🡄"#]],
         );
     }
 
@@ -190,7 +193,8 @@ mod test {
             r#"not ip.src.asnum gt 1024"#,
             expect![[r#"
                 Found negated comparison (negated_comparison)
-                Consider simplifying from `not ip.src.asnum gt 1024` to `ip.src.asnum le 1024`"#]],
+                Consider simplifying from `not ip.src.asnum gt 1024` to `ip.src.asnum le 1024`
+                Expr: 🡆🡆not ip.src.asnum gt 1024🡄🡄"#]],
         );
     }
 
@@ -201,7 +205,8 @@ mod test {
             r#"not ip.src.asnum ge 80"#,
             expect![[r#"
                 Found negated comparison (negated_comparison)
-                Consider simplifying from `not ip.src.asnum ge 80` to `ip.src.asnum lt 80`"#]],
+                Consider simplifying from `not ip.src.asnum ge 80` to `ip.src.asnum lt 80`
+                Expr: 🡆🡆not ip.src.asnum ge 80🡄🡄"#]],
         );
     }
 
@@ -212,7 +217,8 @@ mod test {
             r#"not ( http.host eq "example.com" )"#,
             expect![[r#"
                 Found negated comparison (negated_comparison)
-                Consider simplifying from `not http.host eq "example.com"` to `http.host ne "example.com"`"#]],
+                Consider simplifying from `not http.host eq "example.com"` to `http.host ne "example.com"`
+                Expr: 🡆🡆not ( http.host eq "example.com" )🡄🡄"#]],
         );
     }
 
@@ -223,14 +229,16 @@ mod test {
             r#"not any(http.request.headers.names[*] eq "abc")"#,
             expect![[r#"
                 Found negated comparison (negated_comparison)
-                Consider simplifying from `not any(http.request.headers.names[*] eq "abc")` to `all(http.request.headers.names[*] ne "abc")`"#]],
+                Consider simplifying from `not any(http.request.headers.names[*] eq "abc")` to `all(http.request.headers.names[*] ne "abc")`
+                Expr: not 🡆🡆any(http.request.headers.names[*] eq "abc")🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"not all(http.request.headers.names[*] <= "abc")"#,
             expect![[r#"
                 Found negated comparison (negated_comparison)
-                Consider simplifying from `not all(http.request.headers.names[*] <= "abc")` to `any(http.request.headers.names[*] gt "abc")`"#]],
+                Consider simplifying from `not all(http.request.headers.names[*] <= "abc")` to `any(http.request.headers.names[*] gt "abc")`
+                Expr: not 🡆🡆all(http.request.headers.names[*] <= "abc")🡄🡄"#]],
         );
     }
 }

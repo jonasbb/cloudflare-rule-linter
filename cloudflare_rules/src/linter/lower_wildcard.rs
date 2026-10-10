@@ -70,14 +70,16 @@ mod test {
             r#"lower(http.request.uri.path) wildcard "/foo/bar/*""#,
             expect![[r#"
                 Unnecessary lower() before wildcard comparison (lower_wildcard)
-                Wildcard matching is case-insensitive, so `lower()` can be removed."#]],
+                Wildcard matching is case-insensitive, so `lower()` can be removed.
+                Expr: 🡆🡆lower(http.request.uri.path) wildcard "/foo/bar/*"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"lower(http.request.uri.path) wildcard "/Foo/BAR/*""#,
             expect![[r#"
                 Unnecessary lower() before wildcard comparison (lower_wildcard)
-                Wildcard matching is case-insensitive, so `lower()` can be removed."#]],
+                Wildcard matching is case-insensitive, so `lower()` can be removed.
+                Expr: 🡆🡆lower(http.request.uri.path) wildcard "/Foo/BAR/*"🡄🡄"#]],
         );
     }
 

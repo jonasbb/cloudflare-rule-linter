@@ -282,9 +282,11 @@ mod test {
             expect![[r#"
                 Mixed operator styles (operator_style)
                 Found mixed operator styles; rewrite `eq` to `==`
+                Expr: http.host == "example.com" and http.host 🡆🡆eq🡄🡄 "example.org"
 
                 Mixed operator styles (operator_style)
-                Found mixed operator styles; rewrite `and` to `&&`"#]],
+                Found mixed operator styles; rewrite `and` to `&&`
+                Expr: http.host == "example.com" 🡆🡆and🡄🡄 http.host eq "example.org""#]],
         );
     }
 
@@ -300,7 +302,8 @@ mod test {
             r#"http.host == "example.com""#,
             expect![[r#"
                 Prefer english operator notation (operator_style)
-                Prefer english operator notation; rewrite `==` to `eq`"#]],
+                Prefer english operator notation; rewrite `==` to `eq`
+                Expr: http.host 🡆🡆==🡄🡄 "example.com""#]],
         );
     }
 
@@ -316,7 +319,8 @@ mod test {
             r#"http.host eq "example.com""#,
             expect![[r#"
                 Prefer C-like operator notation (operator_style)
-                Prefer C-like operator notation; rewrite `eq` to `==`"#]],
+                Prefer C-like operator notation; rewrite `eq` to `==`
+                Expr: http.host 🡆🡆eq🡄🡄 "example.com""#]],
         );
     }
 
@@ -339,9 +343,11 @@ mod test {
             expect![[r#"
                 Mixed operator styles (operator_style)
                 Found mixed operator styles; rewrite `matches` to `~`
+                Expr: http.host ~ "a" and http.host 🡆🡆matches🡄🡄 "b"
 
                 Mixed operator styles (operator_style)
-                Found mixed operator styles; rewrite `and` to `&&`"#]],
+                Found mixed operator styles; rewrite `and` to `&&`
+                Expr: http.host ~ "a" 🡆🡆and🡄🡄 http.host matches "b""#]],
         );
 
         // mixing & and bitwise_and should be flagged
@@ -351,9 +357,11 @@ mod test {
             expect![[r#"
                 Mixed operator styles (operator_style)
                 Found mixed operator styles; rewrite `bitwise_and` to `&`
+                Expr: ip.src.asnum & 1 and ip.src.asnum 🡆🡆bitwise_and🡄🡄 2
 
                 Mixed operator styles (operator_style)
-                Found mixed operator styles; rewrite `and` to `&&`"#]],
+                Found mixed operator styles; rewrite `and` to `&&`
+                Expr: ip.src.asnum & 1 🡆🡆and🡄🡄 ip.src.asnum bitwise_and 2"#]],
         );
     }
 
@@ -375,7 +383,8 @@ mod test {
             r#"ip.src.asnum & 1"#,
             expect![[r#"
                 Prefer english operator notation (operator_style)
-                Prefer english operator notation; rewrite `&` to `bitwise_and`"#]],
+                Prefer english operator notation; rewrite `&` to `bitwise_and`
+                Expr: ip.src.asnum 🡆🡆&🡄🡄 1"#]],
         );
         // Space around operators is not required, so also test a case without spaces
         expect_lint_message(
@@ -383,7 +392,8 @@ mod test {
             r#"ip.src.asnum&2"#,
             expect![[r#"
                 Prefer english operator notation (operator_style)
-                Prefer english operator notation; rewrite `&` to `bitwise_and`"#]],
+                Prefer english operator notation; rewrite `&` to `bitwise_and`
+                Expr: ip.src.asnum🡆🡆&🡄🡄2"#]],
         );
     }
 
@@ -405,7 +415,8 @@ mod test {
             r#"ip.src.asnum bitwise_and 1"#,
             expect![[r#"
                 Prefer C-like operator notation (operator_style)
-                Prefer C-like operator notation; rewrite `bitwise_and` to `&`"#]],
+                Prefer C-like operator notation; rewrite `bitwise_and` to `&`
+                Expr: ip.src.asnum 🡆🡆bitwise_and🡄🡄 1"#]],
         );
     }
 
@@ -416,7 +427,8 @@ mod test {
             r#"http.host == "a" && http.host eq "b""#,
             expect![[r#"
                 Mixed operator styles (operator_style)
-                Found mixed operator styles; rewrite `eq` to `==`"#]],
+                Found mixed operator styles; rewrite `eq` to `==`
+                Expr: http.host == "a" && http.host 🡆🡆eq🡄🡄 "b""#]],
         );
     }
 
@@ -428,12 +440,15 @@ mod test {
             expect![[r#"
                 Mixed operator styles (operator_style)
                 Found mixed operator styles; rewrite `!=` to `ne`
+                Expr: http.host ne "a" || http.host 🡆🡆!=🡄🡄 "b"
 
                 Mixed operator styles (operator_style)
                 Found mixed operator styles; rewrite `!` to `not`
+                Expr: http.host ne "a" || http.host 🡆🡆!🡄🡄= "b"
 
                 Mixed operator styles (operator_style)
-                Found mixed operator styles; rewrite `||` to `or`"#]],
+                Found mixed operator styles; rewrite `||` to `or`
+                Expr: http.host ne "a" 🡆🡆||🡄🡄 http.host != "b""#]],
         );
     }
 
@@ -445,9 +460,11 @@ mod test {
             expect![[r#"
                 Mixed operator styles (operator_style)
                 Found mixed operator styles; rewrite `ge` to `>=`
+                Expr: ip.src.asnum >= 10 xor ip.src.asnum 🡆🡆ge🡄🡄 20
 
                 Mixed operator styles (operator_style)
-                Found mixed operator styles; rewrite `xor` to `^^`"#]],
+                Found mixed operator styles; rewrite `xor` to `^^`
+                Expr: ip.src.asnum >= 10 🡆🡆xor🡄🡄 ip.src.asnum ge 20"#]],
         );
     }
 
@@ -459,12 +476,15 @@ mod test {
             expect![[r#"
                 Mixed operator styles (operator_style)
                 Found mixed operator styles; rewrite `==` to `eq`
+                Expr: http.host eq "a" && http.host 🡆🡆==🡄🡄 "b"
 
                 Mixed operator styles (operator_style)
                 Found mixed operator styles; rewrite `&` to `bitwise_and`
+                Expr: http.host eq "a" 🡆🡆&🡄🡄& http.host == "b"
 
                 Mixed operator styles (operator_style)
-                Found mixed operator styles; rewrite `&&` to `and`"#]],
+                Found mixed operator styles; rewrite `&&` to `and`
+                Expr: http.host eq "a" 🡆🡆&&🡄🡄 http.host == "b""#]],
         );
     }
 

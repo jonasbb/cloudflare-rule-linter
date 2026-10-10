@@ -154,7 +154,8 @@ mod test {
             "http.request.timestamp.sec eq 1104534000",
             expect![[r#"
                 Comparison with very time constant below `min_timestamp` (timestamp_comparisons)
-                Found comparison against http.request.timestamp.sec with value 1104534000 which is below min_timestamp (1262300400)."#]],
+                Found comparison against http.request.timestamp.sec with value 1104534000 which is below min_timestamp (1262300400).
+                Expr: 🡆🡆http.request.timestamp.sec eq 1104534000🡄🡄"#]],
         );
     }
 
@@ -171,7 +172,8 @@ mod test {
             "http.request.timestamp.sec eq 32503676400",
             expect![[r#"
                 Comparison with future time after `future_delta` (timestamp_comparisons)
-                Found comparison against http.request.timestamp.sec with value 32503676400 which is too far in the future."#]],
+                Found comparison against http.request.timestamp.sec with value 32503676400 which is too far in the future.
+                Expr: 🡆🡆http.request.timestamp.sec eq 32503676400🡄🡄"#]],
         );
     }
 
@@ -193,7 +195,8 @@ mod test {
             "http.request.timestamp.sec in {1104500000..1577833299}",
             expect![[r#"
                 Comparison with very time constant below `min_timestamp` (timestamp_comparisons)
-                Found comparison against http.request.timestamp.sec with value 1104500000 which is below min_timestamp (1262300400)."#]],
+                Found comparison against http.request.timestamp.sec with value 1104500000 which is below min_timestamp (1262300400).
+                Expr: 🡆🡆http.request.timestamp.sec in {1104500000..1577833299}🡄🡄"#]],
         );
     }
 }

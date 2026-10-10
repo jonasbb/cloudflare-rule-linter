@@ -77,7 +77,8 @@ mod test {
             r#"ip.src.continent in {}"#,
             expect![[r#"
                 Comparison with empty list are always false (empty_list)
-                Consider removing the empty list or providing valid values."#]],
+                Consider removing the empty list or providing valid values.
+                Expr: 🡆🡆ip.src.continent in {}🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"ip.src.continent in {"EU" "NA"}"#);

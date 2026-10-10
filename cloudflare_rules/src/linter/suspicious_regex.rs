@@ -231,8 +231,9 @@ mod test {
             &LINTER,
             r#"http.request.uri.path matches "/*/foo/bar/baz""#,
             expect![[r#"
-				Suspicious regex that looks like a wildcard (suspicious_regex)
-				Regex uses quantifiers on path separators (e.g., `/*`); this often indicates a wildcard intent — consider using a wildcard match instead or escaping the separator."#]],
+                Suspicious regex that looks like a wildcard (suspicious_regex)
+                Regex uses quantifiers on path separators (e.g., `/*`); this often indicates a wildcard intent — consider using a wildcard match instead or escaping the separator.
+                Expr: 🡆🡆http.request.uri.path matches "/*/foo/bar/baz"🡄🡄"#]],
         );
     }
 
@@ -242,8 +243,9 @@ mod test {
             &LINTER,
             r#"http.request.uri.path matches "/foo/bar/baz/*""#,
             expect![[r#"
-				Suspicious regex that looks like a wildcard (suspicious_regex)
-				Regex uses quantifiers on path separators (e.g., `/*`); this often indicates a wildcard intent — consider using a wildcard match instead or escaping the separator."#]],
+                Suspicious regex that looks like a wildcard (suspicious_regex)
+                Regex uses quantifiers on path separators (e.g., `/*`); this often indicates a wildcard intent — consider using a wildcard match instead or escaping the separator.
+                Expr: 🡆🡆http.request.uri.path matches "/foo/bar/baz/*"🡄🡄"#]],
         );
     }
 
@@ -253,16 +255,18 @@ mod test {
             &LINTER,
             r#"http.request.uri.path matches "/foo/bar/index.html""#,
             expect![[r#"
-				Suspicious regex that looks like a wildcard (suspicious_regex)
-				Regex contains an unescaped `.` which is interpreted as any character; escape it as `\.` or use a wildcard match depending on intent."#]],
+                Suspicious regex that looks like a wildcard (suspicious_regex)
+                Regex contains an unescaped `.` which is interpreted as any character; escape it as `\.` or use a wildcard match depending on intent.
+                Expr: 🡆🡆http.request.uri.path matches "/foo/bar/index.html"🡄🡄"#]],
         );
 
         expect_lint_message(
             &LINTER,
             r#"http.request.uri.path matches "/foo/bar/index.php""#,
             expect![[r#"
-				Suspicious regex that looks like a wildcard (suspicious_regex)
-				Regex contains an unescaped `.` which is interpreted as any character; escape it as `\.` or use a wildcard match depending on intent."#]],
+                Suspicious regex that looks like a wildcard (suspicious_regex)
+                Regex contains an unescaped `.` which is interpreted as any character; escape it as `\.` or use a wildcard match depending on intent.
+                Expr: 🡆🡆http.request.uri.path matches "/foo/bar/index.php"🡄🡄"#]],
         );
     }
 
@@ -272,8 +276,9 @@ mod test {
             &LINTER,
             r#"http.request.uri.path matches "/api/v./foo/bar""#,
             expect![[r#"
-				Suspicious regex that looks like a wildcard (suspicious_regex)
-				Regex contains an unescaped `.` which is interpreted as any character; escape it as `\.` or use a wildcard match depending on intent."#]],
+                Suspicious regex that looks like a wildcard (suspicious_regex)
+                Regex contains an unescaped `.` which is interpreted as any character; escape it as `\.` or use a wildcard match depending on intent.
+                Expr: 🡆🡆http.request.uri.path matches "/api/v./foo/bar"🡄🡄"#]],
         );
     }
 
@@ -283,16 +288,18 @@ mod test {
             &LINTER,
             r#"http.host matches "example.com""#,
             expect![[r#"
-				Suspicious regex that looks like a wildcard (suspicious_regex)
-				Regex contains unescaped `.` in a hostname; escape the dot as `\.` or use a wildcard match if you intended to match subdomains."#]],
+                Suspicious regex that looks like a wildcard (suspicious_regex)
+                Regex contains unescaped `.` in a hostname; escape the dot as `\.` or use a wildcard match if you intended to match subdomains.
+                Expr: 🡆🡆http.host matches "example.com"🡄🡄"#]],
         );
 
         expect_lint_message(
             &LINTER,
             r#"http.host matches "www.example.org""#,
             expect![[r#"
-				Suspicious regex that looks like a wildcard (suspicious_regex)
-				Regex contains unescaped `.` in a hostname; escape the dot as `\.` or use a wildcard match if you intended to match subdomains."#]],
+                Suspicious regex that looks like a wildcard (suspicious_regex)
+                Regex contains unescaped `.` in a hostname; escape the dot as `\.` or use a wildcard match if you intended to match subdomains.
+                Expr: 🡆🡆http.host matches "www.example.org"🡄🡄"#]],
         );
     }
 
@@ -302,8 +309,9 @@ mod test {
             &LINTER,
             r#"http.request.uri matches "https://www.example.org/foo/index.html?query=args""#,
             expect![[r#"
-				Suspicious regex that looks like a wildcard (suspicious_regex)
-				Regex contains unescaped `.` or `?` characters in a URI; escape them (e.g., `\.` and `\?`) or use a wildcard match where appropriate."#]],
+                Suspicious regex that looks like a wildcard (suspicious_regex)
+                Regex contains unescaped `.` or `?` characters in a URI; escape them (e.g., `\.` and `\?`) or use a wildcard match where appropriate.
+                Expr: 🡆🡆http.request.uri matches "https://www.example.org/foo/index.html?query=args"🡄🡄"#]],
         );
     }
 
@@ -314,7 +322,8 @@ mod test {
             r#"http.request.full_uri matches "https://www.example.org/articles/index?section=539061&expand=comments""#,
             expect![[r#"
                 Suspicious regex that looks like a wildcard (suspicious_regex)
-                Regex contains unescaped `.` or `?` characters in a URI; escape them (e.g., `\.` and `\?`) or use a wildcard match where appropriate."#]],
+                Regex contains unescaped `.` or `?` characters in a URI; escape them (e.g., `\.` and `\?`) or use a wildcard match where appropriate.
+                Expr: 🡆🡆http.request.full_uri matches "https://www.example.org/articles/index?section=539061&expand=comments"🡄🡄"#]],
         );
 
         expect_lint_message(
@@ -322,7 +331,8 @@ mod test {
             r#"raw.http.request.full_uri matches "https://www.example.org/articles/index?section=539061&expand=comments""#,
             expect![[r#"
                 Suspicious regex that looks like a wildcard (suspicious_regex)
-                Regex contains unescaped `.` or `?` characters in a URI; escape them (e.g., `\.` and `\?`) or use a wildcard match where appropriate."#]],
+                Regex contains unescaped `.` or `?` characters in a URI; escape them (e.g., `\.` and `\?`) or use a wildcard match where appropriate.
+                Expr: 🡆🡆raw.http.request.full_uri matches "https://www.example.org/articles/index?section=539061&expand=comments"🡄🡄"#]],
         );
     }
 
@@ -333,7 +343,8 @@ mod test {
             r#"raw.http.request.uri matches "/articles/index?section=539061&expand=comments""#,
             expect![[r#"
                 Suspicious regex that looks like a wildcard (suspicious_regex)
-                Regex contains unescaped `.` or `?` characters in a URI; escape them (e.g., `\.` and `\?`) or use a wildcard match where appropriate."#]],
+                Regex contains unescaped `.` or `?` characters in a URI; escape them (e.g., `\.` and `\?`) or use a wildcard match where appropriate.
+                Expr: 🡆🡆raw.http.request.uri matches "/articles/index?section=539061&expand=comments"🡄🡄"#]],
         );
     }
 

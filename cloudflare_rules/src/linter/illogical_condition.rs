@@ -214,21 +214,24 @@ mod test {
             r#"http.host eq "example.com" and http.host eq "example.org""#,
             expect![[r#"
                 Found illogical condition with AND (illogical_condition)
-                The value `http.host` is compared for equality multiple times in an AND expression."#]],
+                The value `http.host` is compared for equality multiple times in an AND expression.
+                Expr: 🡆🡆http.host eq "example.com" and http.host eq "example.org"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host eq "example.com" and http.host in { "example.org" }"#,
             expect![[r#"
                 Found illogical condition with AND (illogical_condition)
-                The value `http.host` is compared for equality multiple times in an AND expression."#]],
+                The value `http.host` is compared for equality multiple times in an AND expression.
+                Expr: 🡆🡆http.host eq "example.com" and http.host in { "example.org" }🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host in { "example.com" } and http.host eq "example.org""#,
             expect![[r#"
                 Found illogical condition with AND (illogical_condition)
-                The value `http.host` is compared for equality multiple times in an AND expression."#]],
+                The value `http.host` is compared for equality multiple times in an AND expression.
+                Expr: 🡆🡆http.host in { "example.com" } and http.host eq "example.org"🡄🡄"#]],
         );
     }
 
@@ -239,28 +242,32 @@ mod test {
             r#"http.host eq "example.com" and (http.host eq "example.org")"#,
             expect![[r#"
                 Found illogical condition with AND (illogical_condition)
-                The value `http.host` is compared for equality multiple times in an AND expression."#]],
+                The value `http.host` is compared for equality multiple times in an AND expression.
+                Expr: 🡆🡆http.host eq "example.com" and (http.host eq "example.org"🡄🡄)"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"(http.host eq "example.com") and http.host in { "example.org" }"#,
             expect![[r#"
                 Found illogical condition with AND (illogical_condition)
-                The value `http.host` is compared for equality multiple times in an AND expression."#]],
+                The value `http.host` is compared for equality multiple times in an AND expression.
+                Expr: (🡆🡆http.host eq "example.com") and http.host in { "example.org" }🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"(http.host in { "example.com" }) and (http.host eq "example.org")"#,
             expect![[r#"
                 Found illogical condition with AND (illogical_condition)
-                The value `http.host` is compared for equality multiple times in an AND expression."#]],
+                The value `http.host` is compared for equality multiple times in an AND expression.
+                Expr: (🡆🡆http.host in { "example.com" }) and (http.host eq "example.org"🡄🡄)"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host eq "example.com" and (ip.src eq 1.2.3.4 and http.host eq "example.org")"#,
             expect![[r#"
                 Found illogical condition with AND (illogical_condition)
-                The value `http.host` is compared for equality multiple times in an AND expression."#]],
+                The value `http.host` is compared for equality multiple times in an AND expression.
+                Expr: 🡆🡆http.host eq "example.com" and (ip.src eq 1.2.3.4 and http.host eq "example.org"🡄🡄)"#]],
         );
     }
 
@@ -271,35 +278,40 @@ mod test {
             r#"http.host != "example.com" or http.host != "example.org""#,
             expect![[r#"
                 Found illogical condition with OR (illogical_condition)
-                The value `http.host` is compared for inequality multiple times in an OR expression."#]],
+                The value `http.host` is compared for inequality multiple times in an OR expression.
+                Expr: 🡆🡆http.host != "example.com" or http.host != "example.org"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"not http.host eq "example.com" or http.host != "example.org""#,
             expect![[r#"
                 Found illogical condition with OR (illogical_condition)
-                The value `http.host` is compared for inequality multiple times in an OR expression."#]],
+                The value `http.host` is compared for inequality multiple times in an OR expression.
+                Expr: 🡆🡆not http.host eq "example.com" or http.host != "example.org"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host != "example.com" or not http.host eq "example.org""#,
             expect![[r#"
                 Found illogical condition with OR (illogical_condition)
-                The value `http.host` is compared for inequality multiple times in an OR expression."#]],
+                The value `http.host` is compared for inequality multiple times in an OR expression.
+                Expr: 🡆🡆http.host != "example.com" or not http.host eq "example.org"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host != "example.com" or not http.host in { "example.org" }"#,
             expect![[r#"
                 Found illogical condition with OR (illogical_condition)
-                The value `http.host` is compared for inequality multiple times in an OR expression."#]],
+                The value `http.host` is compared for inequality multiple times in an OR expression.
+                Expr: 🡆🡆http.host != "example.com" or not http.host in { "example.org" }🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"not http.host in { "example.com" } or http.host ne "example.org""#,
             expect![[r#"
                 Found illogical condition with OR (illogical_condition)
-                The value `http.host` is compared for inequality multiple times in an OR expression."#]],
+                The value `http.host` is compared for inequality multiple times in an OR expression.
+                Expr: 🡆🡆not http.host in { "example.com" } or http.host ne "example.org"🡄🡄"#]],
         );
     }
 
@@ -311,14 +323,16 @@ mod test {
             r#" (not ip.src in {1} or not ip.src in {1})"#,
             expect![[r#"
                 Found illogical condition with OR (illogical_condition)
-                The value `ip.src` is compared for inequality multiple times in an OR expression."#]],
+                The value `ip.src` is compared for inequality multiple times in an OR expression.
+                Expr:  (🡆🡆not ip.src in {1} or not ip.src in {1}🡄🡄)"#]],
         );
         expect_lint_message(
             &LINTER,
             r#" (not ip.src in {1} or not ip.src in $abc)"#,
             expect![[r#"
                 Found illogical condition with OR (illogical_condition)
-                The value `ip.src` is compared for inequality multiple times in an OR expression."#]],
+                The value `ip.src` is compared for inequality multiple times in an OR expression.
+                Expr:  (🡆🡆not ip.src in {1} or not ip.src in $abc🡄🡄)"#]],
         );
     }
 }

@@ -305,7 +305,7 @@ pub(super) mod test {
             .parse(expr)
             .expect("All wirefilter rules in the test must be valid expressions.");
         let reports = linter.lint(&mut ast, expr.trim());
-        check_expect_message(&reports, &expected);
+        check_expect_message(expr, &reports, &expected);
     }
 
     #[track_caller]
@@ -326,11 +326,11 @@ pub(super) mod test {
             .parse_value(expr)
             .expect("All wirefilter rules in the test must be valid expressions.");
         let reports = linter.lint_value(&mut ast, expr.trim());
-        check_expect_message(&reports, &expected);
+        check_expect_message(expr, &reports, &expected);
     }
 
     #[track_caller]
-    fn check_expect_message(reports: &[LintReport], expected: &Expect) {
+    fn check_expect_message(expr: &str, reports: &[LintReport], expected: &Expect) {
         assert!(
             !reports.is_empty(),
             "Expected a lint message but received nothing."
@@ -341,6 +341,26 @@ pub(super) mod test {
                 combined_report.push_str("\n\n");
             }
             combined_report.push_str(&m.to_string());
+            match &m.span {
+                Span::Missing => {}
+                Span::Byte(range) => {
+                    combined_report.push_str("\nExpr: ");
+                    combined_report.push_str(&expr[..range.start]);
+                    combined_report.push_str("🡆🡆");
+                    combined_report.push_str(&expr[range.start..range.end]);
+                    combined_report.push_str("🡄🡄");
+                    combined_report.push_str(&expr[range.end..]);
+                }
+                Span::ReverseByte(range) => {
+                    combined_report.push_str("\nExpr: ");
+                    combined_report.push_str(&expr[..(expr.len() - range.start)]);
+                    combined_report.push_str("🡆🡆");
+                    combined_report
+                        .push_str(&expr[(expr.len() - range.start)..(expr.len() - range.end)]);
+                    combined_report.push_str("🡄🡄");
+                    combined_report.push_str(&expr[(expr.len() - range.end)..]);
+                }
+            }
         }
         expected.assert_eq(&combined_report);
     }

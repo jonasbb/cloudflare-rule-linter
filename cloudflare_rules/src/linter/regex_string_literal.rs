@@ -140,50 +140,102 @@ mod test {
             &LINTER,
             r#"http.host eq "^example.com""#,
             expect![[r#"
-            Found regex syntax with a non-regex comparison operator (regex_string_literal)
-            This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax."#]],
+                Found regex syntax with a non-regex comparison operator (regex_string_literal)
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host eq "^example.com"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host eq "example.com$""#,
             expect![[r#"
-            Found regex syntax with a non-regex comparison operator (regex_string_literal)
-            This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax."#]],
+                Found regex syntax with a non-regex comparison operator (regex_string_literal)
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host eq "example.com$"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host wildcard "prefix(?i)example""#,
             expect![[r#"
                 Found regex syntax with a non-regex comparison operator (regex_string_literal)
-                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax."#]],
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host wildcard "prefix(?i)example"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host strict wildcard "example$""#,
             expect![[r#"
                 Found regex syntax with a non-regex comparison operator (regex_string_literal)
-                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax."#]],
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host strict wildcard "example$"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host in {"example.com$" "other"}"#,
             expect![[r#"
                 Found regex syntax with a non-regex comparison operator (regex_string_literal)
-                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax."#]],
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host in {"example.com$" "other"}🡄🡄"#]],
         );
     }
 
     #[test]
     fn test_inline_regex_flags() {
-        for flag in ["i", "m", "s", "R", "U", "u", "x"] {
-            expect_lint_message(
-                &LINTER,
-                &format!(r#"http.host eq "prefix(?{flag})suffix""#),
-                expect![[r#"
-                    Found regex syntax with a non-regex comparison operator (regex_string_literal)
-                    This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax."#]],
-            );
-        }
+        expect_lint_message(
+            &LINTER,
+            r#"http.host eq "prefix(?i)suffix""#,
+            expect![[r#"
+                Found regex syntax with a non-regex comparison operator (regex_string_literal)
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host eq "prefix(?i)suffix"🡄🡄"#]],
+        );
+        expect_lint_message(
+            &LINTER,
+            r#"http.host eq "prefix(?m)suffix""#,
+            expect![[r#"
+                Found regex syntax with a non-regex comparison operator (regex_string_literal)
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host eq "prefix(?m)suffix"🡄🡄"#]],
+        );
+        expect_lint_message(
+            &LINTER,
+            r#"http.host eq "prefix(?s)suffix""#,
+            expect![[r#"
+                Found regex syntax with a non-regex comparison operator (regex_string_literal)
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host eq "prefix(?s)suffix"🡄🡄"#]],
+        );
+        expect_lint_message(
+            &LINTER,
+            r#"http.host eq "prefix(?U)suffix""#,
+            expect![[r#"
+                Found regex syntax with a non-regex comparison operator (regex_string_literal)
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host eq "prefix(?U)suffix"🡄🡄"#]],
+        );
+        expect_lint_message(
+            &LINTER,
+            r#"http.host eq "prefix(?u)suffix""#,
+            expect![[r#"
+                Found regex syntax with a non-regex comparison operator (regex_string_literal)
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host eq "prefix(?u)suffix"🡄🡄"#]],
+        );
+        expect_lint_message(
+            &LINTER,
+            r#"http.host eq "prefix(?R)suffix""#,
+            expect![[r#"
+                Found regex syntax with a non-regex comparison operator (regex_string_literal)
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host eq "prefix(?R)suffix"🡄🡄"#]],
+        );
+        expect_lint_message(
+            &LINTER,
+            r#"http.host eq "prefix(?x)suffix""#,
+            expect![[r#"
+                Found regex syntax with a non-regex comparison operator (regex_string_literal)
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host eq "prefix(?x)suffix"🡄🡄"#]],
+        );
     }
 
     #[test]
@@ -192,15 +244,17 @@ mod test {
             &LINTER,
             r#"http.host eq "[[:alnum:]]""#,
             expect![[r#"
-            Found regex syntax with a non-regex comparison operator (regex_string_literal)
-            This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax."#]],
+                Found regex syntax with a non-regex comparison operator (regex_string_literal)
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host eq "[[:alnum:]]"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host eq "prefix[[:word:]]suffix""#,
             expect![[r#"
                 Found regex syntax with a non-regex comparison operator (regex_string_literal)
-                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax."#]],
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host eq "prefix[[:word:]]suffix"🡄🡄"#]],
         );
     }
 
@@ -211,14 +265,16 @@ mod test {
             r#"http.host eq "^(?im)prefix[[:alnum:]]suffix$""#,
             expect![[r#"
                 Found regex syntax with a non-regex comparison operator (regex_string_literal)
-                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax."#]],
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host eq "^(?im)prefix[[:alnum:]]suffix$"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host contains "middle[[:word:]](?x)tail""#,
             expect![[r#"
                 Found regex syntax with a non-regex comparison operator (regex_string_literal)
-                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax."#]],
+                This string contains regex syntax, but only `matches` interprets regular expressions. Use `matches` or remove the regex syntax.
+                Expr: 🡆🡆http.host contains "middle[[:word:]](?x)tail"🡄🡄"#]],
         );
     }
 

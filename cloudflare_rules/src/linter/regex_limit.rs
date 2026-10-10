@@ -99,7 +99,8 @@ mod test {
             &expressions,
             expect![[r#"
                 Too many regular expressions in rule (regex_limit)
-                The rule contains more than 64 regular expressions. Cloudflare allows at most 64 per rule and will refuse to create or update it."#]],
+                The rule contains more than 64 regular expressions. Cloudflare allows at most 64 per rule and will refuse to create or update it.
+                Expr: http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or http.host matches "example" or 🡆🡆http.host matches "example"🡄🡄"#]],
         );
 
         let expressions = (0..64)
@@ -121,7 +122,8 @@ mod test {
             r#"http.host matches "example" and regex_replace(http.host, r"example", "") eq """#,
             expect![[r#"
                 Too many regular expressions in rule (regex_limit)
-                The rule contains more than 1 regular expressions. Cloudflare allows at most 1 per rule and will refuse to create or update it."#]],
+                The rule contains more than 1 regular expressions. Cloudflare allows at most 1 per rule and will refuse to create or update it.
+                Expr: http.host matches "example" and 🡆🡆regex_replace(http.host, r"example", "")🡄🡄 eq """#]],
         );
         assert_value_no_lint_message(&linter, r#"regex_replace(http.host, r"example", "")"#);
     }

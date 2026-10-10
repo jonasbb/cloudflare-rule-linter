@@ -106,7 +106,8 @@ mod test {
             r#"ip.src in $cf.bot"#,
             expect![[r#"
                 Invalid managed list name (invalid_list_name)
-                Only the following managed list names are allowed: cf.anonymizer, cf.botnetcc, cf.malware, cf.open_proxies, cf.vpn"#]],
+                Only the following managed list names are allowed: cf.anonymizer, cf.botnetcc, cf.malware, cf.open_proxies, cf.vpn
+                Expr: 🡆🡆ip.src in $cf.bot🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"ip.src in $cf.vpn"#);
@@ -126,8 +127,9 @@ mod test {
             &linter,
             r#"ip.src in $unknown_list_name"#,
             expect![[r#"
-            Invalid custom list name (invalid_list_name)
-            Custom list name `unknown_list_name` is not in the allowed list of custom lists."#]],
+                Invalid custom list name (invalid_list_name)
+                Custom list name `unknown_list_name` is not in the allowed list of custom lists.
+                Expr: 🡆🡆ip.src in $unknown_list_name🡄🡄"#]],
         );
 
         assert_no_lint_message(&linter, r#"ip.src in $allowed_list"#);

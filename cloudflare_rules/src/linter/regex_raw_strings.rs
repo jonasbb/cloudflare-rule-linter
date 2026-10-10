@@ -102,7 +102,8 @@ mod test {
             r#"http.host matches ".*example\.com""#,
             expect![[r##"
                 Found regex match with non-raw string (regex_raw_strings)
-                Regex matches must use raw string literals (e.g., r"..." or r#"..."#) when using the `matches` operator."##]],
+                Regex matches must use raw string literals (e.g., r"..." or r#"..."#) when using the `matches` operator.
+                Expr: 🡆🡆http.host matches ".*example\.com"🡄🡄"##]],
         );
     }
 
@@ -113,7 +114,8 @@ mod test {
             r#"regex_replace(http.host, ".*example\\.com", "replacement")"#,
             expect![[r##"
                 Found regex match with non-raw string (regex_raw_strings)
-                Regex matches must use raw string literals (e.g., r"..." or r#"..."#) when using the `matches` operator."##]],
+                Regex matches must use raw string literals (e.g., r"..." or r#"..."#) when using the `matches` operator.
+                Expr: 🡆🡆regex_replace(http.host, ".*example\\.com", "replacement")🡄🡄"##]],
         );
     }
 

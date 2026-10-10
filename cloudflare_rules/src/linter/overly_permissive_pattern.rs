@@ -140,14 +140,16 @@ mod test {
             r#"http.host matches ".*""#,
             expect![[r#"
                 Overly permissive pattern (overly_permissive_pattern)
-                Consider using a more specific pattern to avoid unintended matches."#]],
+                Consider using a more specific pattern to avoid unintended matches.
+                Expr: 🡆🡆http.host matches ".*"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.host matches "|""#,
             expect![[r#"
                 Overly permissive pattern (overly_permissive_pattern)
-                Consider using a more specific pattern to avoid unintended matches."#]],
+                Consider using a more specific pattern to avoid unintended matches.
+                Expr: 🡆🡆http.host matches "|"🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"http.host matches "m*""#);
@@ -160,7 +162,8 @@ mod test {
             r#"http.host wildcard "*""#,
             expect![[r#"
                 Overly permissive pattern (overly_permissive_pattern)
-                Consider using a more specific pattern to avoid unintended matches."#]],
+                Consider using a more specific pattern to avoid unintended matches.
+                Expr: 🡆🡆http.host wildcard "*"🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"http.host wildcard ".*""#);
@@ -173,7 +176,8 @@ mod test {
             r#"http.host strict wildcard "*""#,
             expect![[r#"
                 Overly permissive pattern (overly_permissive_pattern)
-                Consider using a more specific pattern to avoid unintended matches."#]],
+                Consider using a more specific pattern to avoid unintended matches.
+                Expr: 🡆🡆http.host strict wildcard "*"🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"http.host strict wildcard ".*""#);
@@ -186,21 +190,24 @@ mod test {
             r#"http.request.uri.path matches "/.*""#,
             expect![[r#"
                 Overly permissive pattern (overly_permissive_pattern)
-                Consider using a more specific pattern to avoid unintended matches."#]],
+                Consider using a more specific pattern to avoid unintended matches.
+                Expr: 🡆🡆http.request.uri.path matches "/.*"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.request.uri.path wildcard "/*""#,
             expect![[r#"
                 Overly permissive pattern (overly_permissive_pattern)
-                Consider using a more specific pattern to avoid unintended matches."#]],
+                Consider using a more specific pattern to avoid unintended matches.
+                Expr: 🡆🡆http.request.uri.path wildcard "/*"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.request.uri.path strict wildcard "/*""#,
             expect![[r#"
                 Overly permissive pattern (overly_permissive_pattern)
-                Consider using a more specific pattern to avoid unintended matches."#]],
+                Consider using a more specific pattern to avoid unintended matches.
+                Expr: 🡆🡆http.request.uri.path strict wildcard "/*"🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"http.host matches "/.*""#);

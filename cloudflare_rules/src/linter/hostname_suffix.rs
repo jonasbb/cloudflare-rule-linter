@@ -166,7 +166,8 @@ mod test {
             r#"http.host eq "example.org""#,
             expect![[r#"
                 Found invalid value for `http.host` (hostname_suffix)
-                The value `example.org` is not a valid value for `http.host`. Valid values must end with `example.com`."#]],
+                The value `example.org` is not a valid value for `http.host`. Valid values must end with `example.com`.
+                Expr: 🡆🡆http.host eq "example.org"🡄🡄"#]],
         );
 
         expect_lint_message(
@@ -174,7 +175,8 @@ mod test {
             r#"http.host in { "example.org" "www.example.org" }"#,
             expect![[r#"
                 Found invalid value for `http.host` (hostname_suffix)
-                The value(s) `example.org www.example.org` are not a valid value for `http.host`. Valid values must end with `example.com`."#]],
+                The value(s) `example.org www.example.org` are not a valid value for `http.host`. Valid values must end with `example.com`.
+                Expr: 🡆🡆http.host in { "example.org" "www.example.org" }🡄🡄"#]],
         );
     }
 
@@ -190,7 +192,8 @@ mod test {
             r#"http.host eq "notexample.com""#,
             expect![[r#"
                 Found invalid value for `http.host` (hostname_suffix)
-                The value `notexample.com` is not a valid value for `http.host`. Valid values must end with `example.com`."#]],
+                The value `notexample.com` is not a valid value for `http.host`. Valid values must end with `example.com`.
+                Expr: 🡆🡆http.host eq "notexample.com"🡄🡄"#]],
         );
     }
 
@@ -206,7 +209,8 @@ mod test {
             r#"http.host eq "example.com""#,
             expect![[r#"
                 Found invalid value for `http.host` (hostname_suffix)
-                The value `example.com` is not a valid value for `http.host`. Valid values must end with `foo.bar.example.com`."#]],
+                The value `example.com` is not a valid value for `http.host`. Valid values must end with `foo.bar.example.com`.
+                Expr: 🡆🡆http.host eq "example.com"🡄🡄"#]],
         );
     }
 }

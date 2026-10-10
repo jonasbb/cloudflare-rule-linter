@@ -281,21 +281,24 @@ mod test {
             r#"ip.src eq 127.0.0.1"#,
             expect![[r#"
                 Found usage of reserved IP range (reserved_ip_space)
-                The value `127.0.0.1` is within reserved address space."#]],
+                The value `127.0.0.1` is within reserved address space.
+                Expr: 🡆🡆ip.src eq 127.0.0.1🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"ip.src in {10.0.0.0/8 8.8.8.8}"#,
             expect![[r#"
                 Found usage of reserved IP range (reserved_ip_space)
-                The value `10.0.0.0/8` is within reserved address space."#]],
+                The value `10.0.0.0/8` is within reserved address space.
+                Expr: 🡆🡆ip.src in {10.0.0.0/8 8.8.8.8}🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"ip.src in { fe80:0:0:1234::/96 }"#,
             expect![[r#"
                 Found usage of reserved IP range (reserved_ip_space)
-                The value `fe80:0:0:1234::/96` is within reserved address space."#]],
+                The value `fe80:0:0:1234::/96` is within reserved address space.
+                Expr: 🡆🡆ip.src in { fe80:0:0:1234::/96 }🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"ip.src eq 8.8.8.8"#);

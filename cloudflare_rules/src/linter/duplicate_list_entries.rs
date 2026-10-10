@@ -149,21 +149,24 @@ mod test {
             r#"ip.src in {1.2.3.4 1.2.3.4}"#,
             expect![[r#"
                 Found duplicate entry in list (duplicate_list_entries)
-                The values `1.2.3.4` and `1.2.3.4` overlap."#]],
+                The values `1.2.3.4` and `1.2.3.4` overlap.
+                Expr: 🡆🡆ip.src in {1.2.3.4 1.2.3.4}🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"ip.src in {1.2.3.4 1.0.0.0/8}"#,
             expect![[r#"
                 Found duplicate entry in list (duplicate_list_entries)
-                The values `1.2.3.4` and `1.0.0.0/8` overlap."#]],
+                The values `1.2.3.4` and `1.0.0.0/8` overlap.
+                Expr: 🡆🡆ip.src in {1.2.3.4 1.0.0.0/8}🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"ip.src in {2000::/32 2000::/48}"#,
             expect![[r#"
                 Found duplicate entry in list (duplicate_list_entries)
-                The values `2000::/32` and `2000::/48` overlap."#]],
+                The values `2000::/32` and `2000::/48` overlap.
+                Expr: 🡆🡆ip.src in {2000::/32 2000::/48}🡄🡄"#]],
         );
 
         // Different IP versions do not overlap
@@ -177,7 +180,8 @@ mod test {
             r#"http.host in {"example.com" "example.com"}"#,
             expect![[r#"
                 Found duplicate entry in list (duplicate_list_entries)
-                The value `example.com` appears multiple times in the list."#]],
+                The value `example.com` appears multiple times in the list.
+                Expr: 🡆🡆http.host in {"example.com" "example.com"}🡄🡄"#]],
         );
     }
 
@@ -188,14 +192,16 @@ mod test {
             r#"http.response.code in {400 300..499}"#,
             expect![[r#"
                 Found duplicate entry in list (duplicate_list_entries)
-                The values `400..400` and `300..499` overlap."#]],
+                The values `400..400` and `300..499` overlap.
+                Expr: 🡆🡆http.response.code in {400 300..499}🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.response.code in {200..499 300..307}"#,
             expect![[r#"
                 Found duplicate entry in list (duplicate_list_entries)
-                The values `200..499` and `300..307` overlap."#]],
+                The values `200..499` and `300..307` overlap.
+                Expr: 🡆🡆http.response.code in {200..499 300..307}🡄🡄"#]],
         );
 
         assert_no_lint_message(

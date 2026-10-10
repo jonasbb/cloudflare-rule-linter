@@ -577,14 +577,16 @@ mod test {
             r#"ip.src.continent eq "XX""#,
             expect![[r#"
                 Found invalid value for ip.src.continent (value_domain)
-                The value `XX` is not a valid value for `ip.src.continent`. Valid values are: `AF`, `AN`, `AS`, `EU`, `NA`, `OC`, `SA`, `T1`."#]],
+                The value `XX` is not a valid value for `ip.src.continent`. Valid values are: `AF`, `AN`, `AS`, `EU`, `NA`, `OC`, `SA`, `T1`.
+                Expr: 🡆🡆ip.src.continent eq "XX"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"ip.src.continent in {"EU" "XX" "NA"}"#,
             expect![[r#"
                 Found invalid value(s) for ip.src.continent (value_domain)
-                The value(s) `XX` are not valid for `ip.src.continent`. Valid values are: `AF`, `AN`, `AS`, `EU`, `NA`, `OC`, `SA`, `T1`."#]],
+                The value(s) `XX` are not valid for `ip.src.continent`. Valid values are: `AF`, `AN`, `AS`, `EU`, `NA`, `OC`, `SA`, `T1`.
+                Expr: 🡆🡆ip.src.continent in {"EU" "XX" "NA"}🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"ip.src.continent eq "EU""#);
@@ -599,7 +601,8 @@ mod test {
             r#"http.request.method eq "get""#,
             expect![[r#"
                 Found invalid value for http.request.method (value_domain)
-                The value `get` is not a valid value for `http.request.method`. Valid values are: `GET`, `POST`, `PUT`, `HEAD`, `OPTIONS`, `DELETE`, `CONNECT`, `TRACE`, `PATCH`, `QUERY`."#]],
+                The value `get` is not a valid value for `http.request.method`. Valid values are: `GET`, `POST`, `PUT`, `HEAD`, `OPTIONS`, `DELETE`, `CONNECT`, `TRACE`, `PATCH`, `QUERY`.
+                Expr: 🡆🡆http.request.method eq "get"🡄🡄"#]],
         );
 
         // mixed list should flag the lowercase entry
@@ -608,7 +611,8 @@ mod test {
             r#"http.request.method in {"GET" "post"}"#,
             expect![[r#"
                 Found invalid value(s) for http.request.method (value_domain)
-                The value(s) `post` are not valid for `http.request.method`. Valid values are: `GET`, `POST`, `PUT`, `HEAD`, `OPTIONS`, `DELETE`, `CONNECT`, `TRACE`, `PATCH`, `QUERY`."#]],
+                The value(s) `post` are not valid for `http.request.method`. Valid values are: `GET`, `POST`, `PUT`, `HEAD`, `OPTIONS`, `DELETE`, `CONNECT`, `TRACE`, `PATCH`, `QUERY`.
+                Expr: 🡆🡆http.request.method in {"GET" "post"}🡄🡄"#]],
         );
 
         // valid cases shouldn't trigger
@@ -624,7 +628,8 @@ mod test {
             r#"http.request.uri.path.extension eq "HTML""#,
             expect![[r#"
                 Found invalid value for http.request.uri.path.extension (value_domain)
-                The value `HTML` is not a valid value for `http.request.uri.path.extension`. Values must not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., "html")."#]],
+                The value `HTML` is not a valid value for `http.request.uri.path.extension`. Values must not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., "html").
+                Expr: 🡆🡆http.request.uri.path.extension eq "HTML"🡄🡄"#]],
         );
 
         // mixed list should flag the uppercase entry
@@ -633,7 +638,8 @@ mod test {
             r#"http.request.uri.path.extension in {"html" "CSS"}"#,
             expect![[r#"
                 Found invalid value(s) for http.request.uri.path.extension (value_domain)
-                The value(s) `CSS` are not valid for `http.request.uri.path.extension`. Values must not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., "html")."#]],
+                The value(s) `CSS` are not valid for `http.request.uri.path.extension`. Values must not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., "html").
+                Expr: 🡆🡆http.request.uri.path.extension in {"html" "CSS"}🡄🡄"#]],
         );
 
         // Dot in the extension should raise concerns
@@ -642,7 +648,8 @@ mod test {
             r#"http.request.uri.path.extension eq ".html""#,
             expect![[r#"
                 Found invalid value for http.request.uri.path.extension (value_domain)
-                The value `.html` is not a valid value for `http.request.uri.path.extension`. Values must not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., "html")."#]],
+                The value `.html` is not a valid value for `http.request.uri.path.extension`. Values must not contain dots (.) or slashes (/) and not contain uppercase characters (e.g., "html").
+                Expr: 🡆🡆http.request.uri.path.extension eq ".html"🡄🡄"#]],
         );
 
         // valid cases shouldn't trigger
@@ -664,7 +671,8 @@ mod test {
             r#"ip.src.country eq "us""#,
             expect![[r#"
                 Found invalid value for ip.src.country (value_domain)
-                The value `us` is not a valid value for `ip.src.country`. Values must be a 2-letter uppercase ISO 3166-1 Alpha-2 country code (e.g., "US")."#]],
+                The value `us` is not a valid value for `ip.src.country`. Values must be a 2-letter uppercase ISO 3166-1 Alpha-2 country code (e.g., "US").
+                Expr: 🡆🡆ip.src.country eq "us"🡄🡄"#]],
         );
 
         expect_lint_message(
@@ -672,7 +680,8 @@ mod test {
             r#"ip.src.country in {"US" "xx"}"#,
             expect![[r#"
                 Found invalid value(s) for ip.src.country (value_domain)
-                The value(s) `xx` are not valid for `ip.src.country`. Values must be a 2-letter uppercase ISO 3166-1 Alpha-2 country code (e.g., "US")."#]],
+                The value(s) `xx` are not valid for `ip.src.country`. Values must be a 2-letter uppercase ISO 3166-1 Alpha-2 country code (e.g., "US").
+                Expr: 🡆🡆ip.src.country in {"US" "xx"}🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"ip.src.country eq "US""#);
@@ -686,7 +695,8 @@ mod test {
             r#"http.request.timestamp.msec eq 1000"#,
             expect![[r#"
                 Found invalid value for http.request.timestamp.msec (value_domain)
-                The value `1000` is not a valid value for `http.request.timestamp.msec`. Valid values are between 0 and 999."#]],
+                The value `1000` is not a valid value for `http.request.timestamp.msec`. Valid values are between 0 and 999.
+                Expr: 🡆🡆http.request.timestamp.msec eq 1000🡄🡄"#]],
         );
 
         expect_lint_message(
@@ -694,7 +704,8 @@ mod test {
             r#"http.request.timestamp.msec in {0 1000}"#,
             expect![[r#"
                 Found invalid value(s) for http.request.timestamp.msec (value_domain)
-                The value(s) `1000` are not valid for `http.request.timestamp.msec`. Valid values are between 0 and 999."#]],
+                The value(s) `1000` are not valid for `http.request.timestamp.msec`. Valid values are between 0 and 999.
+                Expr: 🡆🡆http.request.timestamp.msec in {0 1000}🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"http.request.timestamp.msec eq 0"#);
@@ -709,7 +720,8 @@ mod test {
             r#"cf.edge.server_port eq 0"#,
             expect![[r#"
                 Found invalid value for cf.edge.server_port (value_domain)
-                The value `0` is not a valid value for `cf.edge.server_port`. Valid values are between 1 and 65535."#]],
+                The value `0` is not a valid value for `cf.edge.server_port`. Valid values are between 1 and 65535.
+                Expr: 🡆🡆cf.edge.server_port eq 0🡄🡄"#]],
         );
 
         expect_lint_message(
@@ -717,7 +729,8 @@ mod test {
             r#"cf.edge.server_port in {80 70000}"#,
             expect![[r#"
                 Found invalid value(s) for cf.edge.server_port (value_domain)
-                The value(s) `70000` are not valid for `cf.edge.server_port`. Valid values are between 1 and 65535."#]],
+                The value(s) `70000` are not valid for `cf.edge.server_port`. Valid values are between 1 and 65535.
+                Expr: 🡆🡆cf.edge.server_port in {80 70000}🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"cf.edge.server_port eq 80"#);
@@ -731,7 +744,8 @@ mod test {
             r#"cf.bot_management.score eq 0"#,
             expect![[r#"
                 Found invalid value for cf.bot_management.score (value_domain)
-                The value `0` is not a valid value for `cf.bot_management.score`. Valid values are between 1 and 99."#]],
+                The value `0` is not a valid value for `cf.bot_management.score`. Valid values are between 1 and 99.
+                Expr: 🡆🡆cf.bot_management.score eq 0🡄🡄"#]],
         );
 
         expect_lint_message(
@@ -739,7 +753,8 @@ mod test {
             r#"cf.bot_management.score in {1 100}"#,
             expect![[r#"
                 Found invalid value(s) for cf.bot_management.score (value_domain)
-                The value(s) `100` are not valid for `cf.bot_management.score`. Valid values are between 1 and 99."#]],
+                The value(s) `100` are not valid for `cf.bot_management.score`. Valid values are between 1 and 99.
+                Expr: 🡆🡆cf.bot_management.score in {1 100}🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"cf.bot_management.score eq 1"#);
@@ -753,7 +768,8 @@ mod test {
             r#"cf.response.error_type eq "sbfm""#,
             expect![[r#"
                 Found invalid value for cf.response.error_type (value_domain)
-                The value `sbfm` is not a valid value for `cf.response.error_type`. Valid values are: ``, `1xxx`, `5xx`, `always_online`, `country_challenge`, `ip_ban`, `iuam`, `legacy_challenge`, `managed_challenge`, `ratelimit`, `waf`."#]],
+                The value `sbfm` is not a valid value for `cf.response.error_type`. Valid values are: ``, `1xxx`, `5xx`, `always_online`, `country_challenge`, `ip_ban`, `iuam`, `legacy_challenge`, `managed_challenge`, `ratelimit`, `waf`.
+                Expr: 🡆🡆cf.response.error_type eq "sbfm"🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"cf.response.error_type eq "waf""#);
@@ -766,7 +782,8 @@ mod test {
             r#"cf.waf.score.class eq "bot""#,
             expect![[r#"
                 Found invalid value for cf.waf.score.class (value_domain)
-                The value `bot` is not a valid value for `cf.waf.score.class`. Valid values are: `attack`, `likely_attack`, `likely_clean`, `clean`."#]],
+                The value `bot` is not a valid value for `cf.waf.score.class`. Valid values are: `attack`, `likely_attack`, `likely_clean`, `clean`.
+                Expr: 🡆🡆cf.waf.score.class eq "bot"🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"cf.waf.score.class eq "clean""#);
@@ -779,14 +796,16 @@ mod test {
             r#"http.request.body.mime eq "image""#,
             expect![[r#"
                 Found invalid value for http.request.body.mime (value_domain)
-                The value `image` is not a valid value for `http.request.body.mime`. Values must be a mime-type with lowercase characters (e.g., "image/png")."#]],
+                The value `image` is not a valid value for `http.request.body.mime`. Values must be a mime-type with lowercase characters (e.g., "image/png").
+                Expr: 🡆🡆http.request.body.mime eq "image"🡄🡄"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"http.request.body.mime eq "Foo/Bar""#,
             expect![[r#"
                 Found invalid value for http.request.body.mime (value_domain)
-                The value `Foo/Bar` is not a valid value for `http.request.body.mime`. Values must be a mime-type with lowercase characters (e.g., "image/png")."#]],
+                The value `Foo/Bar` is not a valid value for `http.request.body.mime`. Values must be a mime-type with lowercase characters (e.g., "image/png").
+                Expr: 🡆🡆http.request.body.mime eq "Foo/Bar"🡄🡄"#]],
         );
 
         assert_no_lint_message(&LINTER, r#"http.request.body.mime eq "image/bmp""#);
@@ -807,7 +826,8 @@ mod test {
             r#"http.response.content_type.media_type eq "text""#,
             expect![[r#"
                 Found invalid value for http.response.content_type.media_type (value_domain)
-                The value `text` is not a valid value for `http.response.content_type.media_type`. Values must be a mime-type with lowercase characters (e.g., "image/png")."#]],
+                The value `text` is not a valid value for `http.response.content_type.media_type`. Values must be a mime-type with lowercase characters (e.g., "image/png").
+                Expr: 🡆🡆http.response.content_type.media_type eq "text"🡄🡄"#]],
         );
 
         assert_no_lint_message(
@@ -823,7 +843,8 @@ mod test {
             r#"http.request.version eq "3""#,
             expect![[r#"
                 Found invalid value for http.request.version (value_domain)
-                The value `3` is not a valid value for `http.request.version`. Valid values are: `HTTP/0.9`, `HTTP/1.0`, `HTTP/1.1`, `HTTP/2`, `HTTP/3`."#]],
+                The value `3` is not a valid value for `http.request.version`. Valid values are: `HTTP/0.9`, `HTTP/1.0`, `HTTP/1.1`, `HTTP/2`, `HTTP/3`.
+                Expr: 🡆🡆http.request.version eq "3"🡄🡄"#]],
         );
 
         assert_no_lint_message(
@@ -840,7 +861,8 @@ mod test {
             r#"lower(http.request.method) eq "GET""#,
             expect![[r#"
                 Found invalid value for lower(...) (value_domain)
-                The value `GET` is not a valid value for `lower(...)`. Values must not contain uppercase ASCII characters."#]],
+                The value `GET` is not a valid value for `lower(...)`. Values must not contain uppercase ASCII characters.
+                Expr: 🡆🡆lower(http.request.method) eq "GET"🡄🡄"#]],
         );
 
         expect_lint_message(
@@ -848,7 +870,8 @@ mod test {
             r#"lower(http.request.method) in {"get" "POST"}"#,
             expect![[r#"
                 Found invalid value(s) for lower(...) (value_domain)
-                The value(s) `POST` are not valid for `lower(...)`. Values must not contain uppercase ASCII characters."#]],
+                The value(s) `POST` are not valid for `lower(...)`. Values must not contain uppercase ASCII characters.
+                Expr: 🡆🡆lower(http.request.method) in {"get" "POST"}🡄🡄"#]],
         );
 
         // upper() result must not contain lowercase characters
@@ -857,7 +880,8 @@ mod test {
             r#"upper(http.request.method) eq "get""#,
             expect![[r#"
                 Found invalid value for upper(...) (value_domain)
-                The value `get` is not a valid value for `upper(...)`. Values must not contain lowercase ASCII characters."#]],
+                The value `get` is not a valid value for `upper(...)`. Values must not contain lowercase ASCII characters.
+                Expr: 🡆🡆upper(http.request.method) eq "get"🡄🡄"#]],
         );
 
         expect_lint_message(
@@ -865,7 +889,8 @@ mod test {
             r#"upper(http.request.method) in {"GET" "post"}"#,
             expect![[r#"
                 Found invalid value(s) for upper(...) (value_domain)
-                The value(s) `post` are not valid for `upper(...)`. Values must not contain lowercase ASCII characters."#]],
+                The value(s) `post` are not valid for `upper(...)`. Values must not contain lowercase ASCII characters.
+                Expr: 🡆🡆upper(http.request.method) in {"GET" "post"}🡄🡄"#]],
         );
 
         // valid cases shouldn't trigger
@@ -881,7 +906,8 @@ mod test {
             r#"len(http.request.uri.path.extension) < 0"#,
             expect![[r#"
                 Found invalid value for len(...) (value_domain)
-                The value `0` are not valid for `len(...)`. Values must be >= 0."#]],
+                The value `0` are not valid for `len(...)`. Values must be >= 0.
+                Expr: 🡆🡆len(http.request.uri.path.extension) < 0🡄🡄"#]],
         );
 
         // len(...) <= 0 should warn
@@ -890,7 +916,8 @@ mod test {
             r#"len(http.request.uri.path.extension) <= 0"#,
             expect![[r#"
                 Found bad value for len(...) (value_domain)
-                len(...) can never be negative thus `lt 0` can be simplified to `eq 0`."#]],
+                len(...) can never be negative thus `lt 0` can be simplified to `eq 0`.
+                Expr: 🡆🡆len(http.request.uri.path.extension) <= 0🡄🡄"#]],
         );
 
         // len(...) eq -1 should warn
@@ -899,7 +926,8 @@ mod test {
             r#"len(http.request.uri.path.extension) eq -1"#,
             expect![[r#"
                 Found invalid value for len(...) (value_domain)
-                The value `-1` are not valid for `len(...)`. Values must be >= 0."#]],
+                The value `-1` are not valid for `len(...)`. Values must be >= 0.
+                Expr: 🡆🡆len(http.request.uri.path.extension) eq -1🡄🡄"#]],
         );
 
         // len(...) in {-1 0} should flag -1
@@ -908,7 +936,8 @@ mod test {
             r#"len(http.request.uri.path.extension) in {-1 0}"#,
             expect![[r#"
                 Found invalid value(s) for len(...) (value_domain)
-                The value(s) `-1` are not valid for `len(...)`. Values must be >= 0."#]],
+                The value(s) `-1` are not valid for `len(...)`. Values must be >= 0.
+                Expr: 🡆🡆len(http.request.uri.path.extension) in {-1 0}🡄🡄"#]],
         );
 
         // valid cases shouldn't trigger
@@ -923,7 +952,8 @@ mod test {
             r#"http.request.uri.path eq "html""#,
             expect![[r#"
                 Found invalid value for http.request.uri.path (value_domain)
-                The value `html` is not a valid value for `http.request.uri.path`. Values must start with a slash (/) and not contain a question mark (?)."#]],
+                The value `html` is not a valid value for `http.request.uri.path`. Values must start with a slash (/) and not contain a question mark (?).
+                Expr: 🡆🡆http.request.uri.path eq "html"🡄🡄"#]],
         );
         assert_no_lint_message(&LINTER, r#"http.request.uri.path eq "/""#);
 
@@ -932,7 +962,8 @@ mod test {
             r#"raw.http.request.uri.path eq "html""#,
             expect![[r#"
                 Found invalid value for raw.http.request.uri.path (value_domain)
-                The value `html` is not a valid value for `raw.http.request.uri.path`. Values must start with a slash (/) and not contain a question mark (?)."#]],
+                The value `html` is not a valid value for `raw.http.request.uri.path`. Values must start with a slash (/) and not contain a question mark (?).
+                Expr: 🡆🡆raw.http.request.uri.path eq "html"🡄🡄"#]],
         );
         assert_no_lint_message(&LINTER, r#"raw.http.request.uri.path eq "/""#);
     }
@@ -944,7 +975,8 @@ mod test {
             r#"http.request.full_uri eq "www.example.com/foo/index.html""#,
             expect![[r#"
                 Found invalid value for http.request.full_uri (value_domain)
-                The value `www.example.com/foo/index.html` is not a valid value for `http.request.full_uri`. Values must start with "http://" or "https://"."#]],
+                The value `www.example.com/foo/index.html` is not a valid value for `http.request.full_uri`. Values must start with "http://" or "https://".
+                Expr: 🡆🡆http.request.full_uri eq "www.example.com/foo/index.html"🡄🡄"#]],
         );
         assert_no_lint_message(
             &LINTER,
@@ -960,7 +992,8 @@ mod test {
             r#"raw.http.request.full_uri eq "www.example.com/foo/index.html""#,
             expect![[r#"
                 Found invalid value for raw.http.request.full_uri (value_domain)
-                The value `www.example.com/foo/index.html` is not a valid value for `raw.http.request.full_uri`. Values must start with "http://" or "https://"."#]],
+                The value `www.example.com/foo/index.html` is not a valid value for `raw.http.request.full_uri`. Values must start with "http://" or "https://".
+                Expr: 🡆🡆raw.http.request.full_uri eq "www.example.com/foo/index.html"🡄🡄"#]],
         );
         assert_no_lint_message(
             &LINTER,

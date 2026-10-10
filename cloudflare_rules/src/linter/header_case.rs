@@ -184,21 +184,24 @@ mod test {
             r#"any(http.request.headers["Authorization"][*] wildcard "Bearer *")"#,
             expect![[r#"
                 Found uppercase characters in header name `Authorization` (header_case)
-                The map key `Authorization` used to index `http.request.headers` contains uppercase characters; keys should be lowercase (e.g., "content-type")."#]],
+                The map key `Authorization` used to index `http.request.headers` contains uppercase characters; keys should be lowercase (e.g., "content-type").
+                Expr: any(🡆🡆http.request.headers["Authorization"][*]🡄🡄 wildcard "Bearer *")"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"any(http.response.headers["Authorization"][*] wildcard "Bearer *")"#,
             expect![[r#"
                 Found uppercase characters in header name `Authorization` (header_case)
-                The map key `Authorization` used to index `http.response.headers` contains uppercase characters; keys should be lowercase (e.g., "content-type")."#]],
+                The map key `Authorization` used to index `http.response.headers` contains uppercase characters; keys should be lowercase (e.g., "content-type").
+                Expr: any(🡆🡆http.response.headers["Authorization"][*]🡄🡄 wildcard "Bearer *")"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"any(raw.http.response.headers["Authorization"][*] wildcard "Bearer *")"#,
             expect![[r#"
                 Found uppercase characters in header name `Authorization` (header_case)
-                The map key `Authorization` used to index `raw.http.response.headers` contains uppercase characters; keys should be lowercase (e.g., "content-type")."#]],
+                The map key `Authorization` used to index `raw.http.response.headers` contains uppercase characters; keys should be lowercase (e.g., "content-type").
+                Expr: any(🡆🡆raw.http.response.headers["Authorization"][*]🡄🡄 wildcard "Bearer *")"#]],
         );
     }
 
@@ -209,21 +212,24 @@ mod test {
             r#"any(http.request.headers.names[*] eq "Authorization")"#,
             expect![[r#"
                 Found exact comparison with header `Authorization` (header_case)
-                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name."#]],
+                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name.
+                Expr: any(🡆🡆http.request.headers.names[*] eq "Authorization"🡄🡄)"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"any(http.response.headers.names[*] eq "Authorization")"#,
             expect![[r#"
                 Found exact comparison with header `Authorization` (header_case)
-                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name."#]],
+                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name.
+                Expr: any(🡆🡆http.response.headers.names[*] eq "Authorization"🡄🡄)"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"any(raw.http.response.headers.names[*] eq "Authorization")"#,
             expect![[r#"
                 Found exact comparison with header `Authorization` (header_case)
-                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name."#]],
+                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name.
+                Expr: any(🡆🡆raw.http.response.headers.names[*] eq "Authorization"🡄🡄)"#]],
         );
 
         // Case doesn't matter as long as it is an exact match
@@ -232,28 +238,32 @@ mod test {
             r#"any(http.response.headers.names[*] eq "content-type")"#,
             expect![[r#"
                 Found exact comparison with header `content-type` (header_case)
-                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name."#]],
+                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name.
+                Expr: any(🡆🡆http.response.headers.names[*] eq "content-type"🡄🡄)"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"any(http.response.headers.names[*] ne "content-type")"#,
             expect![[r#"
                 Found exact comparison with header `content-type` (header_case)
-                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name."#]],
+                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name.
+                Expr: any(🡆🡆http.response.headers.names[*] ne "content-type"🡄🡄)"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"any(http.response.headers.names[*] in { "content-type" })"#,
             expect![[r#"
                 Found exact comparison with header `content-type` (header_case)
-                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name."#]],
+                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider using lower() to normalize the header name.
+                Expr: any(🡆🡆http.response.headers.names[*] in { "content-type" }🡄🡄)"#]],
         );
         expect_lint_message(
             &LINTER,
             r#"any(http.response.headers.names[*] strict wildcard "content-type" )"#,
             expect![[r#"
                 Found a strict wildcard comparison with header (header_case)
-                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider `wildcard` instead of `strict wildcard`."#]],
+                These header fields are not normalized, thus an exact match can lead to the rule not working. Consider `wildcard` instead of `strict wildcard`.
+                Expr: any(🡆🡆http.response.headers.names[*] strict wildcard "content-type"🡄🡄 )"#]],
         );
     }
 
@@ -277,7 +287,8 @@ mod test {
             r#"lower(http.request.headers["Mac"][0]) eq """#,
             expect![[r#"
                 Found uppercase characters in header name `Mac` (header_case)
-                The map key `Mac` used to index `http.request.headers` contains uppercase characters; keys should be lowercase (e.g., "content-type")."#]],
+                The map key `Mac` used to index `http.request.headers` contains uppercase characters; keys should be lowercase (e.g., "content-type").
+                Expr: lower(🡆🡆http.request.headers["Mac"][0]🡄🡄) eq """#]],
         );
     }
 
@@ -299,9 +310,31 @@ mod test {
             expect![[r#"
                 Found uppercase characters in header name `Timestamp` (header_case)
                 The map key `Timestamp` used to index `http.request.headers` contains uppercase characters; keys should be lowercase (e.g., "content-type").
+                Expr: is_timed_hmac_valid_v0(
+                  "mysecretkey",
+                  concat(
+                    http.request.uri,
+                    🡆🡆http.request.headers["Timestamp"][0]🡄🡄,
+                    "-",
+                    http.request.headers["Mac"][0]),
+                  100000,
+                  http.request.timestamp.sec,
+                  0
+                )
 
                 Found uppercase characters in header name `Mac` (header_case)
-                The map key `Mac` used to index `http.request.headers` contains uppercase characters; keys should be lowercase (e.g., "content-type")."#]],
+                The map key `Mac` used to index `http.request.headers` contains uppercase characters; keys should be lowercase (e.g., "content-type").
+                Expr: is_timed_hmac_valid_v0(
+                  "mysecretkey",
+                  concat(
+                    http.request.uri,
+                    http.request.headers["Timestamp"][0],
+                    "-",
+                    🡆🡆http.request.headers["Mac"][0]🡄🡄),
+                  100000,
+                  http.request.timestamp.sec,
+                  0
+                )"#]],
         );
     }
 }

@@ -104,7 +104,8 @@ mod test {
             r#"ip.geoip.asnum eq 1"#,
             expect![[r#"
                 Found deprecated field ip.geoip.asnum (deprecated_field)
-                The value `ip.geoip.asnum` should be replaced with `ip.src.asnum`."#]],
+                The value `ip.geoip.asnum` should be replaced with `ip.src.asnum`.
+                Expr: 🡆🡆ip.geoip.asnum eq 1🡄🡄"#]],
         );
 
         expect_lint_message(
@@ -112,7 +113,8 @@ mod test {
             r#"ip.geoip.country eq "US""#,
             expect![[r#"
                 Found deprecated field ip.geoip.country (deprecated_field)
-                The value `ip.geoip.country` should be replaced with `ip.src.country`."#]],
+                The value `ip.geoip.country` should be replaced with `ip.src.country`.
+                Expr: 🡆🡆ip.geoip.country eq "US"🡄🡄"#]],
         );
     }
 

@@ -158,7 +158,8 @@ mod test {
             r#"http.host strict wildcard "example""#,
             expect![[r#"
                 Found wildcard match without any wildcards `*` (unnecessary_patterns)
-                The strict wildcard can be simplified to an equality check with `eq "..."`."#]],
+                The strict wildcard can be simplified to an equality check with `eq "..."`.
+                Expr: 🡆🡆http.host strict wildcard "example"🡄🡄"#]],
         );
     }
 
@@ -174,7 +175,8 @@ mod test {
             r#"http.host matches "example""#,
             expect![[r#"
                 Found regex match without special characters (unnecessary_patterns)
-                The regex match can be simplified to a `contains "..."`"#]],
+                The regex match can be simplified to a `contains "..."`
+                Expr: 🡆🡆http.host matches "example"🡄🡄"#]],
         );
     }
 
@@ -191,7 +193,8 @@ mod test {
             r#"http.host matches "^example$""#,
             expect![[r#"
                 Found regex match without special characters (unnecessary_patterns)
-                The regex match can be simplified to an equality check with `eq "..."`."#]],
+                The regex match can be simplified to an equality check with `eq "..."`.
+                Expr: 🡆🡆http.host matches "^example$"🡄🡄"#]],
         );
         // Literal alteration without capture group
         expect_lint_message(
@@ -199,7 +202,8 @@ mod test {
             r#"http.host matches "^(?:ex|am|ple)$""#,
             expect![[r#"
                 Found regex match without special characters (unnecessary_patterns)
-                The regex match can be simplified to a list check `in {"..." "..."}`"#]],
+                The regex match can be simplified to a list check `in {"..." "..."}`
+                Expr: 🡆🡆http.host matches "^(?:ex|am|ple)$"🡄🡄"#]],
         );
         // Literal alteration with capture group
         expect_lint_message(
@@ -207,7 +211,8 @@ mod test {
             r#"http.host matches "^(ex|am|ple)$""#,
             expect![[r#"
                 Found regex match without special characters (unnecessary_patterns)
-                The regex match can be simplified to a list check `in {"..." "..."}`"#]],
+                The regex match can be simplified to a list check `in {"..." "..."}`
+                Expr: 🡆🡆http.host matches "^(ex|am|ple)$"🡄🡄"#]],
         );
     }
 
