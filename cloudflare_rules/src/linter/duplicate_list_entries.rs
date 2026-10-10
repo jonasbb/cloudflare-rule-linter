@@ -203,4 +203,13 @@ mod test {
             r#"http.response.code in {200 201 202..204 205..207 208}"#,
         );
     }
+
+    #[test]
+    fn test_range_no_overlap() {
+        assert_no_lint_message(
+            &LINTER,
+            r#"ip.src in {1.0.0.100..1.0.0.199 1.0.0.0..1.0.0.99}"#,
+        );
+        assert_no_lint_message(&LINTER, r#"ip.src in {::100..::199 ::0..::99}"#);
+    }
 }
