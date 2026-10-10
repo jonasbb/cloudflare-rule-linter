@@ -107,6 +107,17 @@ mod test {
     }
 
     #[test]
+    fn test_regex_function_warns() {
+        expect_value_lint_message(
+            &LINTER,
+            r#"regex_replace(http.host, ".*example\\.com", "replacement")"#,
+            expect![[r##"
+                Found regex match with non-raw string (regex_raw_strings)
+                Regex matches must use raw string literals (e.g., r"..." or r#"..."#) when using the `matches` operator."##]],
+        );
+    }
+
+    #[test]
     fn test_regex_raw_no_warn() {
         assert_no_lint_message(&LINTER, r#"http.host matches r".*example.*""#);
     }
