@@ -302,5 +302,7 @@ mod test {
         );
 
         assert_no_lint_message(&LINTER, r#"ip.src eq 8.8.8.8"#);
+        assert_no_lint_message(&LINTER, r#"ip.src eq 2004::1"#);
+        assert_no_lint_message(&LINTER, r#"ip.src in { 2004::1 }"#);
     }
 }

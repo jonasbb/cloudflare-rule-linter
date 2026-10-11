@@ -285,6 +285,7 @@ mod test {
         assert_no_lint_message(&LINTER, r#"http.host eq r"example.com\$""#);
         assert_no_lint_message(&LINTER, r#"http.host eq r"\(?i)""#);
         assert_no_lint_message(&LINTER, r#"http.host eq r"\[[:alnum:]]""#);
+        assert_no_lint_message(&LINTER, r#"http.host eq r"[[:alnum""#);
         assert_no_lint_message(&LINTER, r#"http.host eq "plain.example.com""#);
     }
 }

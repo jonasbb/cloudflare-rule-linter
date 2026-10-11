@@ -161,7 +161,8 @@ mod test {
 
     #[test]
     fn test_min_timestamp_ok() {
-        assert_no_lint_message(&LINTER, "http.request.timestamp.sec eq 1577833200");
+        assert_no_lint_message(&LINTER, "http.request.timestamp.sec eq 1262300400");
+        assert_no_lint_message(&LINTER, "http.request.timestamp.sec in { 1262300400 }");
     }
 
     #[test]
@@ -192,11 +193,15 @@ mod test {
     fn test_one_of_checks() {
         expect_lint_message(
             &LINTER,
-            "http.request.timestamp.sec in {1104500000..1577833299}",
+            "http.request.timestamp.sec in {1104500000..32503676400}",
             expect![[r#"
                 Comparison with very time constant below `min_timestamp` (timestamp_comparisons)
                 Found comparison against http.request.timestamp.sec with value 1104500000 which is below min_timestamp (1262300400).
-                Expr: 🡆🡆http.request.timestamp.sec in {1104500000..1577833299}🡄🡄"#]],
+                Expr: 🡆🡆http.request.timestamp.sec in {1104500000..32503676400}🡄🡄
+
+                Comparison with future time after `future_delta` (timestamp_comparisons)
+                Found comparison against http.request.timestamp.sec with value 32503676400 which is too far in the future.
+                Expr: 🡆🡆http.request.timestamp.sec in {1104500000..32503676400}🡄🡄"#]],
         );
     }
 }

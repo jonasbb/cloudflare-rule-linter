@@ -185,4 +185,16 @@ mod test {
                 Expr: wildcard_replace(🡆🡆regex_replace🡄🡄(http.host, r"www\.", ""), "*.", "")"#]],
         );
     }
+
+    #[test]
+    fn test_allow_different_replace_functions() {
+        assert_value_no_lint_message(
+            &LINTER,
+            r#"concat(regex_replace(http.host, r"www\.", ""), wildcard_replace(http.host, "*.", ""))"#,
+        );
+        assert_value_no_lint_message(
+            &LINTER,
+            r#"concat(wildcard_replace(http.host, "*.", ""), regex_replace(http.host, r"www\.", ""))"#,
+        );
+    }
 }
