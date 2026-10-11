@@ -79,7 +79,7 @@ mod test {
             expect![[r#"
                 Found inverted `substring()` indices (substring_index_order)
                 The end index (5) is less than the start index (10), so `substring()` returns an empty string. Ensure the end index is at least the start index, or use a negative index to count from the end.
-                Expr: substring(http.request.uri.path, 10, 5) eq "/api"🡆🡆🡄🡄"#]],
+                Expr: 🡆🡆substring🡄🡄(http.request.uri.path, 10, 5) eq "/api""#]],
         );
     }
 

@@ -134,7 +134,7 @@ mod test {
             expect![[r#"
                 Multiple regex_replace functions are not allowed. (replace_functions_limit)
                 The function `regex_replace` is only allowed to be used once in a filter expression.
-                Expr: concat(regex_replace(http.host, r"www\.", ""), regex_replace(http.host, r"www\.", ""))🡆🡆🡄🡄"#]],
+                Expr: concat(regex_replace(http.host, r"www\.", ""), 🡆🡆regex_replace🡄🡄(http.host, r"www\.", ""))"#]],
         );
         expect_value_lint_message(
             &LINTER,
@@ -142,7 +142,7 @@ mod test {
             expect![[r#"
                 Multiple regex_replace functions are not allowed. (replace_functions_limit)
                 The function `regex_replace` is only allowed to be used once in a filter expression.
-                Expr: regex_replace(regex_replace(http.host, r"www\.", ""), r"example\.", "")🡆🡆🡄🡄"#]],
+                Expr: regex_replace(🡆🡆regex_replace🡄🡄(http.host, r"www\.", ""), r"example\.", "")"#]],
         );
     }
 
@@ -154,7 +154,7 @@ mod test {
             expect![[r#"
                 Multiple wildcard_replace functions are not allowed. (replace_functions_limit)
                 The function `wildcard_replace` is only allowed to be used once in a filter expression.
-                Expr: concat(wildcard_replace(http.host, "*.", ""), wildcard_replace(http.host, "*.", ""))🡆🡆🡄🡄"#]],
+                Expr: concat(wildcard_replace(http.host, "*.", ""), 🡆🡆wildcard_replace🡄🡄(http.host, "*.", ""))"#]],
         );
         expect_value_lint_message(
             &LINTER,
@@ -162,7 +162,7 @@ mod test {
             expect![[r#"
                 Multiple wildcard_replace functions are not allowed. (replace_functions_limit)
                 The function `wildcard_replace` is only allowed to be used once in a filter expression.
-                Expr: wildcard_replace(wildcard_replace(http.host, "*.", ""), "*.", "")🡆🡆🡄🡄"#]],
+                Expr: wildcard_replace(🡆🡆wildcard_replace🡄🡄(http.host, "*.", ""), "*.", "")"#]],
         );
     }
 
@@ -174,7 +174,7 @@ mod test {
             expect![[r#"
                 Nested wildcard_replace functions are not allowed. (replace_functions_limit)
                 The function `wildcard_replace` is not allowed to be nested inside another `regex_replace` function.
-                Expr: regex_replace(wildcard_replace(http.host, "*.", ""), r"www\.", "")🡆🡆🡄🡄"#]],
+                Expr: regex_replace(🡆🡆wildcard_replace🡄🡄(http.host, "*.", ""), r"www\.", "")"#]],
         );
         expect_value_lint_message(
             &LINTER,
@@ -182,7 +182,7 @@ mod test {
             expect![[r#"
                 Nested regex_replace functions are not allowed. (replace_functions_limit)
                 The function `regex_replace` is not allowed to be nested inside another `wildcard_replace` function.
-                Expr: wildcard_replace(regex_replace(http.host, r"www\.", ""), "*.", "")🡆🡆🡄🡄"#]],
+                Expr: wildcard_replace(🡆🡆regex_replace🡄🡄(http.host, r"www\.", ""), "*.", "")"#]],
         );
     }
 }

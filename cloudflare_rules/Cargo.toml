@@ -21,7 +21,7 @@ regex-syntax = "0.8.11"
 serde = {version = "1.0.229", features = ["derive"]}
 serde_json = "1.0.151"
 strum = {version = "0.28.0", features = ["derive"]}
-wirefilter-engine = {git = "https://github.com/jonasbb/wirefilter/", rev = "c291300c929edb0b3d26f3c666221bcb65c6462d", features = [
+wirefilter-engine = {git = "https://github.com/jonasbb/wirefilter/", rev = "65b46d1cf436e0aa72379e796d391fc4f19517d0", features = [
     "regex",
 ]}
 
