@@ -358,6 +358,12 @@ fn requests_early(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_r
     // GENERATED_SCHEMA_FIELDS_REQUESTS_EARLY_START
     // Standard field definitions
     // Cf Fields
+    builder
+        .add_field(
+            "cf.appsec.request.failed_detections",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
     builder.add_field("cf.client.bot", Type::Bool).unwrap();
     builder.add_field("cf.edge.client_tcp", Type::Bool).unwrap();
     builder
@@ -457,9 +463,6 @@ fn requests_early(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_r
         .unwrap();
     builder.add_field("cf.tls_cipher", Type::Bytes).unwrap();
     builder
-        .add_field("cf.tls_ciphers_sha1", Type::Bytes)
-        .unwrap();
-    builder
         .add_field("cf.tls_client_auth.cert_chain_rfc9440", Type::Bytes)
         .unwrap();
     builder
@@ -526,6 +529,9 @@ fn requests_early(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_r
         .add_field("cf.tls_client_auth.cert_verified", Type::Bool)
         .unwrap();
     builder
+        .add_field("cf.tls_client_ciphers_sha1", Type::Bytes)
+        .unwrap();
+    builder
         .add_field("cf.tls_client_extensions_sha1", Type::Bytes)
         .unwrap();
     builder
@@ -555,6 +561,9 @@ fn requests_early(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_r
             "http.request.accepted_languages",
             Type::Array(Type::Bytes.into()),
         )
+        .unwrap();
+    builder
+        .add_field("http.request.clearance.uuid", Type::Bytes)
         .unwrap();
     builder
         .add_field(
@@ -749,6 +758,9 @@ fn requests_mid(builder: &mut wirefilter::SchemeBuilder, #[allow(unused)] is_res
     // Cf Fields
     builder
         .add_field("cf.waf.auth_detected", Type::Bool)
+        .unwrap();
+    builder
+        .add_field("cf.waf.content_scan.has_encrypted_obj", Type::Bool)
         .unwrap();
     builder
         .add_field("cf.waf.content_scan.has_failed", Type::Bool)
@@ -1242,6 +1254,12 @@ fn add_all_fields(
         .add_field("cf.api_gateway.fallthrough_detected", Type::Bool)
         .unwrap();
     builder
+        .add_field(
+            "cf.appsec.request.failed_detections",
+            Type::Array(Type::Bytes.into()),
+        )
+        .unwrap();
+    builder
         .add_field("cf.bot_management.corporate_proxy", Type::Bool)
         .unwrap();
     builder
@@ -1458,9 +1476,6 @@ fn add_all_fields(
     }
     builder.add_field("cf.tls_cipher", Type::Bytes).unwrap();
     builder
-        .add_field("cf.tls_ciphers_sha1", Type::Bytes)
-        .unwrap();
-    builder
         .add_field("cf.tls_client_auth.cert_chain_rfc9440", Type::Bytes)
         .unwrap();
     builder
@@ -1527,6 +1542,9 @@ fn add_all_fields(
         .add_field("cf.tls_client_auth.cert_verified", Type::Bool)
         .unwrap();
     builder
+        .add_field("cf.tls_client_ciphers_sha1", Type::Bytes)
+        .unwrap();
+    builder
         .add_field("cf.tls_client_extensions_sha1", Type::Bytes)
         .unwrap();
     builder
@@ -1544,6 +1562,9 @@ fn add_all_fields(
         .unwrap();
     builder
         .add_field("cf.waf.auth_detected", Type::Bool)
+        .unwrap();
+    builder
+        .add_field("cf.waf.content_scan.has_encrypted_obj", Type::Bool)
         .unwrap();
     builder
         .add_field("cf.waf.content_scan.has_failed", Type::Bool)
@@ -1713,6 +1734,9 @@ fn add_all_fields(
         .unwrap();
     builder
         .add_field("http.request.body.truncated", Type::Bool)
+        .unwrap();
+    builder
+        .add_field("http.request.clearance.uuid", Type::Bytes)
         .unwrap();
     builder
         .add_field(
