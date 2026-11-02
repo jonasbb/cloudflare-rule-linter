@@ -281,9 +281,9 @@ mod test {
             &l,
             r#"http.request.full_uri eq "https://www.example.org/path?query=value""#,
             expect![[r#"
-                Found invalid value for `http.host` (hostname_suffix)
-                The value `example.com` is not a valid value for `http.host`. Valid values must end with `foo.bar.example.com`.
-                Expr: 🡆🡆http.host eq "example.com"🡄🡄"#]],
+                Found invalid value for `http.request.full_uri` (hostname_suffix)
+                The value `https://www.example.org/path?query=value` is not a valid value for `http.request.full_uri`. Valid values must end with `example.com`.
+                Expr: 🡆🡆http.request.full_uri eq "https://www.example.org/path?query=value"🡄🡄"#]],
         );
         assert_no_lint_message(
             &l,
@@ -294,9 +294,9 @@ mod test {
             &l,
             r#"raw.http.request.full_uri eq "https://www.example.org/path?query=value""#,
             expect![[r#"
-                Found invalid value for `http.host` (hostname_suffix)
-                The value `example.com` is not a valid value for `http.host`. Valid values must end with `foo.bar.example.com`.
-                Expr: 🡆🡆http.host eq "example.com"🡄🡄"#]],
+                Found invalid value for `raw.http.request.full_uri` (hostname_suffix)
+                The value `https://www.example.org/path?query=value` is not a valid value for `raw.http.request.full_uri`. Valid values must end with `example.com`.
+                Expr: 🡆🡆raw.http.request.full_uri eq "https://www.example.org/path?query=value"🡄🡄"#]],
         );
         assert_no_lint_message(
             &l,
