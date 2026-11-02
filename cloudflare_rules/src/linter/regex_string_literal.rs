@@ -79,6 +79,8 @@ fn has_anchor(pattern: &str) -> bool {
     bytes.last() == Some(&b'$') && !is_escaped(bytes, bytes.len() - 1)
 }
 
+// // Mutants: Test timeout if cursor += 1; or index is changed to *= since no progress is made
+// #[mutants::skip] // #[mutants::exclude_re("replace \\+= with \\*=")]
 fn has_inline_flags(pattern: &str) -> bool {
     let bytes = pattern.as_bytes();
     let mut index = 0;
