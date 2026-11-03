@@ -1139,7 +1139,7 @@ dependencies = [
 [[package]]
 name = "wirefilter-engine"
 version = "0.7.0"
-source = "git+https://github.com/jonasbb/wirefilter/?rev=65b46d1cf436e0aa72379e796d391fc4f19517d0#65b46d1cf436e0aa72379e796d391fc4f19517d0"
+source = "git+https://github.com/jonasbb/wirefilter/?rev=8b6e989e21b687f0b68e59a46c825285cec86c6b#8b6e989e21b687f0b68e59a46c825285cec86c6b"
 dependencies = [
  "backtrace",
  "cfg-if",

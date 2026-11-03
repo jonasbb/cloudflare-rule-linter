@@ -209,6 +209,15 @@ pub(crate) fn build_scheme(phase: Phase) -> Scheme {
         builder
             .add_function("substring", wirefilter::functions::SubstringFunction {})
             .unwrap();
+        builder
+            .add_function("trim", wirefilter::functions::TrimFunction {})
+            .unwrap();
+        builder
+            .add_function("trim_end", wirefilter::functions::TrimEndFunction {})
+            .unwrap();
+        builder
+            .add_function("trim_start", wirefilter::functions::TrimStartFunction {})
+            .unwrap();
         if matches!(
             phase,
             Phase::HttpRequestTransform
