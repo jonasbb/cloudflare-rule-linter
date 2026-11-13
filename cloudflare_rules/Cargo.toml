@@ -19,7 +19,7 @@ pyo3 = {version = "0.30.1", features = ["anyhow"], optional = true}
 regex-syntax = "0.8.11"
 serde = {version = "1.0.229", features = ["derive"]}
 strum = {version = "0.28.0", features = ["derive"]}
-wirefilter-engine = {git = "https://github.com/jonasbb/wirefilter/", rev = "8b6e989e21b687f0b68e59a46c825285cec86c6b", features = [
+wirefilter-engine = {git = "https://github.com/jonasbb/wirefilter/", rev = "b0b90b3ab6cc85ad86b8be6a7a9645b85666f452", features = [
     "regex",
 ]}
 

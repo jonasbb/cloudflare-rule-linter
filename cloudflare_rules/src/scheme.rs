@@ -163,6 +163,17 @@ pub(crate) fn build_scheme(phase: Phase) -> Scheme {
             .unwrap();
         if matches!(
             phase,
+            Phase::HttpRequestTransform
+                | Phase::HttpRequestLateTransform
+                | Phase::HttpResponseHeadersTransform
+                | Phase::Maximum
+        ) {
+            builder
+                .add_function("md5", wirefilter::functions::Md5Function {})
+                .unwrap();
+        }
+        if matches!(
+            phase,
             Phase::HttpRequestDynamicRedirect
                 | Phase::HttpRequestTransform
                 | Phase::HttpRequestLateTransform
@@ -190,9 +201,37 @@ pub(crate) fn build_scheme(phase: Phase) -> Scheme {
                 )
                 .unwrap();
         }
-        if matches!(phase, Phase::HttpRequestTransform | Phase::Maximum) {
+        if matches!(
+            phase,
+            Phase::HttpRequestTransform
+                | Phase::HttpRequestLateTransform
+                | Phase::HttpResponseHeadersTransform
+                | Phase::Maximum
+        ) {
+            builder
+                .add_function("sha1", wirefilter::functions::Sha1Function {})
+                .unwrap();
+        }
+        if matches!(
+            phase,
+            Phase::HttpRequestTransform
+                | Phase::HttpRequestLateTransform
+                | Phase::HttpResponseHeadersTransform
+                | Phase::Maximum
+        ) {
             builder
                 .add_function("sha256", wirefilter::functions::Sha256Function {})
+                .unwrap();
+        }
+        if matches!(
+            phase,
+            Phase::HttpRequestTransform
+                | Phase::HttpRequestLateTransform
+                | Phase::HttpResponseHeadersTransform
+                | Phase::Maximum
+        ) {
+            builder
+                .add_function("sha512", wirefilter::functions::Sha512Function {})
                 .unwrap();
         }
         if matches!(

@@ -50,3 +50,31 @@ fn test_map_examples() {
     assert_can_parse(r#"len(http.request.uri.args["filter"]) >= 0"#);
     assert_can_parse(r#"not len(http.request.uri.args["order"]) >= 0"#);
 }
+
+#[test]
+fn test_hash_functions() {
+    // https://developers.cloudflare.com/ruleset-engine/rules-language/functions/#md5
+    assert_can_parse_phase(
+        Phase::HttpResponseHeadersTransform,
+        r#"md5(http.request.uri.path) eq """#,
+    );
+    assert_can_parse_phase(
+        Phase::HttpResponseHeadersTransform,
+        r#"encode_base64(md5(http.request.uri.path)) eq """#,
+    );
+    // https://developers.cloudflare.com/ruleset-engine/rules-language/functions/#sha1
+    assert_can_parse_phase(
+        Phase::HttpResponseHeadersTransform,
+        r#"sha1(http.request.uri.path) eq """#,
+    );
+    // https://developers.cloudflare.com/ruleset-engine/rules-language/functions/#sha256
+    assert_can_parse_phase(
+        Phase::HttpResponseHeadersTransform,
+        r#"sha256(http.request.uri.path) eq """#,
+    );
+    // https://developers.cloudflare.com/ruleset-engine/rules-language/functions/#sha512
+    assert_can_parse_phase(
+        Phase::HttpResponseHeadersTransform,
+        r#"sha512(http.request.uri.path) eq """#,
+    );
+}
